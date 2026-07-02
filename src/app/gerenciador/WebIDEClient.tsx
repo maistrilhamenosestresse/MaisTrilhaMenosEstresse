@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import Editor from "@monaco-editor/react";
-import { Folder, FileCode, Image as ImageIcon, Send, Loader2, ChevronRight, ChevronDown, CheckCircle2, AlertCircle, BookOpen, MonitorPlay, X, LayoutTemplate, Palette } from "lucide-react";
+import { Folder, FileCode, Image as ImageIcon, Send, Loader2, ChevronRight, ChevronDown, CheckCircle2, AlertCircle, BookOpen, MonitorPlay, X, LayoutTemplate, Palette, Globe, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Octokit } from "@octokit/rest";
 
@@ -17,6 +17,14 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   const [isDeploying, setIsDeploying] = useState(false);
   const [deployStatus, setDeployStatus] = useState<'idle' | 'building' | 'success' | 'error'>('idle');
 
+  // Preview State
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  // Low Code CMS State
+  const [cmsData, setCmsData] = useState<any>(null);
+  const [isLoadingCms, setIsLoadingCms] = useState<boolean>(false);
+  const [cmsFileSha, setCmsFileSha] = useState<string | null>(null);
+
   // GitHub Data
   const [octokit, setOctokit] = useState<Octokit | null>(null);
   const [repos, setRepos] = useState<any[]>([]);
@@ -25,7 +33,6 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   const [isLoadingRepos, setIsLoadingRepos] = useState(true);
   const [isLoadingTree, setIsLoadingTree] = useState(false);
 
-  // Initialize Octokit and fetch repos
   useEffect(() => {
     if (accessToken) {
       const okit = new Octokit({ auth: accessToken });
@@ -54,6 +61,8 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     setOpenFiles([]);
     setActiveFileId(null);
     setIsLowCodeMode(false);
+    setCmsData(null);
+    setPreviewUrl(repo.homepage || `https://${repo.name}.vercel.app`);
     
     try {
       const branchInfo = await okitInstance.repos.getBranch({ owner: repo.owner.login, repo: repo.name, branch: repo.default_branch });
@@ -96,11 +105,40 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }
   };
 
+  const fetchCmsData = async () => {
+    if (!octokit || !selectedRepo) return;
+    setIsLoadingCms(true);
+    try {
+      // Tentar encontrar o site-content.json na raiz
+      const res = await octokit.repos.getContent({
+        owner: selectedRepo.owner.login,
+        repo: selectedRepo.name,
+        path: 'site-content.json'
+      });
+
+      if (res?.data && 'content' in res.data) {
+        const content = atob(res.data.content);
+        setCmsData(JSON.parse(content));
+        setCmsFileSha(res.data.sha);
+      }
+    } catch (e) {
+      console.warn("Arquivo site-content.json não encontrado. Mostrando formulário de fallback.");
+      setCmsData(null);
+    } finally {
+      setIsLoadingCms(false);
+    }
+  };
+
+  const openLowCodeMode = () => {
+    setIsLowCodeMode(true);
+    setActiveFileId(null);
+    if (!cmsData) fetchCmsData();
+  };
+
   const handleSelectFileNode = async (node: any) => {
     if (node.type === 'folder') return;
-    setIsLowCodeMode(false); // Sair do modo low code se clicar em um arquivo
+    setIsLowCodeMode(false);
     
-    // Check if already open
     const alreadyOpen = openFiles.find(f => f.id === node.id);
     if (alreadyOpen) {
       setActiveFileId(node.id);
@@ -114,7 +152,6 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       setOpenFiles(prev => [...prev, newFile]);
       setActiveFileId(node.id);
     } else {
-      // Loading state for text
       newFile.content = "Carregando...";
       setOpenFiles(prev => [...prev, newFile]);
       setActiveFileId(node.id);
@@ -126,7 +163,6 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           setOpenFiles(prev => prev.map(f => f.id === node.id ? { ...f, content } : f));
         }
       } catch (err) {
-        console.error("Failed to fetch file content", err);
         setOpenFiles(prev => prev.map(f => f.id === node.id ? { ...f, content: "Erro ao carregar o arquivo." } : f));
       }
     }
@@ -198,11 +234,60 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }, 2000);
   };
 
+  const updateCmsField = (path: string[], value: string) => {
+    setCmsData((prev: any) => {
+      const newData = JSON.parse(JSON.stringify(prev));
+      let current = newData;
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+      current[path[path.length - 1]] = value;
+      return newData;
+    });
+  };
+
+  // Função recursiva para gerar formulário baseado no JSON
+  const renderCmsForms = (data: any, path: string[] = []) => {
+    if (!data) return null;
+    return Object.keys(data).map(key => {
+      const val = data[key];
+      const currentPath = [...path, key];
+      
+      if (typeof val === 'object' && val !== null) {
+        return (
+          <div key={currentPath.join('-')} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
+            <h3 className="font-bold text-white mb-4 border-b border-[#3c3c3c] pb-2 capitalize">{key.replace(/_/g, ' ')}</h3>
+            <div className="space-y-4">
+              {renderCmsForms(val, currentPath)}
+            </div>
+          </div>
+        );
+      }
+      
+      // Detecção simples de cor pelo valor hexadecimal
+      const isColor = typeof val === 'string' && val.startsWith('#') && (val.length === 4 || val.length === 7);
+      
+      return (
+        <div key={currentPath.join('-')}>
+          <label className="text-xs font-bold text-gray-400 uppercase capitalize">{key.replace(/_/g, ' ')}</label>
+          {isColor ? (
+            <div className="flex items-center gap-3 mt-1">
+              <input type="color" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-10 h-10 rounded cursor-pointer bg-transparent border-0 p-0" />
+              <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded w-32 font-mono text-sm outline-none focus:border-[#F17B37]" />
+            </div>
+          ) : val.length > 60 ? (
+             <textarea rows={3} value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="mt-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" />
+          ) : (
+             <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="mt-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" />
+          )}
+        </div>
+      );
+    });
+  };
+
   return (
     <div className="flex h-full w-full relative" {...getRootProps()}>
       <input {...getInputProps()} />
-      
-      {/* Overlay Drag and Drop Visual */}
       <AnimatePresence>
         {isDragActive && (
           <motion.div 
@@ -216,10 +301,8 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         )}
       </AnimatePresence>
 
-      {/* SIDEBAR - FILE EXPLORER */}
+      {/* SIDEBAR */}
       <div className="w-64 bg-[#252526] border-r border-[#3c3c3c] flex flex-col shrink-0">
-        
-        {/* Repo Selector */}
         <div className="p-2 border-b border-[#3c3c3c]">
           <select 
             className="w-full bg-[#1e1e1e] border border-[#3c3c3c] text-sm text-gray-300 rounded p-1.5 outline-none focus:border-[#F17B37]"
@@ -236,19 +319,18 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           </select>
         </div>
 
-        {/* Low Code Mode Button */}
         <div className="p-2 border-b border-[#3c3c3c]">
           <button 
-            onClick={() => { setIsLowCodeMode(true); setActiveFileId(null); }}
+            onClick={openLowCodeMode}
             className={`w-full flex items-center justify-center gap-2 py-2 rounded font-bold text-xs transition-colors shadow-sm ${isLowCodeMode ? 'bg-[#F17B37] text-white' : 'bg-[#333333] text-gray-300 hover:bg-[#F17B37] hover:text-white'}`}
           >
             <LayoutTemplate className="h-4 w-4" />
-            Modo Visual (Low-Code)
+            Modo Visual (Leigo)
           </button>
         </div>
 
         <div className="uppercase text-[10px] font-bold text-gray-400 px-4 py-3 tracking-widest border-b border-[#3c3c3c] flex items-center justify-between">
-          <span>Explorador</span>
+          <span>Explorador de Arquivos</span>
           {isLoadingTree && <Loader2 className="h-3 w-3 animate-spin text-[#F17B37]" />}
         </div>
         <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
@@ -256,13 +338,10 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         </div>
       </div>
 
-      {/* RIGHT SIDE: SPLIT SCREEN (CODE vs PREVIEW) */}
+      {/* CENTER PANE */}
       <div className="flex-1 flex min-w-0">
-        
-        {/* LEFT PANE: EDITOR / LOW-CODE */}
         <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] border-r border-[#3c3c3c]">
           
-          {/* TABS BAR */}
           <div className="h-10 bg-[#252526] flex items-center overflow-x-auto custom-scrollbar border-b border-[#3c3c3c] shrink-0">
             {openFiles.map(file => (
               <div 
@@ -281,7 +360,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
           <div className="h-10 bg-[#2d2d2d] flex items-center justify-between px-4 shrink-0 shadow-md z-10">
             <div className="text-xs text-gray-400 flex items-center gap-2 font-mono truncate">
-               {isLowCodeMode ? "Painel Visual > Configurações de Tema" : activeFile?.path || "Nenhum arquivo aberto"}
+               {isLowCodeMode ? "Tudo Editável > Base de Dados (JSON)" : activeFile?.path || "Nenhum arquivo aberto"}
             </div>
             
             <button 
@@ -298,90 +377,71 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                deployStatus === 'success' ? <CheckCircle2 className="h-3 w-3" /> :
                deployStatus === 'error' ? <AlertCircle className="h-3 w-3" /> :
                <Send className="h-3 w-3" />}
-              {deployStatus === 'building' ? 'Compilando p/ Vercel...' : 
+              {deployStatus === 'building' ? 'Enviando p/ Vercel...' : 
                deployStatus === 'success' ? 'Site Atualizado!' :
-               deployStatus === 'error' ? 'Erro no Compilador' :
+               deployStatus === 'error' ? 'Erro no Deploy' :
                'Simular / Atualizar Site'}
             </button>
           </div>
 
-          {/* Content Area */}
           <div className="flex-1 overflow-hidden relative">
-            
-            {/* MODO LOW-CODE */}
             {isLowCodeMode ? (
               <div className="absolute inset-0 bg-[#1e1e1e] p-8 overflow-y-auto custom-scrollbar">
-                <div className="max-w-2xl mx-auto space-y-8">
-                  <div>
-                    <h2 className="text-2xl font-black text-white flex items-center gap-3"><Palette className="h-6 w-6 text-[#F17B37]"/> Design Global (Leigo)</h2>
-                    <p className="text-gray-400 mt-1 text-sm">Altere as cores e textos principais do site visualmente. O sistema vai varrer e injetar o código para você.</p>
+                <div className="max-w-3xl mx-auto space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-black text-white flex items-center gap-3"><Palette className="h-6 w-6 text-[#F17B37]"/> Editor Visual (CMS)</h2>
+                      <p className="text-gray-400 mt-1 text-sm">Altere qualquer texto, botão ou cor do site por aqui sem tocar no código.</p>
+                    </div>
+                    {cmsData && (
+                      <button className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">
+                        <Save className="h-4 w-4" /> Salvar Edições
+                      </button>
+                    )}
                   </div>
 
-                  <div className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl">
-                    <h3 className="font-bold text-white mb-4 border-b border-[#3c3c3c] pb-2">Identidade Visual</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase">Cor Principal (Primária)</label>
-                        <div className="flex items-center gap-3 mt-1">
-                          <input type="color" defaultValue="#F17B37" className="w-10 h-10 rounded cursor-pointer bg-transparent border-0 p-0" />
-                          <input type="text" defaultValue="#F17B37" className="bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded w-32 font-mono text-sm outline-none focus:border-[#F17B37]" />
-                        </div>
-                        <p className="text-[10px] text-gray-500 mt-1">Isso tentará injetar alterações no tailwind.config.ts e globals.css.</p>
-                      </div>
+                  {isLoadingCms ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                      <Loader2 className="h-10 w-10 animate-spin mb-4" />
+                      <p>Varrendo o site em busca de textos editáveis...</p>
                     </div>
-                  </div>
-
-                  <div className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl">
-                    <h3 className="font-bold text-white mb-4 border-b border-[#3c3c3c] pb-2">Informações da Página</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase">Título do Site (Metatag)</label>
-                        <input type="text" defaultValue="Mais Trilha Menos Estresse" className="mt-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase">Descrição Base (SEO)</label>
-                        <textarea rows={3} defaultValue="Agência de trilhas e turismo..." className="mt-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" />
-                      </div>
+                  ) : cmsData ? (
+                    <div className="pb-20">
+                      {renderCmsForms(cmsData)}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-8 text-center">
+                      <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-bold text-white mb-2">Arquivo Mestre não encontrado!</h3>
+                      <p className="text-gray-400 text-sm max-w-md mx-auto">
+                        Para o Modo Visual completo funcionar, o desenvolvedor precisa extrair os textos do código (`.tsx`) e criar um arquivo `site-content.json` na raiz do projeto.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
-
-            // NENHUM ARQUIVO SELECIONADO
             ) : !activeFile ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
                 <BookOpen className="h-16 w-16 mb-4 opacity-20" />
                 <h2 className="text-xl font-medium">Editor Inteligente</h2>
                 <p className="text-sm mt-2 text-center max-w-md">Abra um arquivo pelo explorador ou use o <b>Modo Visual</b> na barra lateral para edições sem código.</p>
               </div>
-
-            // EDITOR DE CÓDIGO (PROGRAMADOR)
             ) : activeFile.type === 'file' ? (
               <Editor
                 height="100%"
                 theme="vs-dark"
                 language={activeFile.extension === 'tsx' || activeFile.extension === 'ts' ? 'typescript' : activeFile.extension === 'css' ? 'css' : activeFile.extension === 'json' ? 'json' : 'javascript'}
                 value={activeFile.content}
-                onChange={(val) => {
-                  setOpenFiles(prev => prev.map(f => f.id === activeFile.id ? { ...f, content: val } : f));
-                }}
+                onChange={(val) => setOpenFiles(prev => prev.map(f => f.id === activeFile.id ? { ...f, content: val } : f))}
                 options={{ minimap: { enabled: false }, fontSize: 13, wordWrap: "on", padding: { top: 16 } }}
               />
-
-            // VISUALIZADOR DE IMAGENS (LOW-CODE)
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-8 overflow-y-auto">
                 <div className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-8 max-w-md w-full text-center shadow-2xl">
                   <h3 className="text-lg font-bold text-white mb-2 truncate">{activeFile.name}</h3>
-                  <p className="text-gray-400 text-xs mb-6">Substituição Rápida de Assets. Arraste uma nova imagem para cá.</p>
-                  
                   <div className="rounded-lg overflow-hidden border border-[#3c3c3c] bg-black/50 p-2 mb-6 flex justify-center">
                     <img src={activeFile.url} alt={activeFile.name} className="max-h-[200px] object-contain rounded-md" />
                   </div>
-
-                  <button className="bg-[#F17B37] w-full hover:bg-[#e06925] text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors shadow-sm">
-                    Upload de Nova Imagem
-                  </button>
                 </div>
               </div>
             )}
@@ -390,28 +450,32 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
         {/* RIGHT PANE: LIVE PREVIEW IFRAME */}
         <div className="w-[45%] flex flex-col min-w-0 bg-[#ffffff]">
-           <div className="h-10 bg-[#f3f4f6] flex items-center px-4 border-b border-gray-200 shrink-0 gap-2 text-gray-600">
-             <MonitorPlay className="h-4 w-4 text-blue-500" />
-             <span className="text-xs font-bold uppercase tracking-wider">Simulador do Site</span>
+           <div className="h-10 bg-[#f3f4f6] flex items-center px-4 border-b border-gray-200 shrink-0 gap-3 text-gray-600">
+             <Globe className="h-4 w-4 text-blue-500 shrink-0" />
+             <span className="text-xs font-bold uppercase tracking-wider shrink-0 hidden lg:block">Preview</span>
              
-             {/* Fake URL Bar */}
-             <div className="ml-auto bg-white border border-gray-300 rounded-md px-3 py-1 text-[10px] text-gray-500 flex-1 max-w-[250px] truncate">
-               {selectedRepo?.homepage || `https://${selectedRepo?.name}.vercel.app`}
-             </div>
+             {/* Editable URL Bar */}
+             <input 
+               type="text"
+               value={previewUrl}
+               onChange={(e) => setPreviewUrl(e.target.value)}
+               className="ml-auto bg-white border border-gray-300 rounded-md px-3 py-1 text-xs text-gray-600 flex-1 max-w-full outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+               placeholder="Cole o link do seu site aqui se der 404..."
+             />
            </div>
            
            <div className="flex-1 relative bg-gray-50 flex items-center justify-center">
-             {selectedRepo ? (
+             {previewUrl ? (
                <iframe 
-                 src={selectedRepo.homepage || "https://maistrilhamenosestresse.com"} 
+                 src={previewUrl} 
                  className="w-full h-full border-none shadow-inner"
                  title="Preview"
-                 sandbox="allow-scripts allow-same-origin"
+                 sandbox="allow-scripts allow-same-origin allow-forms"
                />
              ) : (
                <div className="text-gray-400 text-sm flex flex-col items-center">
                  <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                 Aguardando compilação inicial...
+                 Digite a URL no topo para simular...
                </div>
              )}
            </div>

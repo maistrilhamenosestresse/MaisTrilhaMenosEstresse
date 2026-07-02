@@ -1,0 +1,23 @@
+{
+  "home": {
+    "banner": {
+      "titulo": "Mais Trilha Menos Estresse",
+      "subtitulo": "Agência de trilhas e turismo de aventura para você se conectar com a natureza.",
+      "textoBotao": "Ver Próximas Trilhas",
+      "linkBotao": "/agenda"
+    },
+    "sobre": {
+      "titulo": "Quem Somos",
+      "texto": "Nascemos da paixão por conectar pessoas com o meio ambiente de forma segura e divertida."
+    }
+  },
+  "config": {
+    "cores": {
+      "primaria": "#F17B37"
+    },
+    "contato": {
+      "email": "contato@maistrilha.com.br",
+      "telefone": "+55 11 99999-9999"
+    }
+  }
+}
