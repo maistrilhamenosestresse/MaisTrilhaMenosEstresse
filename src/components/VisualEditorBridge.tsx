@@ -14,6 +14,29 @@ export default function VisualEditorBridge() {
         if (event.data?.type === "CMS_PING") {
           window.parent.postMessage({ type: "CMS_PONG", url: window.location.pathname }, "*");
         }
+        
+        // Highlight Reverso: Quando clica no input do painel esquerdo, brilha no iframe
+        if (event.data?.type === "CMS_FOCUS_ELEMENT") {
+          const { originalText } = event.data.payload;
+          const editables = document.querySelectorAll('[data-cms-editable="true"]');
+          for (let i = 0; i < editables.length; i++) {
+            const el = editables[i] as HTMLElement;
+            if (el.getAttribute("data-original-text") === originalText || el.textContent === originalText) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              // Efeito de pulso rápido
+              el.style.transition = 'all 0.3s ease';
+              el.style.backgroundColor = 'rgba(241, 123, 55, 0.4)';
+              el.style.outline = '4px solid #F17B37';
+              
+              setTimeout(() => {
+                el.style.backgroundColor = '';
+                el.style.outline = '';
+              }, 1500);
+              break;
+            }
+          }
+        }
       };
       window.addEventListener("message", handleMessage);
       

@@ -20,6 +20,36 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   // Preview State
   const [previewUrl, setPreviewUrl] = useState<string>("");
 
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, file: any | null }>({ visible: false, x: 0, y: 0, file: null });
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(prev => ({ ...prev, visible: false }));
+    window.addEventListener('click', closeMenu);
+    return () => window.removeEventListener('click', closeMenu);
+  }, []);
+
+  const handleDeleteFile = async () => {
+     if (!contextMenu.file || !octokit || !selectedRepo) return;
+     if (!confirm(`Tem certeza que deseja deletar ${contextMenu.file.name}?`)) return;
+     
+     try {
+       await octokit.repos.deleteFile({
+         owner: selectedRepo.owner.login,
+         repo: selectedRepo.name,
+         path: contextMenu.file.path,
+         message: `Deletado via Web IDE: ${contextMenu.file.name}`,
+         sha: contextMenu.file.id,
+         branch: selectedRepo.default_branch
+       });
+       alert("Arquivo deletado com sucesso!");
+       handleSelectRepo(selectedRepo); // Reload tree
+     } catch (e) {
+       console.error("Erro ao deletar", e);
+       alert("Erro ao deletar arquivo.");
+     }
+  };
+
   // Low Code CMS State
   const [cmsData, setCmsData] = useState<any>(null);
   const [isLoadingCms, setIsLoadingCms] = useState<boolean>(false);
@@ -296,11 +326,35 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
   const activeFile = openFiles.find(f => f.id === activeFileId);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      alert(`Upload não implementado nesta fase do protótipo visual. Arquivo recebido: ${acceptedFiles[0].name}`);
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (!selectedRepo || !octokit) {
+      alert("Selecione um repositório primeiro.");
+      return;
     }
-  }, []);
+    
+    for (const file of acceptedFiles) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Content = (event.target?.result as string).split(',')[1];
+        
+        try {
+          await octokit.repos.createOrUpdateFileContents({
+            owner: selectedRepo.owner.login,
+            repo: selectedRepo.name,
+            path: `public/images/${file.name.replace(/\s+/g, '-')}`,
+            message: `Upload de ${file.name} via Web IDE`,
+            content: base64Content,
+            branch: selectedRepo.default_branch
+          });
+          alert(`Upload de ${file.name} concluído com sucesso! Recarregue a página para ver no repositório.`);
+        } catch(e) {
+          console.error("Erro no upload", e);
+          alert(`Erro ao fazer upload de ${file.name}`);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [octokit, selectedRepo]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, noClick: true });
 
@@ -318,6 +372,10 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
               className={`flex items-center gap-1.5 py-1 px-2 cursor-pointer hover:bg-[#2a2d2e] transition-colors`}
               style={{ paddingLeft: `${level * 12 + 8}px` }}
               onClick={() => toggleFolder(node.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({ visible: true, x: e.pageX, y: e.pageY, file: node });
+              }}
             >
               {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
               <Folder className="h-4 w-4 text-[#dcb67a]" />
@@ -334,6 +392,10 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           className={`flex items-center gap-2 py-1 px-2 cursor-pointer hover:bg-[#2a2d2e] transition-colors ${isSelected ? 'bg-[#37373d] text-white' : 'text-gray-400'}`}
           style={{ paddingLeft: `${(level * 12) + 24}px` }}
           onClick={() => handleSelectFileNode(node)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu({ visible: true, x: e.pageX, y: e.pageY, file: node });
+          }}
         >
           {node.type === 'image' ? <ImageIcon className="h-4 w-4 text-green-400 shrink-0" /> : <FileCode className="h-4 w-4 text-blue-400 shrink-0" />}
           <span className="text-sm truncate">{node.name}</span>
@@ -362,6 +424,14 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
   const renderAstForms = (data: any) => {
     if (!data) return null;
+    
+    const handleFocus = (originalText: string) => {
+      const iframe = document.querySelector('iframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'CMS_FOCUS_ELEMENT', payload: { originalText } }, '*');
+      }
+    };
+    
     return Object.keys(data).map(folderKey => {
       const nodes = data[folderKey];
       if (!Array.isArray(nodes)) return null;
@@ -381,6 +451,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                       rows={2} 
                       value={node.newText} 
                       onChange={(e) => updateAstNode(folderKey, index, 'newText', e.target.value)} 
+                      onFocus={() => handleFocus(node.text)}
                       className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none resize-none focus:bg-[#252526] focus:rounded" 
                     />
                   </div>
@@ -459,7 +530,14 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           {isLoadingTree && <Loader2 className="h-3 w-3 animate-spin text-[#F17B37]" />}
         </div>
         <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
-          {renderTree(fileTree)}
+          {isLowCodeMode ? (
+             <div className="p-4 text-xs text-gray-500 text-center">
+               <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
+               <p>O Explorador de Arquivos Técnicos fica oculto no Modo Visual para evitar confusão.</p>
+             </div>
+          ) : (
+             renderTree(fileTree)
+          )}
         </div>
       </div>
 
@@ -607,6 +685,21 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         </div>
         
       </div>
+      
+      {/* Context Menu flutuante */}
+      {contextMenu.visible && (
+        <div 
+          className="fixed bg-[#252526] border border-[#3c3c3c] shadow-2xl rounded py-1 z-[99999] min-w-[150px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 text-xs text-gray-400 border-b border-[#3c3c3c] truncate">
+            {contextMenu.file?.name}
+          </div>
+          <button className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#F17B37] hover:text-white transition-colors" onClick={() => alert("Renomear será implementado em breve.")}>Renomear</button>
+          <button className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white transition-colors" onClick={handleDeleteFile}>Excluir Arquivo</button>
+        </div>
+      )}
     </div>
   );
 }
