@@ -63,15 +63,25 @@ export default function VisualEditorBridge() {
 
       // Função para tornar elementos editáveis
       const makeEditable = () => {
+        // Envia a rota atual sempre que o DOM mudar (soft navigation do Next.js)
+        window.parent.postMessage({ type: "CMS_ROUTE_CHANGED", payload: { url: window.location.pathname } }, "*");
+
         const tags = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "button", "a"];
         tags.forEach(tag => {
           const elements = document.getElementsByTagName(tag);
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
-            // Ignorar elementos muito complexos ou com filhos HTML (pra não quebrar o layout)
-            if (el.children.length === 0 && el.textContent?.trim().length! > 0) {
+            // Ignorar elementos vazios
+            if (el.textContent?.trim().length! > 0 && !el.hasAttribute("data-cms-editable")) {
               el.setAttribute("data-cms-editable", "true");
               el.title = "Clique duplo para editar";
+              
+              // Bloquear navegação de links no modo de edição
+              el.addEventListener("click", (e) => {
+                if (el.tagName.toLowerCase() === "a" || el.closest("a")) {
+                  e.preventDefault();
+                }
+              });
               
               el.addEventListener("dblclick", (e) => {
                 e.preventDefault();
@@ -92,6 +102,8 @@ export default function VisualEditorBridge() {
                     url: window.location.pathname
                   }
                 }, "*");
+                // Atualiza o texto original guardado
+                el.setAttribute("data-original-text", el.textContent || "");
               });
 
               // Guardar o texto original na primeira vez

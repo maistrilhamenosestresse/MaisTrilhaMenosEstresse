@@ -6,6 +6,7 @@ import Editor from "@monaco-editor/react";
 import { Folder, FileCode, Image as ImageIcon, Send, Loader2, ChevronRight, ChevronDown, CheckCircle2, AlertCircle, BookOpen, MonitorPlay, X, LayoutTemplate, Palette, Globe, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Octokit } from "@octokit/rest";
+import { toast } from "sonner";
 
 export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   // Tabs System
@@ -89,21 +90,32 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       if (event.data?.type === "CMS_TEXT_UPDATED") {
         const { originalText, newText } = event.data.payload;
         
-        // Atualiza a representação visual (AST) do painel esquerdo quando o Iframe é editado
         setCmsData((prevCmsData: any) => {
           if (!prevCmsData) return prevCmsData;
-          const newData = { ...prevCmsData };
           
-          Object.keys(newData).forEach(folderKey => {
-             newData[folderKey] = newData[folderKey].map((node: any) => {
-               if (node.type === 'text' && node.text.trim() === originalText.trim()) {
-                 return { ...node, newText: newText };
-               }
-               return node;
-             });
-          });
-          return newData;
+          const deepReplace = (obj: any, oldVal: string, newVal: string): any => {
+            if (typeof obj === 'string') {
+              return obj.trim() === oldVal.trim() ? newVal : obj;
+            }
+            if (Array.isArray(obj)) {
+              return obj.map(item => deepReplace(item, oldVal, newVal));
+            }
+            if (typeof obj === 'object' && obj !== null) {
+              const newObj: any = {};
+              for (const key in obj) {
+                newObj[key] = deepReplace(obj[key], oldVal, newVal);
+              }
+              return newObj;
+            }
+            return obj;
+          };
+          
+          return deepReplace(prevCmsData, originalText, newText);
         });
+      }
+      
+      if (event.data?.type === "CMS_ROUTE_CHANGED") {
+        setPreviewUrl(event.data.payload.url);
       }
     };
 
@@ -163,70 +175,24 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }
   };
 
-  // AST/Regex Parser State
-  const [scannedFiles, setScannedFiles] = useState<any[]>([]);
-
-  // Extrai recursivamente todos os arquivos com um determinado nome da árvore
-  const findFilesByName = (nodes: any[], name: string, results: any[] = []) => {
-    nodes.forEach(node => {
-      if (node.type === 'file' && node.name === name) results.push(node);
-      if (node.type === 'folder' && node.children) findFilesByName(node.children, name, results);
-    });
-    return results;
-  };
-
-  const scanSourceCode = async () => {
+  const fetchCmsData = async () => {
     if (!octokit || !selectedRepo) return;
     setIsLoadingCms(true);
-    setCmsData(null); // Reset CMS data
-    
     try {
-      // 1. Encontrar todas as page.tsx
-      const pages = findFilesByName(fileTree, 'page.tsx');
-      const layouts = findFilesByName(fileTree, 'layout.tsx');
-      const targetFiles = [...pages, ...layouts];
-      
-      const newScannedFiles = [];
-      const newCmsData: any = {};
+      const res = await octokit.repos.getContent({
+        owner: selectedRepo.owner.login,
+        repo: selectedRepo.name,
+        path: 'site-content.json'
+      });
 
-      for (const file of targetFiles) {
-        // Baixar conteúdo do GitHub
-        const res = await octokit.repos.getContent({ owner: selectedRepo.owner.login, repo: selectedRepo.name, path: file.path });
-        if (res?.data && 'content' in res.data) {
-          const content = atob(res.data.content);
-          
-          // Regex para encontrar Textos (evitando chaves {} do React)
-          const textRegex = /(<(?:h1|h2|h3|h4|h5|h6|p|span|button|a|label)[^>]*>)\s*([^<{\n]+?)\s*(<\/(?:h1|h2|h3|h4|h5|h6|p|span|button|a|label)>)/g;
-          const imageRegex = /(<(?:Image|img)[^>]*src=["'])([^"']*)(["'][^>]*>)/g;
-          
-          let match;
-          const nodes = [];
-          
-          // Escanear Textos
-          while ((match = textRegex.exec(content)) !== null) {
-            if (match[2].trim().length > 1) { // Ignorar espaços em branco puros
-              nodes.push({ type: 'text', originalMatch: match[0], openTag: match[1], text: match[2], closeTag: match[3], newText: match[2] });
-            }
-          }
-          
-          // Escanear Imagens
-          while ((match = imageRegex.exec(content)) !== null) {
-            nodes.push({ type: 'image', originalMatch: match[0], prefix: match[1], src: match[2], suffix: match[3], newSrc: match[2] });
-          }
-
-          if (nodes.length > 0) {
-            newScannedFiles.push({ ...file, content, nodes });
-            // Agrupar no objeto CmsData para compatibilidade com a UI
-            const folderName = file.path.replace('src/app/', '').replace('/page.tsx', '').replace('page.tsx', 'raiz').toUpperCase();
-            newCmsData[folderName] = nodes;
-          }
-        }
+      if (res?.data && 'content' in res.data) {
+        const content = atob(res.data.content);
+        setCmsData(JSON.parse(content));
+        setCmsFileSha((res.data as any).sha);
       }
-      
-      setScannedFiles(newScannedFiles);
-      setCmsData(newCmsData);
     } catch (e) {
-      console.error("Erro ao escanear código-fonte:", e);
+      console.warn("Arquivo site-content.json não encontrado.", e);
+      setCmsData(null);
     } finally {
       setIsLoadingCms(false);
     }
@@ -238,52 +204,8 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     } else {
       setIsLowCodeMode(true);
       setActiveFileId(null);
-      if (!cmsData) scanSourceCode();
+      if (!cmsData) fetchCmsData();
     }
-  };
-
-  const handleSaveCmsEdits = async () => {
-    if (!cmsData || !scannedFiles) return;
-    setIsDeploying(true);
-    
-    // Simula a aplicação do AST de volta ao Código Fonte
-    let updatedFilesCount = 0;
-    
-    scannedFiles.forEach(file => {
-      let newContent = file.content;
-      const folderKey = file.path.replace('src/app/', '').replace('/page.tsx', '').replace('page.tsx', 'raiz').toUpperCase();
-      const nodes = cmsData[folderKey];
-      
-      if (nodes && Array.isArray(nodes)) {
-        nodes.forEach((node: any) => {
-          if (node.type === 'text' && node.text !== node.newText) {
-            const newHTML = `${node.openTag}${node.newText}${node.closeTag}`;
-            newContent = newContent.replace(node.originalMatch, newHTML);
-            // Atualiza o match original para não quebrar em futuros saves
-            node.originalMatch = newHTML;
-            node.text = node.newText;
-          }
-          if (node.type === 'image' && node.src !== node.newSrc) {
-            const newHTML = `${node.prefix}${node.newSrc}${node.suffix}`;
-            newContent = newContent.replace(node.originalMatch, newHTML);
-            node.originalMatch = newHTML;
-            node.src = node.newSrc;
-          }
-        });
-      }
-      
-      if (newContent !== file.content) {
-        file.content = newContent;
-        updatedFilesCount++;
-        // Se o arquivo estiver aberto na aba, atualiza lá também
-        setOpenFiles(prev => prev.map(f => f.id === file.id ? { ...f, content: newContent } : f));
-      }
-    });
-
-    setTimeout(() => {
-      alert(`Sucesso! ${updatedFilesCount} arquivo(s) modificado(s) pelo Modo Visual. (Na versão final, faríamos o Commit no GitHub aqui).`);
-      setIsDeploying(false);
-    }, 1000);
   };
 
   const handleSelectFileNode = async (node: any) => {
@@ -417,112 +339,146 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }, 2000);
   };
 
-  // Função para atualizar o AST Node
-  const updateAstNode = (folderKey: string, nodeIndex: number, field: string, value: string) => {
+  const commitToGithub = async (filePath: string, newContent: string, message: string) => {
+    if (!octokit || !selectedRepo) return false;
+    
+    try {
+      let currentSha = undefined;
+      // 1. Tenta pegar o SHA atual do arquivo se ele já existir
+      try {
+        const fileInfo = await octokit.repos.getContent({
+          owner: selectedRepo.owner.login,
+          repo: selectedRepo.name,
+          path: filePath,
+        });
+        currentSha = (fileInfo.data as any).sha;
+      } catch (err) {
+        // Arquivo não existe, será criado. Ignora o erro.
+      }
+  
+      // 2. Transforma o conteúdo em Base64 (suporta acentos)
+      const contentBase64 = btoa(unescape(encodeURIComponent(newContent)));
+  
+      // 3. Faz o Commit real
+      await octokit.repos.createOrUpdateFileContents({
+        owner: selectedRepo.owner.login,
+        repo: selectedRepo.name,
+        path: filePath,
+        message: message,
+        content: contentBase64,
+        sha: currentSha,
+        branch: selectedRepo.default_branch
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Erro no commit:", error);
+      return false;
+    }
+  };
+
+  const handleSaveCmsEdits = async () => {
+    if (!cmsData) return;
+    setIsDeploying(true);
+    const success = await commitToGithub('site-content.json', JSON.stringify(cmsData, null, 2), 'Atualização de conteúdo via Modo Visual');
+    setIsDeploying(false);
+    if (success) {
+      toast.success('Alterações salvas com sucesso no GitHub!');
+    } else {
+      toast.error('Erro ao salvar as alterações.');
+    }
+  };
+
+  const updateCmsField = (path: string[], value: string) => {
     setCmsData((prev: any) => {
-      const newData = { ...prev };
-      newData[folderKey][nodeIndex][field] = value;
+      const newData = JSON.parse(JSON.stringify(prev));
+      let current = newData;
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+      current[path[path.length - 1]] = value;
       return newData;
     });
   };
 
-  const tagTranslators: Record<string, string> = {
-    h1: "Título Principal",
-    h2: "Subtítulo",
-    h3: "Título de Seção",
-    h4: "Tópico",
-    h5: "Micro Título",
-    h6: "Micro Título",
-    p: "Parágrafo / Texto",
-    button: "Botão",
-    a: "Link",
-    span: "Texto Curto",
-    label: "Rótulo"
-  };
-
-  const renderAstForms = (data: any) => {
+  const renderCmsForms = (data: any, path: string[] = []) => {
     if (!data) return null;
-    
-    const handleFocus = (originalText: string) => {
-      const iframe = document.querySelector('iframe');
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ type: 'CMS_FOCUS_ELEMENT', payload: { originalText } }, '*');
+    return Object.keys(data).map(key => {
+      const val = data[key];
+      const currentPath = [...path, key];
+      
+      if (typeof val === 'object' && val !== null) {
+        return (
+          <div key={currentPath.join('-')} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
+            <h3 className="font-bold text-[#F17B37] mb-4 border-b border-[#3c3c3c] pb-2 capitalize">{key.replace(/_/g, ' ')}</h3>
+            <div className="space-y-4">
+              {renderCmsForms(val, currentPath)}
+            </div>
+          </div>
+        );
       }
-    };
-    
-    // Tenta adivinhar a rota atual baseada na URL da preview
-    let currentRouteKey = 'RAIZ';
-    try {
-      const urlPath = previewUrl ? new URL(previewUrl).pathname : '/';
-      Object.keys(data).forEach(k => {
-        const routeStr = k.toLowerCase() === 'raiz' ? '/' : `/${k.toLowerCase()}`;
-        if (urlPath === routeStr || (urlPath.startsWith(routeStr) && routeStr !== '/')) {
-          currentRouteKey = k;
-        }
-      });
-    } catch (e) {
-      // previewUrl pode não ser uma URL válida se o usuário apagou
-    }
+      
+      const isColor = typeof val === 'string' && val.startsWith('#') && (val.length === 4 || val.length === 7);
+      const isImage = typeof val === 'string' && val.match(/\.(jpeg|jpg|gif|png|svg|webp)$/i) != null;
+      const isVideo = typeof val === 'string' && val.match(/\.(mp4|webm|ogg)$/i) != null;
 
-    const routeData = data[currentRouteKey];
-    
-    if (!routeData || !Array.isArray(routeData) || routeData.length === 0) {
+      const handleFocus = () => {
+        const iframe = document.querySelector('iframe');
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage({ type: 'CMS_FOCUS_ELEMENT', payload: { originalText: val } }, '*');
+        }
+      };
+
+      if (isImage) {
+        return (
+          <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
+            <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">{key.replace(/_/g, ' ')} (IMAGEM)</div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
+              <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
+                <img src={val.startsWith('/') && selectedRepo ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${val}` : val} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                 <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL da Imagem..." />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (isVideo) {
+        return (
+          <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
+            <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">{key.replace(/_/g, ' ')} (VÍDEO)</div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
+              <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
+                 <MonitorPlay className="h-8 w-8 text-blue-500" />
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                 <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL do Vídeo..." />
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
-        <div className="p-8 text-center text-gray-400 bg-[#252526] rounded-xl border border-[#3c3c3c]">
-          <BookOpen className="h-10 w-10 mx-auto mb-4 opacity-50" />
-          <p>Nenhum texto editável encontrado para a página atual ({currentRouteKey}).</p>
-          <p className="text-xs mt-2 opacity-70">Navegue no simulador ou tente outra URL.</p>
+        <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors mt-4">
+          <div className="absolute -top-3 left-3 bg-[#F17B37] text-[10px] px-2 py-0.5 rounded font-bold text-white uppercase tracking-widest shadow-sm">
+            {key.replace(/_/g, ' ')}
+          </div>
+          {isColor ? (
+            <div className="flex items-center gap-3 mt-2">
+              <input type="color" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-10 h-10 rounded cursor-pointer bg-transparent border-0 p-0" />
+              <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded w-32 font-mono text-sm outline-none focus:border-[#F17B37]" />
+            </div>
+          ) : val.length > 60 ? (
+             <textarea rows={3} value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} onFocus={handleFocus} className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none resize-none focus:bg-[#252526] focus:rounded" />
+          ) : (
+             <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} onFocus={handleFocus} className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none focus:bg-[#252526] focus:rounded" />
+          )}
         </div>
       );
-    }
-
-    return (
-      <div key={currentRouteKey} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
-        <h3 className="font-bold text-[#F17B37] mb-6 border-b border-[#3c3c3c] pb-2 flex items-center gap-2 uppercase tracking-widest text-sm">
-          <Folder className="h-4 w-4" /> Página: {currentRouteKey}
-        </h3>
-        <div className="space-y-6">
-          {routeData.map((node, index) => {
-            if (node.type === 'text') {
-              const cleanTag = node.openTag.replace(/[<>]/g, '').split(' ')[0].toLowerCase();
-              const humanName = tagTranslators[cleanTag] || "Texto";
-              
-              return (
-                <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
-                  <div className="absolute -top-3 left-3 bg-[#F17B37] text-[10px] px-2 py-0.5 rounded font-bold text-white uppercase tracking-widest shadow-sm">
-                    {humanName}
-                  </div>
-                  <textarea 
-                    rows={2} 
-                    value={node.newText} 
-                    onChange={(e) => updateAstNode(currentRouteKey, index, 'newText', e.target.value)} 
-                    onFocus={() => handleFocus(node.text)}
-                    className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none resize-none focus:bg-[#252526] focus:rounded" 
-                  />
-                </div>
-              );
-            }
-            if (node.type === 'image') {
-              return (
-                <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
-                  <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">IMAGEM</div>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-                    <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
-                      <img src={node.newSrc.startsWith('/') && selectedRepo ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${node.newSrc}` : node.newSrc} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                    </div>
-                    <div className="flex-1 w-full space-y-2">
-                       <input type="text" value={node.newSrc} onChange={(e) => updateAstNode(currentRouteKey, index, 'newSrc', e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL..." />
-                       <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Substituir Imagem</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })}
-        </div>
-      </div>
-    );
+    });
   };
 
   return (
@@ -609,25 +565,45 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                {isLowCodeMode ? "Tudo Editável > Base de Dados (JSON)" : activeFile?.path || "Nenhum arquivo aberto"}
             </div>
             
-            <button 
-              onClick={handleDeploy}
-              disabled={isDeploying}
-              className={`text-xs font-bold px-4 py-1.5 rounded-md flex items-center gap-2 transition-all shadow-sm ${
-                deployStatus === 'building' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
-                deployStatus === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/50' :
-                deployStatus === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/50' :
-                'bg-[#1D2A3A] hover:bg-gray-900 text-white border border-[#3c3c3c]'
-              }`}
-            >
-              {deployStatus === 'building' ? <Loader2 className="h-3 w-3 animate-spin" /> : 
-               deployStatus === 'success' ? <CheckCircle2 className="h-3 w-3" /> :
-               deployStatus === 'error' ? <AlertCircle className="h-3 w-3" /> :
-               <Send className="h-3 w-3" />}
-              {deployStatus === 'building' ? 'Enviando p/ Vercel...' : 
-               deployStatus === 'success' ? 'Site Atualizado!' :
-               deployStatus === 'error' ? 'Erro no Deploy' :
-               'Simular / Atualizar Site'}
-            </button>
+            <div className="flex gap-2">
+              {/* Botão de Salvar do Dev (Só aparece fora do Modo Visual) */}
+              {!isLowCodeMode && activeFile && activeFile.type === 'file' && (
+                <button 
+                  onClick={async () => {
+                    setIsDeploying(true);
+                    const success = await commitToGithub(activeFile.path, activeFile.content, `Atualização dev: ${activeFile.name}`);
+                    setIsDeploying(false);
+                    if(success) toast.success("Código salvo no GitHub com sucesso!");
+                    else toast.error("Falha ao salvar código.");
+                  }}
+                  disabled={isDeploying}
+                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-1.5 rounded-md flex items-center gap-2 transition-all shadow-sm"
+                >
+                  <Save className="h-3 w-3" />
+                  Salvar Código
+                </button>
+              )}
+  
+              <button 
+                onClick={handleDeploy}
+                disabled={isDeploying}
+                className={`text-xs font-bold px-4 py-1.5 rounded-md flex items-center gap-2 transition-all shadow-sm ${
+                  deployStatus === 'building' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
+                  deployStatus === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/50' :
+                  deployStatus === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/50' :
+                  'bg-[#1D2A3A] hover:bg-gray-900 text-white border border-[#3c3c3c]'
+                }`}
+              >
+                {deployStatus === 'building' ? <Loader2 className="h-3 w-3 animate-spin" /> : 
+                 deployStatus === 'success' ? <CheckCircle2 className="h-3 w-3" /> :
+                 deployStatus === 'error' ? <AlertCircle className="h-3 w-3" /> :
+                 <Send className="h-3 w-3" />}
+                {deployStatus === 'building' ? 'Enviando p/ Vercel...' : 
+                 deployStatus === 'success' ? 'Site Atualizado!' :
+                 deployStatus === 'error' ? 'Erro no Deploy' :
+                 'Simular / Atualizar Site'}
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-hidden relative">
@@ -653,7 +629,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                     </div>
                   ) : cmsData ? (
                     <div className="pb-20">
-                      {renderAstForms(cmsData)}
+                      {renderCmsForms(cmsData)}
                     </div>
                   ) : (
                     <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-8 text-center">
@@ -743,6 +719,13 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           <button className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white transition-colors" onClick={handleDeleteFile}>Excluir Arquivo</button>
         </div>
       )}
+      {/* Status Bar no Rodapé */}
+      <div className="h-8 bg-[#333333] border-t border-[#2d2d2d] flex items-center px-4 shrink-0 z-20 justify-between">
+        <div className={`flex items-center gap-2 text-xs font-bold transition-colors ${isLowCodeMode ? 'text-green-400' : 'text-red-400'}`}>
+          <div className={`h-2.5 w-2.5 rounded-full ${isLowCodeMode ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}></div>
+          {isLowCodeMode ? 'MODO DE EDIÇÃO VISUAL: ATIVO' : 'MODO DE EDIÇÃO VISUAL: DESATIVADO'}
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import VisualEditorBridge from "@/components/VisualEditorBridge";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -114,6 +115,7 @@ export default function RootLayout({
           }}
         />
         <VisualEditorBridge />
+        <Toaster theme="dark" position="bottom-right" />
       </body>
     </html>
   );
