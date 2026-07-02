@@ -105,25 +105,70 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }
   };
 
-  const fetchCmsData = async () => {
+  // AST/Regex Parser State
+  const [scannedFiles, setScannedFiles] = useState<any[]>([]);
+
+  // Extrai recursivamente todos os arquivos com um determinado nome da árvore
+  const findFilesByName = (nodes: any[], name: string, results: any[] = []) => {
+    nodes.forEach(node => {
+      if (node.type === 'file' && node.name === name) results.push(node);
+      if (node.type === 'folder' && node.children) findFilesByName(node.children, name, results);
+    });
+    return results;
+  };
+
+  const scanSourceCode = async () => {
     if (!octokit || !selectedRepo) return;
     setIsLoadingCms(true);
+    setCmsData(null); // Reset CMS data
+    
     try {
-      // Tentar encontrar o site-content.json na raiz
-      const res = await octokit.repos.getContent({
-        owner: selectedRepo.owner.login,
-        repo: selectedRepo.name,
-        path: 'site-content.json'
-      });
+      // 1. Encontrar todas as page.tsx
+      const pages = findFilesByName(fileTree, 'page.tsx');
+      const layouts = findFilesByName(fileTree, 'layout.tsx');
+      const targetFiles = [...pages, ...layouts];
+      
+      const newScannedFiles = [];
+      const newCmsData: any = {};
 
-      if (res?.data && 'content' in res.data) {
-        const content = atob(res.data.content);
-        setCmsData(JSON.parse(content));
-        setCmsFileSha(res.data.sha);
+      for (const file of targetFiles) {
+        // Baixar conteúdo do GitHub
+        const res = await octokit.repos.getContent({ owner: selectedRepo.owner.login, repo: selectedRepo.name, path: file.path });
+        if (res?.data && 'content' in res.data) {
+          const content = atob(res.data.content);
+          
+          // Regex para encontrar Textos (evitando chaves {} do React)
+          const textRegex = /(<(?:h1|h2|h3|h4|h5|h6|p|span|button|a|label)[^>]*>)\s*([^<{\n]+?)\s*(<\/(?:h1|h2|h3|h4|h5|h6|p|span|button|a|label)>)/g;
+          const imageRegex = /(<(?:Image|img)[^>]*src=["'])([^"']*)(["'][^>]*>)/g;
+          
+          let match;
+          const nodes = [];
+          
+          // Escanear Textos
+          while ((match = textRegex.exec(content)) !== null) {
+            if (match[2].trim().length > 1) { // Ignorar espaços em branco puros
+              nodes.push({ type: 'text', originalMatch: match[0], openTag: match[1], text: match[2], closeTag: match[3], newText: match[2] });
+            }
+          }
+          
+          // Escanear Imagens
+          while ((match = imageRegex.exec(content)) !== null) {
+            nodes.push({ type: 'image', originalMatch: match[0], prefix: match[1], src: match[2], suffix: match[3], newSrc: match[2] });
+          }
+
+          if (nodes.length > 0) {
+            newScannedFiles.push({ ...file, content, nodes });
+            // Agrupar no objeto CmsData para compatibilidade com a UI
+            const folderName = file.path.replace('src/app/', '').replace('/page.tsx', '').replace('page.tsx', 'raiz').toUpperCase();
+            newCmsData[folderName] = nodes;
+          }
+        }
       }
+      
+      setScannedFiles(newScannedFiles);
+      setCmsData(newCmsData);
     } catch (e) {
-      console.warn("Arquivo site-content.json não encontrado. Mostrando formulário de fallback.");
-      setCmsData(null);
+      console.error("Erro ao escanear código-fonte:", e);
     } finally {
       setIsLoadingCms(false);
     }
@@ -132,7 +177,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   const openLowCodeMode = () => {
     setIsLowCodeMode(true);
     setActiveFileId(null);
-    if (!cmsData) fetchCmsData();
+    if (!cmsData) scanSourceCode();
   };
 
   const handleSelectFileNode = async (node: any) => {
@@ -234,90 +279,60 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }, 2000);
   };
 
-  const updateCmsField = (path: string[], value: string) => {
+  // Função para atualizar o AST Node
+  const updateAstNode = (folderKey: string, nodeIndex: number, field: string, value: string) => {
     setCmsData((prev: any) => {
-      const newData = JSON.parse(JSON.stringify(prev));
-      let current = newData;
-      for (let i = 0; i < path.length - 1; i++) {
-        current = current[path[i]];
-      }
-      current[path[path.length - 1]] = value;
+      const newData = { ...prev };
+      newData[folderKey][nodeIndex][field] = value;
       return newData;
     });
   };
 
-  // Função recursiva para gerar formulário baseado no JSON
-  const renderCmsForms = (data: any, path: string[] = []) => {
+  const renderAstForms = (data: any) => {
     if (!data) return null;
-    return Object.keys(data).map(key => {
-      const val = data[key];
-      const currentPath = [...path, key];
-      
-      if (typeof val === 'object' && val !== null) {
-        return (
-          <div key={currentPath.join('-')} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
-            <h3 className="font-bold text-[#F17B37] mb-4 border-b border-[#3c3c3c] pb-2 capitalize">{key.replace(/_/g, ' ')}</h3>
-            <div className="space-y-4">
-              {renderCmsForms(val, currentPath)}
-            </div>
-          </div>
-        );
-      }
-      
-      const isColor = typeof val === 'string' && val.startsWith('#') && (val.length === 4 || val.length === 7);
-      const isImage = typeof val === 'string' && val.match(/\.(jpeg|jpg|gif|png|svg|webp)$/i) != null;
-      const isVideo = typeof val === 'string' && val.match(/\.(mp4|webm|ogg)$/i) != null;
-
-      if (isImage) {
-        return (
-          <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4">
-            <label className="text-xs font-bold text-gray-400 uppercase capitalize mb-2 block">{key.replace(/_/g, ' ')} (Imagem)</label>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c] relative group">
-                <img src={val.startsWith('/') ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${val}` : val} alt={key} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <ImageIcon className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              <div className="flex-1 w-full space-y-2">
-                 <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL da Imagem..." />
-                 <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Escolher Imagem do PC</button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      if (isVideo) {
-        return (
-          <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4">
-            <label className="text-xs font-bold text-gray-400 uppercase capitalize mb-2 block">{key.replace(/_/g, ' ')} (Vídeo)</label>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
-                 <MonitorPlay className="h-8 w-8 text-blue-500" />
-              </div>
-              <div className="flex-1 w-full space-y-2">
-                 <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL do Vídeo..." />
-                 <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Escolher Vídeo do PC</button>
-              </div>
-            </div>
-          </div>
-        );
-      }
+    return Object.keys(data).map(folderKey => {
+      const nodes = data[folderKey];
+      if (!Array.isArray(nodes)) return null;
 
       return (
-        <div key={currentPath.join('-')}>
-          <label className="text-xs font-bold text-gray-400 uppercase capitalize">{key.replace(/_/g, ' ')}</label>
-          {isColor ? (
-            <div className="flex items-center gap-3 mt-1">
-              <input type="color" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-10 h-10 rounded cursor-pointer bg-transparent border-0 p-0" />
-              <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded w-32 font-mono text-sm outline-none focus:border-[#F17B37]" />
-            </div>
-          ) : val.length > 60 ? (
-             <textarea rows={3} value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="mt-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" />
-          ) : (
-             <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="mt-1 w-full bg-[#1e1e1e] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" />
-          )}
+        <div key={folderKey} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
+          <h3 className="font-bold text-[#F17B37] mb-6 border-b border-[#3c3c3c] pb-2 flex items-center gap-2 uppercase tracking-widest text-sm">
+            <Folder className="h-4 w-4" /> Rota: {folderKey}
+          </h3>
+          <div className="space-y-6">
+            {nodes.map((node, index) => {
+              if (node.type === 'text') {
+                return (
+                  <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
+                    <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">{node.openTag.replace(/[<>]/g, '').split(' ')[0]}</div>
+                    <textarea 
+                      rows={2} 
+                      value={node.newText} 
+                      onChange={(e) => updateAstNode(folderKey, index, 'newText', e.target.value)} 
+                      className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none resize-none focus:bg-[#252526] focus:rounded" 
+                    />
+                  </div>
+                );
+              }
+              if (node.type === 'image') {
+                return (
+                  <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
+                    <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">IMAGEM</div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
+                      <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
+                        <img src={node.newSrc.startsWith('/') && selectedRepo ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${node.newSrc}` : node.newSrc} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                      </div>
+                      <div className="flex-1 w-full space-y-2">
+                         <input type="text" value={node.newSrc} onChange={(e) => updateAstNode(folderKey, index, 'newSrc', e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL..." />
+                         <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Substituir Imagem</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </div>
         </div>
       );
     });
@@ -441,11 +456,11 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                   {isLoadingCms ? (
                     <div className="flex flex-col items-center justify-center py-20 text-gray-500">
                       <Loader2 className="h-10 w-10 animate-spin mb-4" />
-                      <p>Varrendo o site em busca de textos editáveis...</p>
+                      <p>Varrendo o código fonte (`.tsx`) em busca de textos editáveis...</p>
                     </div>
                   ) : cmsData ? (
                     <div className="pb-20">
-                      {renderCmsForms(cmsData)}
+                      {renderAstForms(cmsData)}
                     </div>
                   ) : (
                     <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-8 text-center">
