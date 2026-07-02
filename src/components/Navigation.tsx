@@ -53,6 +53,12 @@ export function Navigation() {
               Sobre Nós
             </Link>
             <Link 
+              href="/avaliacoes" 
+              className={`text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname === '/avaliacoes' ? 'text-[#F17B37]' : 'text-gray-300'}`}
+            >
+              Avaliações
+            </Link>
+            <Link 
               href="/contato" 
               className={`text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname === '/contato' ? 'text-[#F17B37]' : 'text-gray-300'}`}
             >
@@ -122,6 +128,13 @@ export function Navigation() {
                 className={`transition-colors hover:text-[#F17B37] ${pathname === '/sobre' ? 'text-[#F17B37]' : 'text-white'}`}
               >
                 Sobre Nós
+              </Link>
+              <Link 
+                href="/avaliacoes" 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`transition-colors hover:text-[#F17B37] ${pathname === '/avaliacoes' ? 'text-[#F17B37]' : 'text-white'}`}
+              >
+                Avaliações
               </Link>
               <Link 
                 href="/contato" 

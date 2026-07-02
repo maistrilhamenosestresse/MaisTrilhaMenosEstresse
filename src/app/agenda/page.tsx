@@ -137,7 +137,8 @@ export default function AgendaList() {
               
               const occupied = agenda.reservas ? agenda.reservas.filter((r: any) => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length : 0;
               const maxCap = agenda.max_capacity || 15;
-              const isFull = occupied >= maxCap;
+              const remaining = Math.max(0, maxCap - occupied);
+              const isFull = remaining === 0;
               
               return (
                 <div key={agenda.id} className="block group">
@@ -185,6 +186,10 @@ export default function AgendaList() {
                           <DollarSign className={`h-3 w-3 md:h-4 md:w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
                           <span className="font-semibold text-white">R$ {agenda.price}</span>
                         </div>
+                      </div>
+
+                      <div className={`mb-4 md:mb-6 mt-2 text-xs md:text-sm font-medium ${isFull ? 'text-red-400' : 'text-[#F17B37]'}`}>
+                        {maxCap} vagas totais &bull; {remaining > 0 ? `${remaining} vagas restantes` : 'Esgotado'}
                       </div>
 
                       {isFull ? (

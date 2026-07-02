@@ -81,28 +81,36 @@ export default function VisualEditorBridge() {
               el.setAttribute("data-cms-editable", "true");
               el.title = "Clique duplo para editar";
               
-              // Bloquear navegação de links no modo de edição
+              // Navegação de Links: Shift+Click para navegar, Click simples para editar URL
               el.addEventListener("click", (e) => {
-                if (el.tagName.toLowerCase() === "a" || el.closest("a")) {
-                  e.preventDefault();
-                }
-              });
-
-              // Context Menu para editar links (Botão Direito)
-              el.addEventListener("contextmenu", (e) => {
                 const link = el.tagName.toLowerCase() === "a" ? el : el.closest("a");
                 if (link) {
-                  e.preventDefault();
-                  const newHref = prompt("Modo Visual: Digite o novo link (Ex: /contato ou https://google.com)", link.getAttribute("href") || "");
-                  if (newHref !== null && newHref.trim() !== "") {
-                    window.parent.postMessage({
-                      type: "CMS_TEXT_UPDATED",
-                      payload: {
-                        originalText: link.getAttribute("href") || "",
-                        newText: newHref
-                      }
-                    }, "*");
-                    link.setAttribute("href", newHref);
+                  if (e.shiftKey) {
+                    // Permite a navegação se estiver segurando Shift
+                    return;
+                  } else {
+                    // Previne a navegação e abre a edição de URL
+                    e.preventDefault();
+                    
+                    // Pequeno delay para garantir que duplo-clique de edição de texto tenha prioridade
+                    if (e.detail === 1) { // Verifica se é um clique simples
+                      setTimeout(() => {
+                        // Só abre o prompt se não estiver focado (que significa que o duplo clique ativou o modo texto)
+                        if (document.activeElement !== link && document.activeElement !== el) {
+                          const newHref = prompt("Modo Visual: Digite o novo link (Ex: /contato ou https://google.com)\n\nDica: Segure SHIFT e clique para acessar o link em vez de editar.", link.getAttribute("href") || "");
+                          if (newHref !== null && newHref.trim() !== "") {
+                            window.parent.postMessage({
+                              type: "CMS_TEXT_UPDATED",
+                              payload: {
+                                originalText: link.getAttribute("href") || "",
+                                newText: newHref
+                              }
+                            }, "*");
+                            link.setAttribute("href", newHref);
+                          }
+                        }
+                      }, 250);
+                    }
                   }
                 }
               });

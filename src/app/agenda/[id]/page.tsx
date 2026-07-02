@@ -96,7 +96,9 @@ export default function AgendaDetailsPage() {
   const eventDateObj = new Date(agenda.date + 'T12:00:00Z');
   const eventDate = eventDateObj.toLocaleDateString('pt-BR');
   
-  const isSoldOut = paidCount >= (agenda.max_capacity || 15);
+  const maxCap = agenda.max_capacity || 15;
+  const remaining = Math.max(0, maxCap - paidCount);
+  const isSoldOut = remaining === 0;
   const handleComprar = () => {
     useCartStore.getState().addItem({
       agendaId: agenda.id,
@@ -186,12 +188,17 @@ export default function AgendaDetailsPage() {
             {isSoldOut ? (
               <div className="inline-flex items-center gap-2 bg-red-500/20 text-red-500 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border border-red-500/30 mb-4">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                Esgotado
+                Esgotado ({maxCap} vagas totais)
               </div>
             ) : (
-              <div className="inline-flex items-center gap-2 bg-[#25D366]/20 text-[#25D366] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border border-[#25D366]/30 mb-4">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse"></span>
-                Vagas Abertas
+              <div className="flex flex-wrap gap-2 mb-4">
+                <div className="inline-flex items-center gap-2 bg-[#25D366]/20 text-[#25D366] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border border-[#25D366]/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse"></span>
+                  Vagas Abertas
+                </div>
+                <div className="inline-flex items-center gap-2 bg-[#F17B37]/20 text-[#F17B37] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border border-[#F17B37]/30">
+                  {maxCap} vagas totais &bull; {remaining} restantes
+                </div>
               </div>
             )}
             {/* Visualizações Simples */}

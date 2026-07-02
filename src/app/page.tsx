@@ -148,7 +148,7 @@ export default function LandingPage() {
               whileHover={{ scale: 1.05, rotate: 0 }}
               className="flex-1 w-full relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-[0_0_60px_rgba(241,123,55,0.15)] ring-1 ring-white/10 group"
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10 pointer-events-none" />
               <img src="/FotosEvideos/Nivea/WhatsApp Image 2026-06-26 at 10.28.20.jpeg" alt="Nívea na Cachoeira" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-1000 ease-out" />
               <div className="absolute bottom-8 left-8 z-20">
                 <p className="font-black text-3xl text-white drop-shadow-lg">Nívea</p>
@@ -177,7 +177,7 @@ export default function LandingPage() {
               className="mt-16 relative aspect-[4/5] md:aspect-[16/10] rounded-[2rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] ring-1 ring-white/10 group"
             >
               <img src="/FotosEvideos//Nivea/IMG_3883.webp" alt="Nívea com a Bandeira" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
             </motion.div>
           </motion.div>
 
@@ -208,7 +208,7 @@ export default function LandingPage() {
               transition={{ duration: 1.2, type: "spring" }}
               className="flex-1 w-full relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-[0_0_60px_rgba(255,255,255,0.05)] ring-1 ring-white/10"
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent z-10 pointer-events-none" />
 
               {slideImages.map((src, index) => (
                 <motion.img
@@ -354,7 +354,7 @@ export default function LandingPage() {
           <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
             <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
               <img src="/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG" className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" alt="Comunidade" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             </motion.div>
 
             <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
