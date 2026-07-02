@@ -232,10 +232,14 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }
   };
 
-  const openLowCodeMode = () => {
-    setIsLowCodeMode(true);
-    setActiveFileId(null);
-    if (!cmsData) scanSourceCode();
+  const toggleLowCodeMode = () => {
+    if (isLowCodeMode) {
+      setIsLowCodeMode(false);
+    } else {
+      setIsLowCodeMode(true);
+      setActiveFileId(null);
+      if (!cmsData) scanSourceCode();
+    }
   };
 
   const handleSaveCmsEdits = async () => {
@@ -422,6 +426,20 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     });
   };
 
+  const tagTranslators: Record<string, string> = {
+    h1: "Título Principal",
+    h2: "Subtítulo",
+    h3: "Título de Seção",
+    h4: "Tópico",
+    h5: "Micro Título",
+    h6: "Micro Título",
+    p: "Parágrafo / Texto",
+    button: "Botão",
+    a: "Link",
+    span: "Texto Curto",
+    label: "Rótulo"
+  };
+
   const renderAstForms = (data: any) => {
     if (!data) return null;
     
@@ -432,53 +450,79 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       }
     };
     
-    return Object.keys(data).map(folderKey => {
-      const nodes = data[folderKey];
-      if (!Array.isArray(nodes)) return null;
+    // Tenta adivinhar a rota atual baseada na URL da preview
+    let currentRouteKey = 'RAIZ';
+    try {
+      const urlPath = previewUrl ? new URL(previewUrl).pathname : '/';
+      Object.keys(data).forEach(k => {
+        const routeStr = k.toLowerCase() === 'raiz' ? '/' : `/${k.toLowerCase()}`;
+        if (urlPath === routeStr || (urlPath.startsWith(routeStr) && routeStr !== '/')) {
+          currentRouteKey = k;
+        }
+      });
+    } catch (e) {
+      // previewUrl pode não ser uma URL válida se o usuário apagou
+    }
 
+    const routeData = data[currentRouteKey];
+    
+    if (!routeData || !Array.isArray(routeData) || routeData.length === 0) {
       return (
-        <div key={folderKey} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
-          <h3 className="font-bold text-[#F17B37] mb-6 border-b border-[#3c3c3c] pb-2 flex items-center gap-2 uppercase tracking-widest text-sm">
-            <Folder className="h-4 w-4" /> Rota: {folderKey}
-          </h3>
-          <div className="space-y-6">
-            {nodes.map((node, index) => {
-              if (node.type === 'text') {
-                return (
-                  <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
-                    <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">{node.openTag.replace(/[<>]/g, '').split(' ')[0]}</div>
-                    <textarea 
-                      rows={2} 
-                      value={node.newText} 
-                      onChange={(e) => updateAstNode(folderKey, index, 'newText', e.target.value)} 
-                      onFocus={() => handleFocus(node.text)}
-                      className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none resize-none focus:bg-[#252526] focus:rounded" 
-                    />
-                  </div>
-                );
-              }
-              if (node.type === 'image') {
-                return (
-                  <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
-                    <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">IMAGEM</div>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
-                      <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
-                        <img src={node.newSrc.startsWith('/') && selectedRepo ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${node.newSrc}` : node.newSrc} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                      </div>
-                      <div className="flex-1 w-full space-y-2">
-                         <input type="text" value={node.newSrc} onChange={(e) => updateAstNode(folderKey, index, 'newSrc', e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL..." />
-                         <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Substituir Imagem</button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            })}
-          </div>
+        <div className="p-8 text-center text-gray-400 bg-[#252526] rounded-xl border border-[#3c3c3c]">
+          <BookOpen className="h-10 w-10 mx-auto mb-4 opacity-50" />
+          <p>Nenhum texto editável encontrado para a página atual ({currentRouteKey}).</p>
+          <p className="text-xs mt-2 opacity-70">Navegue no simulador ou tente outra URL.</p>
         </div>
       );
-    });
+    }
+
+    return (
+      <div key={currentRouteKey} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
+        <h3 className="font-bold text-[#F17B37] mb-6 border-b border-[#3c3c3c] pb-2 flex items-center gap-2 uppercase tracking-widest text-sm">
+          <Folder className="h-4 w-4" /> Página: {currentRouteKey}
+        </h3>
+        <div className="space-y-6">
+          {routeData.map((node, index) => {
+            if (node.type === 'text') {
+              const cleanTag = node.openTag.replace(/[<>]/g, '').split(' ')[0].toLowerCase();
+              const humanName = tagTranslators[cleanTag] || "Texto";
+              
+              return (
+                <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
+                  <div className="absolute -top-3 left-3 bg-[#F17B37] text-[10px] px-2 py-0.5 rounded font-bold text-white uppercase tracking-widest shadow-sm">
+                    {humanName}
+                  </div>
+                  <textarea 
+                    rows={2} 
+                    value={node.newText} 
+                    onChange={(e) => updateAstNode(currentRouteKey, index, 'newText', e.target.value)} 
+                    onFocus={() => handleFocus(node.text)}
+                    className="mt-2 w-full bg-transparent text-white px-1 text-sm outline-none resize-none focus:bg-[#252526] focus:rounded" 
+                  />
+                </div>
+              );
+            }
+            if (node.type === 'image') {
+              return (
+                <div key={index} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4 relative group hover:border-[#F17B37] transition-colors">
+                  <div className="absolute -top-3 left-3 bg-[#3c3c3c] text-[10px] px-2 py-0.5 rounded font-mono text-gray-300 uppercase tracking-widest border border-[#4c4c4c]">IMAGEM</div>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-2">
+                    <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
+                      <img src={node.newSrc.startsWith('/') && selectedRepo ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${node.newSrc}` : node.newSrc} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                    </div>
+                    <div className="flex-1 w-full space-y-2">
+                       <input type="text" value={node.newSrc} onChange={(e) => updateAstNode(currentRouteKey, index, 'newSrc', e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL..." />
+                       <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Substituir Imagem</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -516,13 +560,12 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         </div>
 
         <div className="p-2 border-b border-[#3c3c3c]">
-          <button 
-            onClick={openLowCodeMode}
-            className={`w-full flex items-center justify-center gap-2 py-2 rounded font-bold text-xs transition-colors shadow-sm ${isLowCodeMode ? 'bg-[#F17B37] text-white' : 'bg-[#333333] text-gray-300 hover:bg-[#F17B37] hover:text-white'}`}
-          >
-            <LayoutTemplate className="h-4 w-4" />
-            Modo Visual (Leigo)
-          </button>
+          <div className="flex gap-2">
+            <button onClick={toggleLowCodeMode} className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded font-bold transition-all ${isLowCodeMode ? 'bg-[#F17B37] text-white shadow-lg' : 'bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white'}`}>
+              {isLowCodeMode ? <X className="h-4 w-4" /> : <LayoutTemplate className="h-4 w-4" />}
+              {isLowCodeMode ? "Sair do Modo Visual" : "Modo Visual (Leigo)"}
+            </button>
+          </div>
         </div>
 
         <div className="uppercase text-[10px] font-bold text-gray-400 px-4 py-3 tracking-widest border-b border-[#3c3c3c] flex items-center justify-between">
