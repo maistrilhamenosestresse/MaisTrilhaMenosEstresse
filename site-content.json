@@ -4,11 +4,14 @@
       "titulo": "Mais Trilha Menos Estresse",
       "subtitulo": "Agência de trilhas e turismo de aventura para você se conectar com a natureza.",
       "textoBotao": "Ver Próximas Trilhas",
-      "linkBotao": "/agenda"
+      "linkBotao": "/agenda",
+      "imagemFundo": "/images/hero-bg.jpg",
+      "videoPromocional": "https://www.w3schools.com/html/mov_bbb.mp4"
     },
     "sobre": {
       "titulo": "Quem Somos",
-      "texto": "Nascemos da paixão por conectar pessoas com o meio ambiente de forma segura e divertida."
+      "texto": "Nascemos da paixão por conectar pessoas com o meio ambiente de forma segura e divertida.",
+      "fotoEquipe": "/images/equipe.jpg"
     }
   },
   "config": {

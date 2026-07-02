@@ -256,7 +256,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       if (typeof val === 'object' && val !== null) {
         return (
           <div key={currentPath.join('-')} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
-            <h3 className="font-bold text-white mb-4 border-b border-[#3c3c3c] pb-2 capitalize">{key.replace(/_/g, ' ')}</h3>
+            <h3 className="font-bold text-[#F17B37] mb-4 border-b border-[#3c3c3c] pb-2 capitalize">{key.replace(/_/g, ' ')}</h3>
             <div className="space-y-4">
               {renderCmsForms(val, currentPath)}
             </div>
@@ -264,9 +264,47 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         );
       }
       
-      // Detecção simples de cor pelo valor hexadecimal
       const isColor = typeof val === 'string' && val.startsWith('#') && (val.length === 4 || val.length === 7);
-      
+      const isImage = typeof val === 'string' && val.match(/\.(jpeg|jpg|gif|png|svg|webp)$/i) != null;
+      const isVideo = typeof val === 'string' && val.match(/\.(mp4|webm|ogg)$/i) != null;
+
+      if (isImage) {
+        return (
+          <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4">
+            <label className="text-xs font-bold text-gray-400 uppercase capitalize mb-2 block">{key.replace(/_/g, ' ')} (Imagem)</label>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c] relative group">
+                <img src={val.startsWith('/') ? `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}${val}` : val} alt={key} className="max-w-full max-h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <ImageIcon className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                 <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL da Imagem..." />
+                 <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Escolher Imagem do PC</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (isVideo) {
+        return (
+          <div key={currentPath.join('-')} className="bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg p-4">
+            <label className="text-xs font-bold text-gray-400 uppercase capitalize mb-2 block">{key.replace(/_/g, ' ')} (Vídeo)</label>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-full sm:w-32 h-24 bg-black rounded-md overflow-hidden flex items-center justify-center shrink-0 border border-[#3c3c3c]">
+                 <MonitorPlay className="h-8 w-8 text-blue-500" />
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                 <input type="text" value={val} onChange={(e) => updateCmsField(currentPath, e.target.value)} className="w-full bg-[#252526] border border-[#3c3c3c] text-white px-3 py-2 rounded text-sm outline-none focus:border-[#F17B37]" placeholder="Caminho ou URL do Vídeo..." />
+                 <button className="bg-[#2d2d2d] hover:bg-[#3c3c3c] border border-[#4c4c4c] text-white text-xs px-4 py-2 rounded font-bold transition-colors w-full sm:w-auto">⬆️ Escolher Vídeo do PC</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div key={currentPath.join('-')}>
           <label className="text-xs font-bold text-gray-400 uppercase capitalize">{key.replace(/_/g, ' ')}</label>
