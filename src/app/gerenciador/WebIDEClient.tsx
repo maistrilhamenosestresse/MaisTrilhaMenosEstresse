@@ -117,11 +117,50 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       if (event.data?.type === "CMS_ROUTE_CHANGED") {
         setPreviewUrl(event.data.payload.url);
       }
+      if (event.data?.type === "CMS_IMAGE_UPDATED") {
+        const { originalSrc, base64Data, fileName } = event.data.payload;
+        
+        if (octokit && selectedRepo) {
+          toast.info(`Salvando imagem ${fileName} no Github...`);
+          
+          // O base64Data do FileReader vem como "data:image/png;base64,iVBORw0KGgo..."
+          // Precisamos separar o header do conteúdo real
+          const base64Content = base64Data.split(',')[1];
+          const imagePath = `public/images/${Date.now()}-${fileName}`;
+          const finalUrl = `/images/${Date.now()}-${fileName}`;
+
+          commitToGithub(imagePath, base64Content, `Upload de imagem via Visual Mode: ${fileName}`, true)
+            .then(success => {
+              if (success) {
+                toast.success('Imagem salva com sucesso!');
+                // Atualiza o JSON
+                setCmsData((prevCmsData: any) => {
+                  if (!prevCmsData) return prevCmsData;
+                  const deepReplace = (obj: any, oldVal: string, newVal: string): any => {
+                    if (typeof obj === 'string') return obj.trim() === oldVal.trim() ? newVal : obj;
+                    if (Array.isArray(obj)) return obj.map(item => deepReplace(item, oldVal, newVal));
+                    if (typeof obj === 'object' && obj !== null) {
+                      const newObj: any = {};
+                      for (const key in obj) newObj[key] = deepReplace(obj[key], oldVal, newVal);
+                      return newObj;
+                    }
+                    return obj;
+                  };
+                  return deepReplace(prevCmsData, originalSrc, finalUrl);
+                });
+              } else {
+                toast.error('Falha ao fazer upload da imagem.');
+              }
+            });
+        } else {
+           toast.error('Erro: Repositório não conectado.');
+        }
+      }
     };
 
     window.addEventListener("message", handleIframeMessage);
     return () => window.removeEventListener("message", handleIframeMessage);
-  }, []);
+  }, [octokit, selectedRepo]);
 
   const handleSelectRepo = async (repo: any, okitInstance = octokit) => {
     if (!okitInstance) return;
@@ -339,7 +378,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }, 2000);
   };
 
-  const commitToGithub = async (filePath: string, newContent: string, message: string) => {
+  const commitToGithub = async (filePath: string, newContent: string, message: string, isBase64: boolean = false) => {
     if (!octokit || !selectedRepo) return false;
     
     try {
@@ -356,8 +395,8 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         // Arquivo não existe, será criado. Ignora o erro.
       }
   
-      // 2. Transforma o conteúdo em Base64 (suporta acentos)
-      const contentBase64 = btoa(unescape(encodeURIComponent(newContent)));
+      // 2. Transforma o conteúdo em Base64 (suporta acentos) ou usa o Base64 cru
+      const contentBase64 = isBase64 ? newContent : btoa(unescape(encodeURIComponent(newContent)));
   
       // 3. Faz o Commit real
       await octokit.repos.createOrUpdateFileContents({
@@ -482,8 +521,9 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <div className="flex h-full w-full relative" {...getRootProps()}>
-      <input {...getInputProps()} />
+    <div className="flex flex-col h-full w-full relative">
+      <div className="flex-1 flex min-h-0 relative w-full" {...getRootProps()}>
+        <input {...getInputProps()} />
       <AnimatePresence>
         {isDragActive && (
           <motion.div 
@@ -540,11 +580,12 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         </div>
       </div>
 
-      {/* CENTER PANE */}
-      <div className="flex-1 flex min-w-0">
-        <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] border-r border-[#3c3c3c]">
-          
-          <div className="h-10 bg-[#252526] flex items-center overflow-x-auto custom-scrollbar border-b border-[#3c3c3c] shrink-0">
+      {/* CENTER PANE (Escondido no Modo Visual para Imersão Total) */}
+      {!isLowCodeMode && (
+        <div className="flex-1 flex min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] border-r border-[#3c3c3c]">
+            
+            <div className="h-10 bg-[#252526] flex items-center overflow-x-auto custom-scrollbar border-b border-[#3c3c3c] shrink-0">
             {openFiles.map(file => (
               <div 
                 key={file.id} 
@@ -607,42 +648,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           </div>
 
           <div className="flex-1 overflow-hidden relative">
-            {isLowCodeMode ? (
-              <div className="absolute inset-0 bg-[#1e1e1e] p-8 overflow-y-auto custom-scrollbar">
-                <div className="max-w-3xl mx-auto space-y-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-black text-white flex items-center gap-3"><Palette className="h-6 w-6 text-[#F17B37]"/> Editor Visual (CMS)</h2>
-                      <p className="text-gray-400 mt-1 text-sm">Altere qualquer texto, botão ou cor do site por aqui sem tocar no código.</p>
-                    </div>
-                    {cmsData && (
-                      <button onClick={handleSaveCmsEdits} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
-                        <Save className="h-4 w-4" /> Salvar Edições
-                      </button>
-                    )}
-                  </div>
-
-                  {isLoadingCms ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                      <Loader2 className="h-10 w-10 animate-spin mb-4" />
-                      <p>Varrendo o código fonte (`.tsx`) em busca de textos editáveis...</p>
-                    </div>
-                  ) : cmsData ? (
-                    <div className="pb-20">
-                      {renderCmsForms(cmsData)}
-                    </div>
-                  ) : (
-                    <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-8 text-center">
-                      <AlertCircle className="h-10 w-10 text-red-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-bold text-white mb-2">Arquivo Mestre não encontrado!</h3>
-                      <p className="text-gray-400 text-sm max-w-md mx-auto">
-                        Para o Modo Visual completo funcionar, o desenvolvedor precisa extrair os textos do código (`.tsx`) e criar um arquivo `site-content.json` na raiz do projeto.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : !activeFile ? (
+            {!activeFile ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
                 <BookOpen className="h-16 w-16 mb-4 opacity-20" />
                 <h2 className="text-xl font-medium">Editor Inteligente</h2>
@@ -669,22 +675,30 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
             )}
           </div>
         </div>
+      </div>
+    )}
 
-        {/* RIGHT PANE: LIVE PREVIEW IFRAME */}
-        <div className="w-[45%] flex flex-col min-w-0 bg-[#ffffff]">
-           <div className="h-10 bg-[#f3f4f6] flex items-center px-4 border-b border-gray-200 shrink-0 gap-3 text-gray-600">
-             <Globe className="h-4 w-4 text-blue-500 shrink-0" />
-             <span className="text-xs font-bold uppercase tracking-wider shrink-0 hidden lg:block">Preview</span>
-             
-             {/* Editable URL Bar */}
-             <input 
-               type="text"
-               value={previewUrl}
-               onChange={(e) => setPreviewUrl(e.target.value)}
-               className="ml-auto bg-white border border-gray-300 rounded-md px-3 py-1 text-xs text-gray-600 flex-1 max-w-full outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-               placeholder="Cole o link do seu site aqui se der 404..."
-             />
-           </div>
+      {/* RIGHT PANE: LIVE PREVIEW IFRAME */}
+      <div className={`${isLowCodeMode ? 'flex-1' : 'w-[45%]'} flex flex-col min-w-0 bg-[#ffffff] transition-all duration-300 ease-in-out`}>
+         <div className="h-10 bg-[#f3f4f6] flex items-center px-4 border-b border-gray-200 shrink-0 gap-3 text-gray-600">
+           <Globe className="h-4 w-4 text-blue-500 shrink-0" />
+           <span className="text-xs font-bold uppercase tracking-wider shrink-0 hidden lg:block">Preview</span>
+           
+           {/* Editable URL Bar */}
+           <input 
+             type="text"
+             value={previewUrl}
+             onChange={(e) => setPreviewUrl(e.target.value)}
+             className="ml-auto bg-white border border-gray-300 rounded-md px-3 py-1 text-xs text-gray-600 flex-1 max-w-full outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+             placeholder="Cole o link do seu site aqui se der 404..."
+           />
+
+           {isLowCodeMode && cmsData && (
+             <button onClick={handleSaveCmsEdits} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-bold shadow-sm transition-colors ml-2 shrink-0">
+               <Save className="h-3 w-3" /> Salvar Edições
+             </button>
+           )}
+         </div>
            
            <div className="flex-1 relative bg-gray-50 flex items-center justify-center">
              {previewUrl ? (
@@ -719,8 +733,9 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           <button className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white transition-colors" onClick={handleDeleteFile}>Excluir Arquivo</button>
         </div>
       )}
-      {/* Status Bar no Rodapé */}
-      <div className="h-8 bg-[#333333] border-t border-[#2d2d2d] flex items-center px-4 shrink-0 z-20 justify-between">
+      
+      {/* Status Bar no Rodapé corrigido (Fora do Flex Row principal) */}
+      <div className="h-8 w-full bg-[#333333] border-t border-[#2d2d2d] flex items-center px-4 shrink-0 z-20 justify-between">
         <div className={`flex items-center gap-2 text-xs font-bold transition-colors ${isLowCodeMode ? 'text-green-400' : 'text-red-400'}`}>
           <div className={`h-2.5 w-2.5 rounded-full ${isLowCodeMode ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}></div>
           {isLowCodeMode ? 'MODO DE EDIÇÃO VISUAL: ATIVO' : 'MODO DE EDIÇÃO VISUAL: DESATIVADO'}

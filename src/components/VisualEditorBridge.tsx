@@ -58,6 +58,11 @@ export default function VisualEditorBridge() {
           background-color: rgba(0, 0, 0, 0.5) !important;
           color: white !important;
         }
+        img[data-cms-editable="true"]:hover {
+          outline: 4px solid #F17B37 !important;
+          cursor: pointer !important;
+          opacity: 0.8;
+        }
       `;
       document.head.appendChild(style);
 
@@ -80,6 +85,25 @@ export default function VisualEditorBridge() {
               el.addEventListener("click", (e) => {
                 if (el.tagName.toLowerCase() === "a" || el.closest("a")) {
                   e.preventDefault();
+                }
+              });
+
+              // Context Menu para editar links (Botão Direito)
+              el.addEventListener("contextmenu", (e) => {
+                const link = el.tagName.toLowerCase() === "a" ? el : el.closest("a");
+                if (link) {
+                  e.preventDefault();
+                  const newHref = prompt("Modo Visual: Digite o novo link (Ex: /contato ou https://google.com)", link.getAttribute("href") || "");
+                  if (newHref !== null && newHref.trim() !== "") {
+                    window.parent.postMessage({
+                      type: "CMS_TEXT_UPDATED",
+                      payload: {
+                        originalText: link.getAttribute("href") || "",
+                        newText: newHref
+                      }
+                    }, "*");
+                    link.setAttribute("href", newHref);
+                  }
                 }
               });
               
@@ -113,6 +137,46 @@ export default function VisualEditorBridge() {
             }
           }
         });
+
+        // Torna Imagens editáveis (Clique simples abre file picker)
+        const images = document.getElementsByTagName("img");
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i] as HTMLImageElement;
+          if (!img.hasAttribute("data-cms-editable")) {
+            img.setAttribute("data-cms-editable", "true");
+            img.title = "Clique para trocar a imagem";
+            
+            img.addEventListener("click", (e) => {
+              e.preventDefault();
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "image/*";
+              input.onchange = (ev: any) => {
+                const file = ev.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = (readerEvent) => {
+                    const base64 = readerEvent.target?.result as string;
+                    const originalSrc = img.getAttribute("src") || "";
+                    
+                    window.parent.postMessage({
+                      type: "CMS_IMAGE_UPDATED",
+                      payload: {
+                        originalSrc: originalSrc,
+                        base64Data: base64,
+                        fileName: file.name
+                      }
+                    }, "*");
+                    
+                    img.src = base64; // Atualiza local para preview
+                  };
+                  reader.readAsDataURL(file);
+                }
+              };
+              input.click();
+            });
+          }
+        }
       };
 
       // Tentar tornar editável logo que carregar e sempre que a rota mudar
