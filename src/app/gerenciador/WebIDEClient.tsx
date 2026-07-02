@@ -53,6 +53,34 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     }
   }, [accessToken]);
 
+  // Iframe Bridge Listener
+  useEffect(() => {
+    const handleIframeMessage = (event: MessageEvent) => {
+      if (event.data?.type === "CMS_TEXT_UPDATED") {
+        const { originalText, newText } = event.data.payload;
+        
+        // Atualiza a representação visual (AST) do painel esquerdo quando o Iframe é editado
+        setCmsData((prevCmsData: any) => {
+          if (!prevCmsData) return prevCmsData;
+          const newData = { ...prevCmsData };
+          
+          Object.keys(newData).forEach(folderKey => {
+             newData[folderKey] = newData[folderKey].map((node: any) => {
+               if (node.type === 'text' && node.text.trim() === originalText.trim()) {
+                 return { ...node, newText: newText };
+               }
+               return node;
+             });
+          });
+          return newData;
+        });
+      }
+    };
+
+    window.addEventListener("message", handleIframeMessage);
+    return () => window.removeEventListener("message", handleIframeMessage);
+  }, []);
+
   const handleSelectRepo = async (repo: any, okitInstance = octokit) => {
     if (!okitInstance) return;
     setSelectedRepo(repo);
@@ -178,6 +206,50 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     setIsLowCodeMode(true);
     setActiveFileId(null);
     if (!cmsData) scanSourceCode();
+  };
+
+  const handleSaveCmsEdits = async () => {
+    if (!cmsData || !scannedFiles) return;
+    setIsDeploying(true);
+    
+    // Simula a aplicação do AST de volta ao Código Fonte
+    let updatedFilesCount = 0;
+    
+    scannedFiles.forEach(file => {
+      let newContent = file.content;
+      const folderKey = file.path.replace('src/app/', '').replace('/page.tsx', '').replace('page.tsx', 'raiz').toUpperCase();
+      const nodes = cmsData[folderKey];
+      
+      if (nodes && Array.isArray(nodes)) {
+        nodes.forEach((node: any) => {
+          if (node.type === 'text' && node.text !== node.newText) {
+            const newHTML = `${node.openTag}${node.newText}${node.closeTag}`;
+            newContent = newContent.replace(node.originalMatch, newHTML);
+            // Atualiza o match original para não quebrar em futuros saves
+            node.originalMatch = newHTML;
+            node.text = node.newText;
+          }
+          if (node.type === 'image' && node.src !== node.newSrc) {
+            const newHTML = `${node.prefix}${node.newSrc}${node.suffix}`;
+            newContent = newContent.replace(node.originalMatch, newHTML);
+            node.originalMatch = newHTML;
+            node.src = node.newSrc;
+          }
+        });
+      }
+      
+      if (newContent !== file.content) {
+        file.content = newContent;
+        updatedFilesCount++;
+        // Se o arquivo estiver aberto na aba, atualiza lá também
+        setOpenFiles(prev => prev.map(f => f.id === file.id ? { ...f, content: newContent } : f));
+      }
+    });
+
+    setTimeout(() => {
+      alert(`Sucesso! ${updatedFilesCount} arquivo(s) modificado(s) pelo Modo Visual. (Na versão final, faríamos o Commit no GitHub aqui).`);
+      setIsDeploying(false);
+    }, 1000);
   };
 
   const handleSelectFileNode = async (node: any) => {
@@ -447,7 +519,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                       <p className="text-gray-400 mt-1 text-sm">Altere qualquer texto, botão ou cor do site por aqui sem tocar no código.</p>
                     </div>
                     {cmsData && (
-                      <button className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">
+                      <button onClick={handleSaveCmsEdits} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
                         <Save className="h-4 w-4" /> Salvar Edições
                       </button>
                     )}
