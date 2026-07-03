@@ -43,11 +43,34 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, file: any | null }>({ visible: false, x: 0, y: 0, file: null });
+  const [isScreenSmall, setIsScreenSmall] = useState(false);
 
   useEffect(() => {
+    const checkScreenSize = () => {
+      setIsScreenSmall(window.innerWidth < 1000);
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    const blockInspect = (e: KeyboardEvent) => {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+        (e.ctrlKey && (e.key === 'U' || e.key === 'u'))
+      ) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', blockInspect);
+
     const closeMenu = () => setContextMenu(prev => ({ ...prev, visible: false }));
     window.addEventListener('click', closeMenu);
-    return () => window.removeEventListener('click', closeMenu);
+
+    return () => {
+      window.removeEventListener('click', closeMenu);
+      window.removeEventListener('resize', checkScreenSize);
+      window.removeEventListener('keydown', blockInspect);
+    };
   }, []);
 
   const handleDeleteFile = async () => {
@@ -540,8 +563,20 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     });
   };
 
+  if (isScreenSmall) {
+    return (
+      <div className="flex flex-col h-full w-full bg-[#1e1e1e] items-center justify-center text-center p-6 select-none" onContextMenu={(e) => e.preventDefault()}>
+        <MonitorPlay className="h-20 w-20 text-[#F17B37] mb-6" />
+        <h1 className="text-3xl font-black text-white mb-2">Por favor, maximize a tela</h1>
+        <p className="text-gray-400 max-w-md">
+          O ambiente avançado do Web IDE exige uma tela totalmente expandida para o uso dos painéis de código e edição visual. Expanda a janela do seu navegador para continuar.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full w-full relative">
+    <div className="flex flex-col h-full w-full relative select-none" onContextMenu={(e) => e.preventDefault()}>
       <div className="flex-1 flex min-h-0 relative w-full" {...getRootProps()}>
         <input {...getInputProps()} />
       <AnimatePresence>
