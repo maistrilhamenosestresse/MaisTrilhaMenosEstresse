@@ -81,12 +81,6 @@ export function Navigation() {
             </Link>
           </div>
 
-          <button
-            onClick={() => router.push('/agenda')}
-            className="hidden md:block bg-[#F17B37] hover:bg-[#e06925] text-white px-6 py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 shadow-[0_0_20px_rgba(241,123,55,0.3)] whitespace-nowrap"
-          >
-            Ver Agenda Completa
-          </button>
 
           {/* Cart Icon & Comprar Button */}
           <div className="flex items-center gap-2">
