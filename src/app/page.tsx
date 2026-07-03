@@ -108,7 +108,7 @@ export default function LandingPage() {
             transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
           >
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
-              Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]"></span> que você nem sabia que existia.
+              Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]"></span> .
             </h1>
           </motion.div>
 
