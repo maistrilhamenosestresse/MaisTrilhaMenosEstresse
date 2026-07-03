@@ -21,9 +21,31 @@ import { Navigation } from "@/components/Navigation";
 export default function LandingPage() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+  const [particles, setParticles] = useState<any[]>([]);
+  const [sparks, setSparks] = useState<any[]>([]);
 
   useEffect(() => {
     setIsClient(true);
+    setParticles([...Array(50)].map(() => ({
+      size: Math.random() * 3 + 2,
+      isOrange: Math.random() > 0.6,
+      initialX: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000),
+      initialY: Math.random() * 800,
+      animY: Math.random() * -300 - 100,
+      animX: Math.random() * 200 - 100,
+      animOpacity: Math.random() * 0.8 + 0.2,
+      duration: Math.random() * 15 + 10
+    })));
+    setSparks([...Array(8)].map(() => ({
+      size: Math.random() * 3 + 2,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animY: Math.random() * -60 - 20,
+      animX: (Math.random() - 0.5) * 40,
+      animOpacity: Math.random() * 0.8 + 0.2,
+      duration: Math.random() * 2 + 2,
+      delay: Math.random() * 2
+    })));
   }, []);
 
   // Parallax Setup
@@ -254,40 +276,37 @@ export default function LandingPage() {
         </motion.div>
 
         {/* PARTÍCULAS DO FUNDO - RESTRITAS A ESSE CONTAINER - SOMENTE NO CLIENTE PARA EVITAR ERRO DE HYDRATION */}
-        {isClient && (
+        {isClient && particles.length > 0 && (
           <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-            {[...Array(50)].map((_, i) => {
-              const size = Math.random() * 3 + 2;
-              const isOrange = i % 3 === 0;
-              return (
+            {particles.map((p, i) => (
                 <motion.div
                   key={i}
                   className="absolute rounded-full"
                   style={{
-                    width: size,
-                    height: size,
-                    backgroundColor: isOrange ? '#F17B37' : '#ffffff',
-                    boxShadow: isOrange ? '0 0 10px #F17B37' : '0 0 5px #ffffff',
+                    width: p.size,
+                    height: p.size,
+                    backgroundColor: p.isOrange ? '#F17B37' : '#ffffff',
+                    boxShadow: p.isOrange ? '0 0 10px #F17B37' : '0 0 5px #ffffff',
                     filter: 'blur(1px)'
                   }}
                   initial={{
-                    x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1000),
-                    y: Math.random() * 800,
+                    x: p.initialX,
+                    y: p.initialY,
                     opacity: 0,
                   }}
                   animate={{
-                    y: [null, Math.random() * -300 - 100],
-                    x: [null, Math.random() * 200 - 100],
-                    opacity: [0, Math.random() * 0.8 + 0.2, 0],
+                    y: [null, p.animY],
+                    x: [null, p.animX],
+                    opacity: [0, p.animOpacity, 0],
                   }}
                   transition={{
-                    duration: Math.random() * 15 + 10,
+                    duration: p.duration,
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
                 />
-              );
-            })}
+              )
+            )}
           </div>
         )}
 
@@ -308,32 +327,32 @@ export default function LandingPage() {
 
             <div className="relative inline-block">
               {/* Partículas destacando o botão - APENAS NO CLIENTE */}
-              {isClient && (
+              {isClient && sparks.length > 0 && (
                 <div className="absolute -inset-10 pointer-events-none z-0">
-                  {[...Array(8)].map((_, i) => (
+                  {sparks.map((s, i) => (
                     <motion.div
                       key={i}
                       className="absolute rounded-full bg-[#F17B37]"
                       style={{
-                        width: Math.random() * 3 + 2,
-                        height: Math.random() * 3 + 2,
+                        width: s.size,
+                        height: s.size,
                         boxShadow: '0 0 8px 2px #F17B37',
                       }}
                       initial={{
                         x: '50%', y: '50%', opacity: 0,
-                        left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`
+                        left: s.left, top: s.top
                       }}
                       animate={{
-                        y: [0, Math.random() * -60 - 20],
-                        x: [0, (Math.random() - 0.5) * 40],
-                        opacity: [0, 1, 0],
+                        y: [0, s.animY],
+                        x: [0, s.animX],
+                        opacity: [0, s.animOpacity, 0],
                         scale: [0.5, 1.5, 0.5]
                       }}
                       transition={{
-                        duration: Math.random() * 2 + 2,
+                        duration: s.duration,
                         repeat: Infinity,
                         ease: "easeOut",
-                        delay: Math.random() * 2
+                        delay: s.delay
                       }}
                     />
                   ))}

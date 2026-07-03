@@ -8,7 +8,7 @@ export default function VisualEditorBridge() {
   useEffect(() => {
     // Só ativa se estiver rodando dentro de um iframe (Modo Edição do CMS)
     if (typeof window !== "undefined" && window !== window.parent) {
-      const timer = setTimeout(() => setIsActive(true), 0);
+      setTimeout(() => setIsActive(true), 0);
       
       const handleMessage = (event: MessageEvent) => {
         if (event.data?.type === "CMS_PING") {
@@ -77,7 +77,7 @@ export default function VisualEditorBridge() {
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
             // Ignorar elementos vazios
-            if (el.textContent?.trim().length! > 0 && !el.hasAttribute("data-cms-editable")) {
+            if ((el.textContent?.trim().length ?? 0) > 0 && !el.hasAttribute("data-cms-editable")) {
               el.setAttribute("data-cms-editable", "true");
               el.title = "Clique duplo para editar";
               
@@ -159,8 +159,9 @@ export default function VisualEditorBridge() {
               const input = document.createElement("input");
               input.type = "file";
               input.accept = "image/*";
-              input.onchange = (ev: any) => {
-                const file = ev.target.files[0];
+              input.onchange = (ev: Event) => {
+                const target = ev.target as HTMLInputElement;
+                const file = target.files?.[0];
                 if (file) {
                   const reader = new FileReader();
                   reader.onload = (readerEvent) => {

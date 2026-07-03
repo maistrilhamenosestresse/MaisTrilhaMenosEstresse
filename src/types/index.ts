@@ -27,6 +27,9 @@ export interface Client {
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   health_notes?: string;
+  image_authorization?: boolean;
+  signature_url?: string;
+  accepted_terms_at?: string;
   created_at?: string;
 }
 

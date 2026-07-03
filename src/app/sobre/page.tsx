@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { Navigation } from "@/components/Navigation";
 import { Heart, Users, Map, Leaf, ChevronDown } from "lucide-react";
 
@@ -67,9 +68,11 @@ export default function SobrePage() {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center mb-24">
                   <div>
-                    <img 
+                    <Image 
                       src="/FotosEvideos/Nivea/IMG_0521.JPG" 
                       alt="Nossa história" 
+                      width={800}
+                      height={500}
                       className="w-full h-[500px] object-cover rounded-[2rem] shadow-2xl shadow-[#F17B37]/20 border border-white/10"
                     />
                   </div>
@@ -143,9 +146,11 @@ export default function SobrePage() {
                   </div>
                   <div className="order-1 md:order-2 relative">
                     <div className="absolute inset-0 bg-[#F17B37] blur-[100px] opacity-20 rounded-full" />
-                    <img 
+                    <Image 
                       src="/FotosEvideos/equipe/Nivea.jpeg" 
                       alt="Nívea Maria" 
+                      width={600}
+                      height={600}
                       className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
                     />
                   </div>
@@ -155,9 +160,11 @@ export default function SobrePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-[#25D366] blur-[100px] opacity-10 rounded-full" />
-                    <img 
+                    <Image 
                       src="/FotosEvideos/equipe/Palestino.jpeg" 
                       alt="Palestino" 
+                      width={600}
+                      height={600}
                       className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#25D366]/50 transition-colors duration-500"
                     />
                   </div>
@@ -183,9 +190,11 @@ export default function SobrePage() {
 
       {/* Footer simplificado */}
       <footer className="mt-20 border-t border-white/10 pt-10 text-center text-gray-500 text-sm flex flex-col items-center gap-4">
-        <img 
+        <Image 
           src="/FotosEvideos/logo/rodape.JPG" 
           alt="Montanhas Mais Trilha" 
+          width={300}
+          height={48}
           className="h-12 w-auto mix-blend-screen opacity-50"
           style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
         />

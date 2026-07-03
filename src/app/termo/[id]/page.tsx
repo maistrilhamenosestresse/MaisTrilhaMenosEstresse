@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Loader2, Printer } from "lucide-react";
+import type { Client } from "@/types";
 
 export default function TermoPrintPage() {
   const { id } = useParams();
-  const [client, setClient] = useState<any>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -185,6 +186,7 @@ export default function TermoPrintPage() {
             
             <div className="w-full md:w-1/2 flex flex-col items-center">
               {client.signature_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={client.signature_url} alt="Assinatura" className="h-24 object-contain mb-2 mix-blend-multiply" />
               ) : (
                 <div className="h-24 flex items-center justify-center text-gray-300 italic text-sm">Sem assinatura digital</div>

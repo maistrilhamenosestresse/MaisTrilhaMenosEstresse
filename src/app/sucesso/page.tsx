@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { Copy } from "lucide-react";
 import { Suspense } from "react";
 import { useCartStore } from "@/store/cartStore";
+import type { Agenda, Client } from "@/types";
 
 function SucessoContent() {
   const searchParams = useSearchParams();
@@ -15,8 +16,8 @@ function SucessoContent() {
   const { clearCart } = useCartStore();
   const agendaId = searchParams.get('agenda_id');
   const depsParam = searchParams.get('deps');
-  const [agenda, setAgenda] = useState<any>(null);
-  const [dependents, setDependents] = useState<any[]>([]);
+  const [agenda, setAgenda] = useState<Agenda | null>(null);
+  const [dependents, setDependents] = useState<Client[]>([]);
 
   useEffect(() => {
     // Limpar o carrinho ao entrar na página de sucesso
