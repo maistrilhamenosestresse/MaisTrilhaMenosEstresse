@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X, ShoppingCart } from "lucide-react";
@@ -29,9 +30,11 @@ export function Navigation() {
       <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-12 py-3 md:py-4 bg-transparent md:bg-gradient-to-b md:from-[#0F1722]/80 md:to-transparent md:backdrop-blur-sm">
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/">
-            <img 
+            <Image
               src="/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG" 
-              alt="Mais Trilha Logo" 
+              alt="Mais Trilha Logo"
+              width={80}
+              height={80}
               className="h-12 w-12 md:h-20 md:w-20 rounded-full aspect-square object-cover object-center shadow-[0_0_15px_rgba(241,123,55,0.4)] border-2 md:border-4 border-[#F17B37]/30 transition-transform hover:scale-105 cursor-pointer" 
             />
           </Link>

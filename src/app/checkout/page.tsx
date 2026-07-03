@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin } from "lucide-react";
@@ -309,7 +310,7 @@ function CheckoutAuthContent() {
               <div className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-6 flex items-center justify-between mt-4">
                 <div className="flex items-center gap-3">
                   {clientData.photo_url ? (
-                    <img src={clientData.photo_url} alt="Cliente" className="w-12 h-12 rounded-full object-cover border border-white/20" />
+                    <Image src={clientData.photo_url} alt="Cliente" width={48} height={48} className="w-12 h-12 rounded-full object-cover border border-white/20" />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-[#F17B37]/20 flex items-center justify-center text-[#F17B37]"><UserIcon /></div>
                   )}

@@ -21,6 +21,13 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   // Preview State
   const [previewUrl, setPreviewUrl] = useState<string>("");
 
+  // Editor Reference for Actions
+  const [editorRef, setEditorRef] = useState<any>(null);
+  const handleEditorDidMount = (editor: any) => setEditorRef(editor);
+  const triggerMonacoAction = (actionId: string) => {
+    if (editorRef) editorRef.getAction(actionId)?.run();
+  };
+
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{ visible: boolean, x: number, y: number, file: any | null }>({ visible: false, x: 0, y: 0, file: null });
 
@@ -225,7 +232,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       });
 
       if (res?.data && 'content' in res.data) {
-        const content = atob(res.data.content);
+        const content = decodeURIComponent(escape(atob(res.data.content)));
         setCmsData(JSON.parse(content));
         setCmsFileSha((res.data as any).sha);
       }
@@ -271,7 +278,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       try {
         const res = await octokit?.repos.getContent({ owner: selectedRepo.owner.login, repo: selectedRepo.name, path: node.path });
         if (res?.data && 'content' in res.data) {
-          const content = atob(res.data.content);
+          const content = decodeURIComponent(escape(atob(res.data.content)));
           setOpenFiles(prev => prev.map(f => f.id === node.id ? { ...f, content } : f));
         }
       } catch (err) {
@@ -585,6 +592,29 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         <div className="flex-1 flex min-w-0">
           <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] border-r border-[#3c3c3c]">
             
+            {/* VS CODE TOP MENU BAR */}
+            <div className="h-8 bg-[#333333] flex items-center px-2 text-[13px] text-[#cccccc] select-none shrink-0 border-b border-[#252526]">
+               <div className="flex items-center">
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded">File</div>
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded group relative">
+                    Edit
+                    <div className="absolute left-0 top-full mt-0 hidden group-hover:block bg-[#252526] border border-[#454545] shadow-xl rounded-b py-1 min-w-[200px] z-50 text-white">
+                       <div className="px-4 py-1.5 hover:bg-[#04395e] flex justify-between cursor-pointer" onClick={() => triggerMonacoAction('actions.find')}><span>Localizar</span><span className="text-gray-500">Ctrl+F</span></div>
+                       <div className="px-4 py-1.5 hover:bg-[#04395e] flex justify-between cursor-pointer" onClick={() => triggerMonacoAction('editor.action.startFindReplaceAction')}><span>Substituir</span><span className="text-gray-500">Ctrl+H</span></div>
+                       <div className="h-px bg-[#454545] my-1"></div>
+                       <div className="px-4 py-1.5 hover:bg-[#04395e] flex justify-between cursor-pointer" onClick={() => triggerMonacoAction('editor.action.gotoLine')}><span>Ir para Linha...</span><span className="text-gray-500">Ctrl+G</span></div>
+                       <div className="h-px bg-[#454545] my-1"></div>
+                       <div className="px-4 py-1.5 hover:bg-[#04395e] flex justify-between cursor-pointer" onClick={() => triggerMonacoAction('editor.action.formatDocument')}><span>Formatar Documento</span><span className="text-gray-500">Alt+Shift+F</span></div>
+                    </div>
+                 </div>
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded">Selection</div>
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded">View</div>
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded">Go</div>
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded">Run</div>
+                 <div className="px-3 hover:bg-[#505050] hover:text-white cursor-pointer py-1 rounded">Terminal</div>
+               </div>
+            </div>
+
             <div className="h-10 bg-[#252526] flex items-center overflow-x-auto custom-scrollbar border-b border-[#3c3c3c] shrink-0">
             {openFiles.map(file => (
               <div 
@@ -658,8 +688,19 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
               <Editor
                 height="100%"
                 theme="vs-dark"
-                language={activeFile.extension === 'tsx' || activeFile.extension === 'ts' ? 'typescript' : activeFile.extension === 'css' ? 'css' : activeFile.extension === 'json' ? 'json' : 'javascript'}
+                language={
+                  activeFile.extension === 'tsx' || activeFile.extension === 'ts' ? 'typescript' : 
+                  activeFile.extension === 'css' ? 'css' : 
+                  activeFile.extension === 'json' ? 'json' : 
+                  activeFile.extension === 'html' ? 'html' : 
+                  activeFile.extension === 'php' ? 'php' : 
+                  activeFile.extension === 'py' ? 'python' : 
+                  activeFile.extension === 'md' ? 'markdown' : 
+                  activeFile.extension === 'js' || activeFile.extension === 'jsx' ? 'javascript' : 
+                  'javascript'
+                }
                 value={activeFile.content}
+                onMount={handleEditorDidMount}
                 onChange={(val) => setOpenFiles(prev => prev.map(f => f.id === activeFile.id ? { ...f, content: val } : f))}
                 options={{ minimap: { enabled: false }, fontSize: 13, wordWrap: "on", padding: { top: 16 } }}
               />
