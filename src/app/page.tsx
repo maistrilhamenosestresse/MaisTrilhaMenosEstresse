@@ -108,7 +108,7 @@ export default function LandingPage() {
             transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
           >
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
-              Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]"></span> .
+              Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]">coragem que você nem sabia que existia</span>.
             </h1>
           </motion.div>
 
@@ -118,7 +118,7 @@ export default function LandingPage() {
             transition={{ duration: 1.5, delay: 0.8 }}
             className="text-lg md:text-2xl text-gray-200 font-medium max-w-2xl mb-12 leading-relaxed drop-shadow-lg"
           >
-            Uma c. Superação,  m
+            Uma conexão indescritível com a natureza. Superação, encontros reais e paisagens que mudam a forma como você vê o mundo.
           </motion.p>
 
           <motion.button
