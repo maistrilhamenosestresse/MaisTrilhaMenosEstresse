@@ -118,7 +118,7 @@ export default function LandingPage() {
             transition={{ duration: 1.5, delay: 0.8 }}
             className="text-lg md:text-2xl text-gray-200 font-medium max-w-2xl mb-12 leading-relaxed drop-shadow-lg"
           >
-            Uma conexão indescritível com a natureza. Superação, encontros reais e paisagens que mudam a forma como você vê o mundo.
+            Uma conexão indescritível com a natureza. Superação,  mudam a forma como você vê o mundo.
           </motion.p>
 
           <motion.button
