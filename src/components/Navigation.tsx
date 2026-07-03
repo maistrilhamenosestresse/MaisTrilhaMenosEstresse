@@ -73,19 +73,28 @@ export function Navigation() {
             Ver Agenda Completa
           </button>
 
-          {/* Cart Icon */}
-          <button 
-            onClick={() => router.push('/carrinho')}
-            className="relative p-2 text-white hover:text-[#F17B37] transition-colors bg-white/5 md:bg-transparent rounded-xl md:rounded-none border border-white/10 md:border-transparent"
-            aria-label="Carrinho de Compras"
-          >
-            <ShoppingCart className="w-6 h-6 md:w-6 md:h-6" />
-            {cartQuantity > 0 && (
-              <span className="absolute top-0 right-0 bg-[#25D366] text-white text-[10px] font-bold w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center translate-x-1 -translate-y-1 shadow-md">
-                {cartQuantity}
-              </span>
-            )}
-          </button>
+          {/* Cart Icon & Comprar Button */}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => router.push('/carrinho')}
+              className="relative p-2 text-white hover:text-[#F17B37] transition-colors bg-white/5 md:bg-transparent rounded-xl md:rounded-none border border-white/10 md:border-transparent"
+              aria-label="Carrinho de Compras"
+            >
+              <ShoppingCart className="w-6 h-6 md:w-6 md:h-6" />
+              {cartQuantity > 0 && (
+                <span className="absolute top-0 right-0 bg-[#25D366] text-white text-[10px] font-bold w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center translate-x-1 -translate-y-1 shadow-md">
+                  {cartQuantity}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => router.push('/agenda')}
+              className="bg-[#F17B37] hover:bg-[#e06925] text-white px-5 py-2 md:px-6 md:py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 shadow-[0_0_15px_rgba(241,123,55,0.4)]"
+            >
+              Comprar
+            </button>
+          </div>
 
           {/* Mobile Menu Toggle */}
           <button 
