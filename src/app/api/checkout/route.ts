@@ -49,7 +49,9 @@ export async function POST(request: Request) {
     const payload = {
       handle: infiniteTag,
       redirect_url: `${baseUrl}/sucesso?agenda_id=${agenda_id || ids[0]}${depsQuery}`,
-      webhook_url: `${baseUrl}/api/webhooks/infinitepay`,
+      webhook_url: process.env.INFINITEPAY_WEBHOOK_SECRET 
+        ? `${baseUrl}/api/webhooks/infinitepay?token=${process.env.INFINITEPAY_WEBHOOK_SECRET}`
+        : `${baseUrl}/api/webhooks/infinitepay`,
       order_nsu: shortOrderId,
       customer: customer,
       metadata: { reservas: ids },
