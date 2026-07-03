@@ -22,17 +22,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nenhuma reserva enviada' }, { status: 400 });
     }
 
-    const { data: reservaData, error: reservaError } = await supabaseAdmin
-      .from('reservas')
-      .insert(reservasToInsert)
-      .select();
+    const finalReservas = [];
 
-    if (reservaError) {
-      console.error("Erro interno ao inserir reserva:", reservaError);
-      return NextResponse.json({ error: reservaError.message }, { status: 500 });
+    for (const reserva of reservasToInsert) {
+      // 1. Verificar se o cliente já tem uma reserva pendente para esta agenda
+      const { data: existing } = await supabaseAdmin
+        .from('reservas')
+        .select('*')
+        .eq('client_id', reserva.client_id)
+        .eq('agenda_id', reserva.agenda_id)
+        .eq('status_pagamento', 'pendente')
+        .maybeSingle();
+
+      if (existing) {
+        // Aproveita a reserva existente para não duplicar ordem de compra (Carrinho abandonado)
+        finalReservas.push(existing);
+      } else {
+        // Cria uma nova reserva se não houver nenhuma pendente
+        const { data: inserted, error: insertError } = await supabaseAdmin
+          .from('reservas')
+          .insert([reserva])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Erro interno ao inserir reserva:", insertError);
+          throw new Error(insertError.message);
+        }
+        finalReservas.push(inserted);
+      }
     }
 
-    return NextResponse.json({ success: true, reservas: reservaData });
+    return NextResponse.json({ success: true, reservas: finalReservas });
 
   } catch (error: any) {
     console.error("Erro em /api/create-reserva:", error);

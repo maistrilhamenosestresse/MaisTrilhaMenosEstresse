@@ -33,7 +33,8 @@ export default function AdminPage() {
   
   // Novos estados para a UI tipo App
   const [mainTab, setMainTab] = useState<'trilhas' | 'clientes' | 'reservas' | 'financas'>('trilhas');
-  const [clientesTab, setClientesTab] = useState<'todos' | 'listas'>('todos');
+  const [clientesTab, setClientesTab] = useState<'todos' | 'listas' | 'avaliacoes'>('todos');
+  const [avaliacoesAdmin, setAvaliacoesAdmin] = useState<any[]>([]);
   const [printMode, setPrintMode] = useState<'todos' | 'van' | 'seguro'>('todos');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -197,6 +198,9 @@ export default function AdminPage() {
 
       const { data: clientsData } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
       setClients(clientsData || []);
+
+      const { data: avaliacoesData } = await supabase.from('avaliacoes').select('*, agendas(title)').order('created_at', { ascending: false });
+      setAvaliacoesAdmin(avaliacoesData || []);
     } catch (error) {
       console.error("Erro ao buscar agendas:", error);
     } finally {
@@ -663,6 +667,21 @@ export default function AdminPage() {
     }
   };
 
+  const toggleAvaliacao = async (id: string, currentStatus: boolean) => {
+    try {
+      await supabase.from('avaliacoes').update({ approved: !currentStatus }).eq('id', id);
+      fetchAgendasAndCleanup();
+    } catch (error) { alert("Erro ao atualizar avaliação"); }
+  };
+  
+  const deleteAvaliacao = async (id: string) => {
+    if(!window.confirm("Excluir esta avaliação permanentemente?")) return;
+    try {
+      await supabase.from('avaliacoes').delete().eq('id', id);
+      fetchAgendasAndCleanup();
+    } catch (error) { alert("Erro ao excluir avaliação"); }
+  };
+
   const formatDateDisplay = (dateString: string) => {
     const [year, month, day] = dateString.split('-'); return `${day}/${month}/${year}`;
   };
@@ -984,6 +1003,7 @@ export default function AdminPage() {
                 <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden shrink-0 mb-4 print:hidden">
                   <button type="button" onClick={() => setClientesTab('todos')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'todos' ? 'border-[#F17B37] text-[#F17B37] bg-[#F17B37]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Todos Cadastrados</button>
                   <button type="button" onClick={() => setClientesTab('listas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'listas' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Listas de Embarque/Seguro</button>
+                  <button type="button" onClick={() => setClientesTab('avaliacoes')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'avaliacoes' ? 'border-[#25D366] text-[#25D366] bg-[#25D366]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Avaliações</button>
                 </div>
 
                 
@@ -1177,6 +1197,36 @@ export default function AdminPage() {
 
 
                       </>
+                    )}
+                  </div>
+                )}
+
+                {clientesTab === 'avaliacoes' && (
+                  <div className="space-y-4 print:hidden">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Moderação de Avaliações</h3>
+                    {avaliacoesAdmin.length === 0 ? (
+                      <div className="p-8 text-center bg-gray-50 border border-gray-200 rounded-2xl text-gray-500">Nenhuma avaliação encontrada no banco de dados.</div>
+                    ) : (
+                      avaliacoesAdmin.map(av => (
+                        <div key={av.id} className={`p-4 rounded-xl border ${av.approved ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200'} shadow-sm`}>
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <p className="font-bold text-gray-800 text-lg">{av.name}</p>
+                              <div className="flex text-orange-500 text-sm">{'★'.repeat(av.rating)}{'☆'.repeat(5 - av.rating)}</div>
+                              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {av.agendas?.title || 'Sem trilha vinculada'}</p>
+                            </div>
+                            <div className="flex gap-2 flex-wrap justify-end">
+                              <button onClick={() => toggleAvaliacao(av.id, av.approved)} className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition ${av.approved ? 'bg-gray-500 hover:bg-gray-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+                                {av.approved ? 'Ocultar do Site' : 'Aprovar pro Site'}
+                              </button>
+                              <button onClick={() => deleteAvaliacao(av.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition">
+                                Excluir
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-gray-700 italic mt-3 bg-white/50 p-3 rounded-lg text-sm">"{av.comment}"</p>
+                        </div>
+                      ))
                     )}
                   </div>
                 )}
