@@ -180,7 +180,7 @@ export default function TermoPrintPage() {
 
           <div className="flex flex-col md:flex-row justify-between items-center md:items-end mt-16 px-4 md:px-8 gap-8 md:gap-0">
             <div className="text-base md:text-sm print:text-sm w-full md:w-1/3 text-center md:text-left">
-              <p>Data: {new Date(client.created_at || Date.now()).toLocaleDateString('pt-BR')}</p>
+              <p>Data: {client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : 'Data não registrada'}</p>
             </div>
             
             <div className="w-full md:w-1/2 flex flex-col items-center">
@@ -198,7 +198,7 @@ export default function TermoPrintPage() {
         </div>
 
         <div className="text-center text-xs text-gray-400 mt-16 pb-8">
-          Mais Trilha e Menos Estresse © {new Date().getFullYear()} • Turismo de Aventura e Montanhismo Responsável
+          Mais Trilha e Menos Estresse © {client.created_at ? new Date(client.created_at).getFullYear() : '2026'} • Turismo de Aventura e Montanhismo Responsável
         </div>
 
       </div>

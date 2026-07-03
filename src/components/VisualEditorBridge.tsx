@@ -8,7 +8,7 @@ export default function VisualEditorBridge() {
   useEffect(() => {
     // Só ativa se estiver rodando dentro de um iframe (Modo Edição do CMS)
     if (typeof window !== "undefined" && window !== window.parent) {
-      setIsActive(true);
+      const timer = setTimeout(() => setIsActive(true), 0);
       
       const handleMessage = (event: MessageEvent) => {
         if (event.data?.type === "CMS_PING") {

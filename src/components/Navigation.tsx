@@ -1,3 +1,9 @@
+/**
+ * @file Navigation.tsx
+ * @description Componente global de barra de navegação (Navbar). 
+ *              Inclui responsividade, controle do carrinho via Zustand e links âncora.
+ * @module Navigation
+ */
 "use client";
 
 import Link from "next/link";
@@ -9,6 +15,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useEffect } from "react";
 
+/**
+ * @function Navigation
+ * @description Renderiza a Navbar superior, monitorando o estado do carrinho de compras e o menu mobile.
+ * @returns {JSX.Element} Barra de navegação fixa com menu sanduíche no mobile.
+ */
 export function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
@@ -17,7 +28,8 @@ export function Navigation() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const cartQuantity = mounted ? getTotalQuantity() : 0;

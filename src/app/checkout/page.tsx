@@ -1,3 +1,10 @@
+/**
+ * @file checkout/page.tsx
+ * @description Fluxo de autenticação e validação do cliente antes de finalizar a compra (checkout).
+ *              Verifica se o CPF/E-mail do cliente já existe, realiza o cadastro rápido e processa
+ *              a integração inicial de pagamento.
+ * @module Checkout
+ */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,6 +17,12 @@ import { useCartStore } from "@/store/cartStore";
 
 import { Suspense } from "react";
 
+/**
+ * @function CheckoutAuthContent
+ * @description Lida com o núcleo da lógica do Checkout, incluindo estado do carrinho,
+ *              validação de dados de clientes no banco (Supabase) e redirecionamento de pagamento.
+ * @returns {JSX.Element} Formulários e feedback de progresso da compra.
+ */
 function CheckoutAuthContent() {
   const router = useRouter();
   const { items, clearCart, getTotalPrice } = useCartStore();
@@ -397,6 +410,11 @@ function CheckoutAuthContent() {
   );
 }
 
+/**
+ * @function CheckoutAuthPage
+ * @description Ponto de entrada do Checkout, envolve o conteúdo em um Suspense (necessário para manipulação de query strings).
+ * @returns {JSX.Element} Wrapper principal da página de Checkout.
+ */
 export default function CheckoutAuthPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#0F1722] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#F17B37]" /></div>}>

@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
+import type { Client, Agenda, Reserva } from '@/types';
 
-export async function sendPurchaseEmail(client: any, agenda: any, allReservas: any[] = []) {
+export async function sendPurchaseEmail(client: Client, agenda: Agenda, allReservas: Reserva[] = []) {
   if (!client || !client.email || !agenda) {
     throw new Error('Dados insuficientes para enviar email.');
   }

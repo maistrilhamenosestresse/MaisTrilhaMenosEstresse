@@ -1,3 +1,9 @@
+/**
+ * @file page.tsx
+ * @description Página principal (Landing Page) da Mais Trilha Menos Estresse.
+ *              Exibe o carrossel, depoimentos animados e integração com o sistema de checkout.
+ * @module LandingPage
+ */
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -7,6 +13,11 @@ import { ChevronDown, ArrowRight, TreePine, Map, Users, Heart } from "lucide-rea
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 
+/**
+ * @function LandingPage
+ * @description Renderiza a página principal do site, controlando as animações de scroll (Framer Motion) e os vídeos de fundo.
+ * @returns {JSX.Element} Componente React renderizado da Landing Page.
+ */
 export default function LandingPage() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);

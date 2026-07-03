@@ -26,13 +26,15 @@ export async function POST(request: Request) {
 
     for (const reserva of reservasToInsert) {
       // 1. Verificar se o cliente já tem uma reserva pendente para esta agenda
-      const { data: existing } = await supabaseAdmin
+      const { data: existingRecords } = await supabaseAdmin
         .from('reservas')
         .select('*')
         .eq('client_id', reserva.client_id)
         .eq('agenda_id', reserva.agenda_id)
         .eq('status_pagamento', 'pendente')
-        .maybeSingle();
+        .limit(1);
+
+      const existing = existingRecords && existingRecords.length > 0 ? existingRecords[0] : null;
 
       if (existing) {
         // Aproveita a reserva existente para não duplicar ordem de compra (Carrinho abandonado)

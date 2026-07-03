@@ -1,3 +1,9 @@
+/**
+ * @file WebIDEClient.tsx
+ * @description Editor de código na nuvem com integração direta ao GitHub API.
+ *              Inclui suporte ao VS Code Editor (Monaco), menu superior e atalhos customizados.
+ * @module WebIDEClient
+ */
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
@@ -8,6 +14,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Octokit } from "@octokit/rest";
 import { toast } from "sonner";
 
+/**
+ * @function WebIDEClient
+ * @description Componente cliente do Web IDE. Gerencia árvore de arquivos e abas do Monaco Editor.
+ * @param {Object} props - Propriedades do componente.
+ * @param {string} props.accessToken - Token de autenticação OAuth do GitHub.
+ * @returns {JSX.Element} Interface completa de edição com painel lateral e editor central.
+ */
 export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   // Tabs System
   const [openFiles, setOpenFiles] = useState<any[]>([]);
