@@ -112,7 +112,7 @@ export default function AgendaDetailsPage() {
   };
 
   const handleShare = async () => {
-    const whatsappText = `🌿 *Trilha: ${agenda.title}*\n📅 Data: ${eventDate}\n💰 Valor: R$ ${agenda.price}\n\n👇 *Confira o Flyer oficial:*\n${agenda.flyer_url || agenda.images?.[0] || window.location.href}\n\n✨ *Garanta sua vaga e veja o roteiro completo aqui:*\n${window.location.href}`;
+    const whatsappText = `⛰️ *${agenda.title.toUpperCase()}* ⛰️\n\nQue tal sair da rotina e vir se aventurar com a gente? Confira os detalhes desse evento:\n\n📅 *Data:* ${eventDate}\n💰 *Investimento:* R$ ${agenda.price.toFixed(2).replace('.', ',')}\n\n✨ *Como participar?*\nPara ver o roteiro completo, o ponto de encontro e garantir a sua vaga, é só acessar o link oficial abaixo:\n\n👉 ${window.location.href}`;
 
     const shareData = {
       title: `Trilha: ${agenda.title} | Mais Trilha Menos Estresse`,

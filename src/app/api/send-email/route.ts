@@ -58,12 +58,12 @@ export async function POST(request: Request) {
       // Email para Cliente (cópia do contrato)
       if (client.email) {
         const firstName = client.full_name.split(' ')[0];
-        const termoUrl = `https://www.maistrilhasmenosestresse.com/termo/\${client.id}`;
+        const termoUrl = `https://www.maistrilhasmenosestresse.com/termo/${client.id}`;
 
         const clientMailOptions = {
-          from: `Mais Trilha Menos Estresse <\${process.env.GMAIL_USER}>`,
+          from: `Mais Trilha Menos Estresse <${process.env.GMAIL_USER}>`,
           to: client.email,
-          subject: `Inscrição Confirmada, \${firstName}! Prepare a mochila 🥾`,
+          subject: `Inscrição Confirmada, ${firstName}! Prepare a mochila 🥾`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden;">
               <div style="background-color: #F17B37; color: white; padding: 30px 20px; text-align: center;">
@@ -72,14 +72,14 @@ export async function POST(request: Request) {
               </div>
               
               <div style="padding: 30px 20px; color: #333; line-height: 1.6;">
-                <p>Olá <strong>\${firstName}</strong>,</p>
+                <p>Olá <strong>${firstName}</strong>,</p>
                 <p>Parabéns! Nós recebemos o seu cadastro e a sua assinatura do <strong>Termo de Responsabilidade e Assunção de Riscos</strong>.</p>
                 
                 <div style="background-color: #f9f9f9; padding: 20px; border-left: 4px solid #F17B37; margin: 20px 0;">
                   <h3 style="margin-top: 0; color: #113a5d;">Cópia do Seu Contrato de Autorização</h3>
                   <p style="margin-bottom: 0;">Você pode acessar, salvar ou imprimir uma cópia do seu termo assinado digitalmente a qualquer momento clicando no botão abaixo:</p>
                   <br/>
-                  <a href="\${termoUrl}" style="background-color: #113a5d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Meu Contrato Assinado</a>
+                  <a href="${termoUrl}" style="background-color: #113a5d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Meu Contrato Assinado</a>
                 </div>
 
                 <h3 style="color: #113a5d; margin-top: 30px;">Resumo do Seguro Aventura Ativo 🛡️</h3>
