@@ -3,6 +3,13 @@ import { supabase } from '@/lib/supabase';
 
 export async function GET(request: Request) {
   try {
+    // SECURITY: Verifica o token do Vercel Cron
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.warn("Tentativa de disparo não autorizado no Cron de Aniversários.");
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // 1. Busca todos os clientes
     const { data: clients, error } = await supabase.from('clients').select('*');
     if (error) throw error;

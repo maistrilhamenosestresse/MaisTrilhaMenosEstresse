@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +10,13 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
   try {
+    // SECURITY: Verifica se o usuário é um Administrador Logado
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || session.user.role !== 'admin') {
+      console.warn("Tentativa de invasão bloqueada: Acesso não autorizado em /moderate-avaliacao");
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, action, approved } = body;
 

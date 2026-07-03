@@ -9,6 +9,19 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
+    // SECURITY: Validação do Webhook Secret para evitar ataques de spoofing
+    const url = new URL(request.url);
+    const token = url.searchParams.get('token');
+    const authHeader = request.headers.get('authorization');
+    
+    // Se a variável de ambiente existir, exige validação rigorosa
+    if (process.env.INFINITEPAY_WEBHOOK_SECRET) {
+      if (token !== process.env.INFINITEPAY_WEBHOOK_SECRET && authHeader !== `Bearer ${process.env.INFINITEPAY_WEBHOOK_SECRET}`) {
+        console.error("Tentativa de invasão bloqueada no Webhook: Assinatura inválida.");
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const data = await request.json();
 
     // Log bruto do webhook para debugar o payload do Pix
