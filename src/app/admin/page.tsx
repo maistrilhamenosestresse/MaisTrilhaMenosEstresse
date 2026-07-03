@@ -669,7 +669,12 @@ export default function AdminPage() {
 
   const toggleAvaliacao = async (id: string, currentStatus: boolean) => {
     try {
-      await supabase.from('avaliacoes').update({ approved: !currentStatus }).eq('id', id);
+      const res = await fetch('/api/moderate-avaliacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'update', approved: !currentStatus })
+      });
+      if (!res.ok) throw new Error('Falha ao atualizar');
       fetchAgendasAndCleanup();
     } catch (error) { alert("Erro ao atualizar avaliação"); }
   };
@@ -677,7 +682,12 @@ export default function AdminPage() {
   const deleteAvaliacao = async (id: string) => {
     if(!window.confirm("Excluir esta avaliação permanentemente?")) return;
     try {
-      await supabase.from('avaliacoes').delete().eq('id', id);
+      const res = await fetch('/api/moderate-avaliacao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'delete' })
+      });
+      if (!res.ok) throw new Error('Falha ao excluir');
       fetchAgendasAndCleanup();
     } catch (error) { alert("Erro ao excluir avaliação"); }
   };
