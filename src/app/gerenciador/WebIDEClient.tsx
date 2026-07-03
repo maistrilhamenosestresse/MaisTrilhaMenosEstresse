@@ -214,9 +214,25 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     setActiveFileId(null);
     setIsLowCodeMode(false);
     setCmsData(null);
-    // Força o espelhamento do repositório em tempo real usando o motor StackBlitz
-    // Ignora qualquer link quebrado ou antigo que possa estar salvo no GitHub
-    setPreviewUrl(`https://stackblitz.com/github/${repo.owner.login}/${repo.name}?embed=1&view=preview&hideNavigation=1&hidedevtools=1`);
+    // Vercel Auto-Detect: Rastreia a última URL real gerada pela Vercel através da API do GitHub
+    setPreviewUrl(""); // Limpa o iframe temporariamente
+    try {
+      const deployments = await okitInstance.repos.listDeployments({ owner: repo.owner.login, repo: repo.name, per_page: 1 });
+      if (deployments.data.length > 0) {
+        const statuses = await okitInstance.repos.listDeploymentStatuses({ owner: repo.owner.login, repo: repo.name, deployment_id: deployments.data[0].id });
+        const successStatus = statuses.data.find(s => s.environment_url);
+        if (successStatus && successStatus.environment_url) {
+          setPreviewUrl(successStatus.environment_url);
+        } else {
+          setPreviewUrl(`https://${repo.name}.vercel.app`);
+        }
+      } else {
+        setPreviewUrl(repo.homepage || `https://${repo.name}.vercel.app`);
+      }
+    } catch (e) {
+      console.warn("Deployments API check failed, falling back to basic URL.");
+      setPreviewUrl(repo.homepage || `https://${repo.name}.vercel.app`);
+    }
     
     try {
       const branchInfo = await okitInstance.repos.getBranch({ owner: repo.owner.login, repo: repo.name, branch: repo.default_branch });
