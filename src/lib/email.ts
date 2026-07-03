@@ -53,13 +53,13 @@ export async function sendPurchaseEmail(client: Client, agenda: Agenda, allReser
           ${(() => {
             const acompanhantes = allReservas
               .filter(r => r.clients && r.clients.id !== client.id)
-              .map(r => r.clients);
+              .map(r => r.clients as Client);
             
             let uniqueAcompanhantes = Array.from(new Map(acompanhantes.map(a => [a.cpf, a])).values());
             
             // Remove acompanhantes que já estão com o cadastro 100% completo
             uniqueAcompanhantes = uniqueAcompanhantes.filter(acomp => {
-               const isComplete = acomp.rg && acomp.birth_date && acomp.emergency_contact_phone;
+               const isComplete = acomp && acomp.rg && acomp.birth_date && acomp.emergency_contact_phone;
                return !isComplete;
             });
             
