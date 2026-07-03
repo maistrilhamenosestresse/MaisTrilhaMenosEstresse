@@ -214,8 +214,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     setActiveFileId(null);
     setIsLowCodeMode(false);
     setCmsData(null);
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-    setPreviewUrl(currentOrigin || repo.homepage || `https://${repo.name}.vercel.app`);
+    setPreviewUrl(repo.homepage || `https://${repo.name}.vercel.app`);
     
     try {
       const branchInfo = await okitInstance.repos.getBranch({ owner: repo.owner.login, repo: repo.name, branch: repo.default_branch });
