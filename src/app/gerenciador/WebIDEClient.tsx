@@ -214,7 +214,11 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     setActiveFileId(null);
     setIsLowCodeMode(false);
     setCmsData(null);
-    setPreviewUrl(repo.homepage || `https://${repo.name}.vercel.app`);
+    if (repo.homepage) {
+      setPreviewUrl(repo.homepage);
+    } else {
+      setPreviewUrl(`https://stackblitz.com/github/${repo.owner.login}/${repo.name}?embed=1&view=preview&hideNavigation=1&hidedevtools=1`);
+    }
     
     try {
       const branchInfo = await okitInstance.repos.getBranch({ owner: repo.owner.login, repo: repo.name, branch: repo.default_branch });
