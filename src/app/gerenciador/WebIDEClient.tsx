@@ -214,11 +214,9 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     setActiveFileId(null);
     setIsLowCodeMode(false);
     setCmsData(null);
-    if (repo.homepage) {
-      setPreviewUrl(repo.homepage);
-    } else {
-      setPreviewUrl(`https://stackblitz.com/github/${repo.owner.login}/${repo.name}?embed=1&view=preview&hideNavigation=1&hidedevtools=1`);
-    }
+    // Força o espelhamento do repositório em tempo real usando o motor StackBlitz
+    // Ignora qualquer link quebrado ou antigo que possa estar salvo no GitHub
+    setPreviewUrl(`https://stackblitz.com/github/${repo.owner.login}/${repo.name}?embed=1&view=preview&hideNavigation=1&hidedevtools=1`);
     
     try {
       const branchInfo = await okitInstance.repos.getBranch({ owner: repo.owner.login, repo: repo.name, branch: repo.default_branch });
