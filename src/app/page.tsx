@@ -167,7 +167,7 @@ export default function LandingPage() {
               className="flex-1 space-y-6"
             >
               <p className="text-2xl leading-relaxed text-gray-300 font-light">
-                Me chamo <strong className="text-white font-medium">Nívea Maria</strong>... tenho 35 anos... e há 3 anos venho me aventurando e me desafiando no mundo do ecoturismo.
+                Me chamo <strong className="text-white font-medium">Nívea Maria</strong>... tenho 35 anos... e há 3 ane me desafiando no mundo do ecoturismo.
               </p>
               <p className="text-xl leading-relaxed text-gray-400 font-light">
                 Sempre tive uma conexão muito forte com a natureza. Gosto do simples, do essencial. Na minha família, o hábito de acampar sempre esteve presente, mas foi o meu tio quem despertou em mim algo maior. Aquele universo me encantava.
