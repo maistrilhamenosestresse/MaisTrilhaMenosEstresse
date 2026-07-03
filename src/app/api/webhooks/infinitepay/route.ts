@@ -57,11 +57,11 @@ export async function POST(request: Request) {
       reserva_ids = final_order_nsu.includes(',') ? final_order_nsu.split(',') : [final_order_nsu];
     } else if (final_order_nsu && final_order_nsu.startsWith('PEDIDO-')) {
       // Recupera o mapeamento salvo no checkout
-      const { data: notif } = await supabase.from('notificacoes')
+      const { data: notif, error: notifErr } = await supabase.from('notificacoes')
         .select('mensagem')
-        .like('mensagem', `CHECKOUT_MAPPING: ${final_order_nsu} -> %`)
+        .ilike('mensagem', `CHECKOUT_MAPPING: ${final_order_nsu} -> %`)
         .limit(1)
-        .single();
+        .maybeSingle();
         
       if (notif && notif.mensagem) {
         const idsString = notif.mensagem.split(' -> ')[1];
@@ -81,8 +81,7 @@ export async function POST(request: Request) {
       .from('reservas')
       .update({ 
         status_pagamento: 'pago',
-        valor_pago: (paid_amount / 100) / reserva_ids.length, // Rateio basico do valor pago
-        metodo_pagamento: capture_method || 'infinitepay',
+        valor_pago: (paid_amount / 100) / reserva_ids.length
       })
       .in('id', reserva_ids);
 
