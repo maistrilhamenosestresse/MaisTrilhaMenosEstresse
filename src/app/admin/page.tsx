@@ -96,6 +96,7 @@ export default function AdminPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationReceipt, setNotificationReceipt] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const selectedFlyer = watch("flyer");
@@ -238,7 +239,12 @@ export default function AdminPage() {
     checkDevAccess();
 
     async function fetchNotifications() {
-      const { data } = await supabase.from('notificacoes').select('*').order('created_at', { ascending: false }).limit(20);
+      const { data } = await supabase.from('notificacoes')
+        .select('*')
+        .not('mensagem', 'ilike', 'WEBHOOK RAW%')
+        .not('mensagem', 'ilike', 'CHECKOUT_MAPPING%')
+        .order('created_at', { ascending: false })
+        .limit(20);
       if (data) {
         setNotifications(data);
         setUnreadCount(data.filter((n: any) => !n.lida).length);
@@ -249,8 +255,11 @@ export default function AdminPage() {
     const channel = supabase
       .channel('notificacoes-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificacoes' }, (payload) => {
-        setNotifications(prev => [payload.new, ...prev]);
-        setUnreadCount(prev => prev + 1);
+        const msg = payload.new.mensagem || "";
+        if (!msg.startsWith('WEBHOOK RAW') && !msg.startsWith('CHECKOUT_MAPPING')) {
+          setNotifications(prev => [payload.new, ...prev]);
+          setUnreadCount(prev => prev + 1);
+        }
       })
       .subscribe();
 
@@ -275,6 +284,24 @@ export default function AdminPage() {
   const handleClearNotifications = async () => {
     await supabase.from('notificacoes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     setNotifications([]);
+  };
+
+  const handleNotificationClick = async (notif: any) => {
+    if (!notif.reserva_id) return;
+    try {
+      const { data, error } = await supabase
+        .from('reservas')
+        .select('*, clients(*), agendas(*)')
+        .eq('id', notif.reserva_id)
+        .single();
+        
+      if (data) {
+        setNotificationReceipt(data);
+        setIsNotificationsOpen(false); // Fecha o dropdown
+      }
+    } catch (e) {
+      console.error("Erro ao buscar detalhes da notificação", e);
+    }
   };
 
   const handleToggleMaintenance = async () => {
@@ -866,7 +893,11 @@ export default function AdminPage() {
                         <p className="p-6 text-center text-gray-400 text-sm">Nenhuma notificação.</p>
                       ) : (
                         notifications.map((notif, idx) => (
-                          <div key={notif.id} className={`p-4 border-b border-gray-50 text-sm ${idx === 0 && !notif.lida ? 'bg-blue-50/30' : ''}`}>
+                          <div 
+                            key={notif.id} 
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`p-4 border-b border-gray-50 text-sm transition-colors ${notif.reserva_id ? 'cursor-pointer hover:bg-gray-100' : ''} ${idx === 0 && !notif.lida ? 'bg-blue-50/30' : ''}`}
+                          >
                             <p className="text-gray-800">{notif.mensagem}</p>
                             <span className="text-[10px] text-gray-400 mt-1 block">
                               {new Date(notif.created_at).toLocaleString('pt-BR')}
@@ -2053,6 +2084,62 @@ export default function AdminPage() {
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RECIBO DE COMPRA (NOTIFICAÇÃO) */}
+      {notificationReceipt && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-in zoom-in-95 duration-300">
+            <button 
+              onClick={() => setNotificationReceipt(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h2 className="text-xl font-black text-gray-900">Compra Aprovada!</h2>
+              <p className="text-sm text-gray-500 mt-1">Detalhes do passageiro</p>
+            </div>
+            
+            <div className="space-y-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span className="text-gray-500">Passageiro(a)</span>
+                <span className="font-bold text-gray-900 text-right">{notificationReceipt.clients?.full_name}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span className="text-gray-500">Trilha</span>
+                <span className="font-bold text-gray-900 text-right">{notificationReceipt.agendas?.title}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span className="text-gray-500">Valor da Vaga</span>
+                <span className="font-bold text-green-600">R$ {notificationReceipt.valor_pago ? notificationReceipt.valor_pago.toFixed(2).replace('.', ',') : "N/A"}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span className="text-gray-500">Método de Pag.</span>
+                <span className="font-bold text-gray-900 uppercase">{notificationReceipt.metodo_pagamento || "PIX/Cartão"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Data e Hora</span>
+                <span className="font-bold text-gray-900 text-right">{new Date(notificationReceipt.created_at).toLocaleString('pt-BR')}</span>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => {
+                setNotificationReceipt(null);
+                setMainTab('reservas');
+                setSelectedAgendaId(notificationReceipt.agenda_id);
+              }}
+              className="mt-6 w-full py-3 bg-[#F17B37] text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+            >
+              <Users className="w-5 h-5" />
+              Ver Lista da Trilha
+            </button>
           </div>
         </div>
       )}
