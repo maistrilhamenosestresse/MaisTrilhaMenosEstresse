@@ -1,7 +1,4 @@
 import { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../api/auth/[...nextauth]/route';
-import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Painel Administrativo | Mais Trilha Menos Estresse',
@@ -25,14 +22,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  // SECURITY: A proteção de rota agora é feita exclusivamente pelo src/middleware.ts usando Supabase Auth.
+  // Removemos o next-auth daqui para evitar o loop infinito de redirecionamento (ERR_TOO_MANY_REDIRECTS).
   
-  // SECURITY: Redireciona usuários não logados imediatamente para a tela de login
-  // Isso impede o vazamento do Layout do Painel (Casca visual)
-  if (!session) {
-    redirect('/login');
-  }
-
   return <>{children}</>;
 }
