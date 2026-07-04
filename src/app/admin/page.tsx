@@ -523,6 +523,16 @@ export default function AdminPage() {
     } catch (err: any) { alert("Erro ao remover passageiro."); }
   };
 
+  const handleToggleStatusPagamento = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
+    if (!(await requirePin(`Alterar status para ${nextStatus.toUpperCase()}`))) return;
+    try {
+      const { error } = await supabase.from('reservas').update({ status_pagamento: nextStatus }).eq('id', id);
+      if (error) throw error;
+      setReservas(reservas.map(r => r.id === id ? { ...r, status_pagamento: nextStatus } : r));
+    } catch (err: any) { alert("Erro ao atualizar status."); }
+  };
+
   const selectedAgendaData = agendas.find(a => a.id === selectedAgendaId);
   const totalRevenue = reservas.filter(r => r.status_pagamento === 'pago').length * (selectedAgendaData?.price || 0);
   const totalCosts = custos.reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
@@ -1404,7 +1414,16 @@ export default function AdminPage() {
                                   </span>
                                 </div>
                               </div>
-                              <button onClick={() => handleDeleteReserva(reserva.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Trash2 className="h-4 w-4"/></button>
+                              <div className="flex items-center gap-1">
+                                <button 
+                                  title="Alternar Status de Pagamento"
+                                  onClick={() => handleToggleStatusPagamento(reserva.id, reserva.status_pagamento)} 
+                                  className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                >
+                                  <Edit2 className="h-4 w-4"/>
+                                </button>
+                                <button onClick={() => handleDeleteReserva(reserva.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Trash2 className="h-4 w-4"/></button>
+                              </div>
                             </div>
                           ))
                         )}
