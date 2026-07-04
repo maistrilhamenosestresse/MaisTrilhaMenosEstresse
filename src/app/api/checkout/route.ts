@@ -21,8 +21,42 @@ export async function POST(request: Request) {
 
     const ids = reserva_ids || (reserva_id ? (reserva_id.includes(',') ? reserva_id.split(',') : [reserva_id]) : []);
 
-    if (ids.length === 0 || !price) {
+    if (ids.length === 0) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
+    }
+
+    // SECURITY: Buscar o preço real no banco de dados para evitar fraude de preço pelo cliente
+    const { data: reservasData, error: reservasError } = await supabase
+      .from('reservas')
+      .select('agenda_id')
+      .in('id', ids);
+
+    if (reservasError || !reservasData || reservasData.length === 0) {
+      return NextResponse.json({ error: 'Reservas não encontradas' }, { status: 404 });
+    }
+
+    const agendaIds = reservasData.map(r => r.agenda_id);
+
+    const { data: agendasData, error: agendasError } = await supabase
+      .from('agendas')
+      .select('id, price')
+      .in('id', agendaIds);
+
+    if (agendasError || !agendasData) {
+      return NextResponse.json({ error: 'Agendas não encontradas' }, { status: 404 });
+    }
+
+    // Calcular o preço total verdadeiro somando o preço da agenda de cada reserva
+    let trueTotalPrice = 0;
+    reservasData.forEach(reserva => {
+      const agenda = agendasData.find(a => a.id === reserva.agenda_id);
+      if (agenda) {
+        trueTotalPrice += Number(agenda.price);
+      }
+    });
+
+    if (trueTotalPrice <= 0) {
+      return NextResponse.json({ error: 'Preço inválido' }, { status: 400 });
     }
 
     // A API do InfinitePay espera o handle sem o $
@@ -58,7 +92,7 @@ export async function POST(request: Request) {
       items: [
         {
           quantity: 1,
-          price: Math.round(price * 100), // O preço deve ser enviado em centavos
+          price: Math.round(trueTotalPrice * 100), // O preço verdadeiro gerado pelo backend
           description: `Ingresso Trilha: ${agenda_title}`
         }
       ]
