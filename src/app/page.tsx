@@ -414,7 +414,7 @@ export default function LandingPage() {
             <p className="text-xl text-gray-400">Momentos inesquecíveis vividos juntos.</p>
           </div>
 
-          <motion.div layout className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+          <motion.div layout className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnimatePresence>
               {visibleImages.map((src, idx) => (
                 <motion.div 
@@ -424,7 +424,7 @@ export default function LandingPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.4 }}
-                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid cursor-pointer" 
+                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 cursor-pointer aspect-[4/5]" 
                   whileHover={{ scale: 0.98 }}
                   onClick={() => setLightboxIndex(idx)}
                 >
@@ -476,7 +476,14 @@ export default function LandingPage() {
             </a>
           </div>
 
-          <motion.div className="mt-24 pt-10 border-t border-white/10 flex flex-col items-center gap-6 text-gray-400">
+          <motion.div className="mt-24 pt-10 border-t border-white/10 flex flex-col items-center gap-8 text-gray-400">
+            
+            {/* AVISO DE COPYRIGHT */}
+            <div className="text-sm md:text-base text-center">
+              &copy; {new Date().getFullYear()} MaisTrilhaMenosEstresse. Todos os direitos reservados. <br className="md:hidden" />
+              <a href="/termos-de-uso" className="text-[#F17B37] hover:underline font-bold transition-colors">Clique aqui</a> para ler os Termos de Uso e Direitos Autorais.
+            </div>
+
             <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex flex-col items-center md:items-start gap-2">
                 <div className="flex items-center gap-3">
@@ -555,29 +562,29 @@ export default function LandingPage() {
             {lightboxIndex > 0 && (
               <button 
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
-                className="absolute left-4 md:left-8 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition z-50"
+                className="absolute left-4 md:left-8 text-white/70 hover:text-white hover:scale-110 bg-black/50 hover:bg-black/80 p-3 md:p-4 rounded-full transition-all z-50 cursor-pointer shadow-lg"
               >
-                <ChevronLeft className="h-8 w-8" />
+                <ChevronLeft className="h-8 w-8 md:h-10 md:w-10" />
               </button>
             )}
 
             {/* Próxima */}
-            {lightboxIndex < (showAllComunidade ? comunidadeImages.length : 3) - 1 && (
+            {lightboxIndex < comunidadeImages.length - 1 && (
               <button 
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
-                className="absolute right-4 md:right-8 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition z-50"
+                className="absolute right-4 md:right-8 text-white/70 hover:text-white hover:scale-110 bg-black/50 hover:bg-black/80 p-3 md:p-4 rounded-full transition-all z-50 cursor-pointer shadow-lg"
               >
-                <ChevronRight className="h-8 w-8" />
+                <ChevronRight className="h-8 w-8 md:h-10 md:w-10" />
               </button>
             )}
 
             {/* Imagem */}
             <motion.img
               key={lightboxIndex}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              initial={{ x: 300, opacity: 0, scale: 0.95 }}
+              animate={{ x: 0, opacity: 1, scale: 1 }}
+              exit={{ x: -300, opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 200, damping: 25 }}
               src={comunidadeImages[lightboxIndex]}
               alt="Foto Expandida"
               className="w-full h-full object-contain max-w-6xl mx-auto p-4 cursor-default drop-shadow-2xl"
@@ -586,7 +593,7 @@ export default function LandingPage() {
             
             {/* Indicador */}
             <div className="absolute bottom-8 left-0 right-0 text-center text-white/70 text-sm font-bold tracking-widest z-50 bg-black/40 py-1.5 w-24 mx-auto rounded-full backdrop-blur-md border border-white/10">
-              {lightboxIndex + 1} / {showAllComunidade ? comunidadeImages.length : 3}
+              {lightboxIndex + 1} / {comunidadeImages.length}
             </div>
           </motion.div>
         )}
