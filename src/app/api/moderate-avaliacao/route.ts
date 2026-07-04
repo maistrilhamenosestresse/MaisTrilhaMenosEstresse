@@ -12,7 +12,8 @@ export async function POST(request: Request) {
   try {
     // SECURITY: Verifica se o usuário é um Administrador Logado
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || session.user.role !== 'admin') {
+    const user = session?.user as any;
+    if (!session || !user || user.role !== 'admin') {
       console.warn("Tentativa de invasão bloqueada: Acesso não autorizado em /moderate-avaliacao");
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
