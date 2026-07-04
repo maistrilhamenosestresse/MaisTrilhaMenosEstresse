@@ -34,7 +34,7 @@ export default function LandingPage() {
       const el = document.getElementById(sections[i]);
       if (el) {
         // Calcula a posição absoluta da seção e desconta um offset dinâmico para o Menu Fixo não cobrir o topo
-        const offset = window.innerWidth < 768 ? 40 : 100; // Menor offset no mobile, já que o menu agora é transparente
+        const offset = window.innerWidth < 768 ? 20 : 100; // Offset pequeno no mobile (menu absoluto), 100px no desktop (menu fixo)
         const absoluteTop = el.getBoundingClientRect().top + scrollPosition - offset;
         // Pula para a próxima seção que está abaixo da posição atual
         if (absoluteTop > scrollPosition + 10) {
