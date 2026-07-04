@@ -7,9 +7,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { ChevronDown, ArrowRight, TreePine, Map, Users, Heart } from "lucide-react";
+import { ChevronDown, ArrowRight, TreePine, Map, Users, Heart, X, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 
@@ -23,6 +23,24 @@ export default function LandingPage() {
   const [isClient, setIsClient] = useState(false);
   const [particles, setParticles] = useState<any[]>([]);
   const [sparks, setSparks] = useState<any[]>([]);
+  const [showAllComunidade, setShowAllComunidade] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const comunidadeImages = [
+    "/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG",
+    "/FotosEvideos/Grupo/IMG_0997.JPG",
+    "/FotosEvideos/PESSOAS%20ESPECIAIS/1647fade-8f9e-4eca-9cb9-bbf9b3fb26b6.jpg",
+    "/FotosEvideos/Grupo/5e7df681-58d1-48ae-a6bc-1c9e57a3bcd0.jpg",
+    "/FotosEvideos/Grupo/IMG_8197.webp",
+    "/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_1809.webp",
+    "/FotosEvideos/Grupo/IMG_8162 - Copia.webp",
+    "/FotosEvideos/Grupo/IMG_9430 - Copia.JPG",
+    "/FotosEvideos/Grupo/IMG_5987.webp",
+    "/FotosEvideos/Grupo/IMG_6178.webp",
+    "/FotosEvideos/PESSOAS%20ESPECIAIS/59b3598c-060a-48c1-a372-894e60c16d63 Copy.JPG",
+    "/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_5466.webp"
+  ];
+  const visibleImages = showAllComunidade ? comunidadeImages : comunidadeImages.slice(0, 3);
 
   // Lógica para a seta de scroll global inteligente
   const sections = ['hero', 'essencia-1', 'essencia-2', 'essencia-3', 'olhares', 'comunidade', 'footer'];
@@ -396,60 +414,43 @@ export default function LandingPage() {
             <p className="text-xl text-gray-400">Momentos inesquecíveis vividos juntos.</p>
           </div>
 
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG" alt="Comunidade" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-            </motion.div>
+          <motion.div layout className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            <AnimatePresence>
+              {visibleImages.map((src, idx) => (
+                <motion.div 
+                  key={src}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.4 }}
+                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid cursor-pointer" 
+                  whileHover={{ scale: 0.98 }}
+                  onClick={() => setLightboxIndex(idx)}
+                >
+                  <Image 
+                    src={src} 
+                    alt={`Comunidade Foto ${idx + 1}`} 
+                    width={800} 
+                    height={800} 
+                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
 
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_0997.JPG" alt="Comunidade" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image 
-                src="/FotosEvideos/PESSOAS%20ESPECIAIS/1647fade-8f9e-4eca-9cb9-bbf9b3fb26b6.jpg" 
-                alt="Pessoas Especiais" 
-                width={800}
-                height={800}
-                className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000"
-              />
-            </motion.div>
-
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/5e7df681-58d1-48ae-a6bc-1c9e57a3bcd0.jpg" alt="Grupo" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_8197.webp" alt="Grupo Expandido" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_1809.webp" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-
-
-
-
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_8162 - Copia.webp" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_9430 - Copia.JPG" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_5987.webp" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/Grupo/IMG_6178.webp" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/PESSOAS%20ESPECIAIS/59b3598c-060a-48c1-a372-894e60c16d63 Copy.JPG" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-            <motion.div className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 break-inside-avoid" whileHover={{ scale: 0.98 }} transition={{ duration: 0.4 }}>
-              <Image src="/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_5466.webp" alt="Grupo Mais" width={800} height={800} className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" />
-            </motion.div>
-          </div>
+          {!showAllComunidade && comunidadeImages.length > 3 && (
+            <div className="mt-12 text-center">
+              <button 
+                onClick={() => setShowAllComunidade(true)}
+                className="inline-flex items-center gap-2 bg-[#F17B37] hover:bg-[#e06925] text-white px-8 py-4 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(241,123,55,0.4)] hover:scale-105 transition-all"
+              >
+                <Plus className="w-5 h-5" /> Ver Mais Fotos
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -531,6 +532,66 @@ export default function LandingPage() {
       >
         <ChevronDown className="w-10 h-10 md:w-12 md:h-12 opacity-80" />
       </motion.button>
+
+      {/* LIGHTBOX DE FOTOS COMUNIDADE */}
+      <AnimatePresence>
+        {lightboxIndex !== null && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md"
+            onClick={() => setLightboxIndex(null)}
+          >
+            {/* Fechar */}
+            <button 
+              onClick={() => setLightboxIndex(null)}
+              className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition z-50"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Anterior */}
+            {lightboxIndex > 0 && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
+                className="absolute left-4 md:left-8 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition z-50"
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </button>
+            )}
+
+            {/* Próxima */}
+            {lightboxIndex < (showAllComunidade ? comunidadeImages.length : 3) - 1 && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
+                className="absolute right-4 md:right-8 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition z-50"
+              >
+                <ChevronRight className="h-8 w-8" />
+              </button>
+            )}
+
+            {/* Imagem */}
+            <motion.img
+              key={lightboxIndex}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              src={comunidadeImages[lightboxIndex]}
+              alt="Foto Expandida"
+              className="w-full h-full object-contain max-w-6xl mx-auto p-4 cursor-default drop-shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            
+            {/* Indicador */}
+            <div className="absolute bottom-8 left-0 right-0 text-center text-white/70 text-sm font-bold tracking-widest z-50 bg-black/40 py-1.5 w-24 mx-auto rounded-full backdrop-blur-md border border-white/10">
+              {lightboxIndex + 1} / {showAllComunidade ? comunidadeImages.length : 3}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
