@@ -11,11 +11,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     
     // Suporta tanto o formato antigo { client_id, agenda_id } quanto o novo { reservas: [...] }
-    const reservasToInsert = body.reservas || [{
+    const reservasToInsert = body.reservas ? body.reservas.map((r: any) => ({
+      ...r,
+      status_pagamento: 'pendente',
+      valor_pago: 0
+    })) : [{
       client_id: body.client_id,
       agenda_id: body.agenda_id,
-      status_pagamento: body.status_pagamento || 'pendente',
-      valor_pago: body.valor_pago || 0
+      status_pagamento: 'pendente',
+      valor_pago: 0
     }];
 
     if (reservasToInsert.length === 0) {

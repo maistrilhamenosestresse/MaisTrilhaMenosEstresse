@@ -46,15 +46,18 @@ export async function POST(request: Request) {
       order_nsu 
     } = payloadInfo;
 
-    const isApproved = 
+    const isApprovedEvent = 
       (data.event && (data.event.includes('approve') || data.event.includes('paid'))) || 
       payloadInfo.status === 'approved' || 
-      payloadInfo.status === 'paid' || 
-      (paid_amount && paid_amount > 0);
+      payloadInfo.status === 'paid';
 
-    if (!isApproved) {
-      console.log('Ignorando evento não finalizado:', data.event, payloadInfo.status);
-      return NextResponse.json({ success: true, message: 'Evento ignorado' }, { status: 200 });
+    // SECURITY: Validação estrita de pagamento integral (Impede fraude de pagamento parcial)
+    // Exige que o valor pago seja igual ou maior que o valor cobrado na fatura.
+    const isFullyPaid = isApprovedEvent && paid_amount && amount && (Number(paid_amount) >= Number(amount));
+
+    if (!isFullyPaid) {
+      console.warn('Ignorando evento não finalizado ou com pagamento parcial/inválido:', data.event, payloadInfo.status, 'Pago:', paid_amount, 'Esperado:', amount);
+      return NextResponse.json({ success: true, message: 'Evento ignorado (pendente ou parcial)' }, { status: 200 });
     }
 
     // A InfinitePay envia o array de reserva_ids via metadata

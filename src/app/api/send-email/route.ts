@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../auth/[...nextauth]/route';
 
 export async function POST(request: Request) {
   try {
@@ -15,6 +17,14 @@ export async function POST(request: Request) {
     });
 
     let mailOptions = {};
+
+    // SECURITY: Se o tipo não for 'new_registration', exige Sessão de Administrador para evitar uso do site como máquina de Spam
+    if (data.type !== 'new_registration') {
+      const session = await getServerSession(authOptions);
+      if (!session) {
+        return NextResponse.json({ error: 'Acesso negado. Apenas administradores podem disparar e-mails genéricos.' }, { status: 403 });
+      }
+    }
 
     if (data.type === 'new_registration') {
       const { client } = data;
