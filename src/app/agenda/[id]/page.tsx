@@ -139,10 +139,6 @@ export default function AgendaDetailsPage() {
         <button onClick={() => router.push('/agenda')} className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/10 hover:bg-white/10 transition">
           <ChevronLeft className="h-5 w-5" />
         </button>
-        
-        <button onClick={handleShare} className="bg-[#F17B37]/80 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 hover:bg-[#F17B37] transition flex items-center gap-2 font-bold text-sm shadow-lg">
-          <Send className="h-4 w-4" /> Compartilhar
-        </button>
       </div>
 
       {/* Carrossel / Imagem de Capa */}
@@ -415,6 +411,14 @@ export default function AgendaDetailsPage() {
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
               </svg>
             </a>
+            
+            <button 
+              onClick={handleShare}
+              className="flex-none flex items-center justify-center bg-white/10 hover:bg-white/20 text-white p-4 rounded-2xl font-bold shadow-lg hover:scale-[1.02] transition-all border border-white/10"
+              title="Compartilhar Trilha"
+            >
+              <Send className="h-6 w-6" />
+            </button>
             
             <a 
               href="https://www.instagram.com/maistrilhamenosestresse/"

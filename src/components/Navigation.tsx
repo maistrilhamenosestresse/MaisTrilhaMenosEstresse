@@ -28,6 +28,17 @@ export function Navigation() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
     return () => clearTimeout(timer);
   }, []);
@@ -97,12 +108,14 @@ export function Navigation() {
               )}
             </button>
 
-            <button
-              onClick={() => router.push('/agenda')}
-              className="bg-[#F17B37] hover:bg-[#e06925] text-white px-5 py-2 md:px-6 md:py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 shadow-[0_0_15px_rgba(241,123,55,0.4)]"
-            >
-              Comprar
-            </button>
+            {!pathname?.startsWith('/agenda') && (
+              <button
+                onClick={() => router.push('/agenda')}
+                className="bg-[#F17B37] hover:bg-[#e06925] text-white px-5 py-2 md:px-6 md:py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 shadow-[0_0_15px_rgba(241,123,55,0.4)]"
+              >
+                Comprar
+              </button>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
