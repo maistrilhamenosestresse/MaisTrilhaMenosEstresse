@@ -97,9 +97,8 @@ export default function LandingPage() {
         >
           <source src="/FotosEvideos/Nivea/video.mp4" type="video/mp4" />
         </video>
-
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0F1722]/40 via-transparent to-[#0F1722] z-10" />
-        <div className="absolute inset-0 bg-black/20 z-10" />
+        <div className="absolute inset-0 bg-[#0F1722]/40 z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0F1722]/20 to-[#0F1722] z-10 pointer-events-none" />
 
         <div className="relative z-20 text-center max-w-4xl px-6 flex flex-col items-center">
           <motion.div
@@ -107,8 +106,8 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
           >
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
-              Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]">coragem que você nem sabia que existia</span>.
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1] mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+              Mais Trilha Menos Estresse.<br /> Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]">coragem que você nem sabia que existia</span>.
             </h1>
           </motion.div>
 
@@ -135,14 +134,15 @@ export default function LandingPage() {
         <motion.div
           animate={{ y: [0, 10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="absolute bottom-10 z-20 text-gray-400 drop-shadow-md"
+          className="absolute bottom-10 z-20 text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)] cursor-pointer hover:text-[#F17B37] transition-colors"
+          onClick={() => window.scrollTo({ top: typeof window !== 'undefined' ? window.innerHeight : 800, behavior: 'smooth' })}
         >
-          <ChevronDown className="h-8 w-8 opacity-50" />
+          <ChevronDown className="h-12 w-12 opacity-80" />
         </motion.div>
       </motion.section>
 
       {/* 2. A HISTÓRIA (NÍVEA E AS FUNDADORAS) */}
-      <section className="py-24 md:py-40 px-6 relative z-20 bg-[#0F1722] overflow-hidden">
+      <section className="py-16 md:py-24 px-6 relative z-20 bg-[#0F1722] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#F17B37]/5 via-[#0F1722]/80 to-[#0F1722] z-0" />
 
         <div className="max-w-6xl mx-auto relative z-10">
@@ -151,14 +151,14 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 1, ease: "easeOut" }}
-            className="mb-32 text-center"
+            className="mb-16 text-center"
           >
             <h2 className="text-[#F17B37] font-bold tracking-[0.3em] uppercase text-xs mb-6 drop-shadow-lg">A Nossa Essência</h2>
             <h3 className="text-5xl md:text-7xl font-black tracking-tight text-white drop-shadow-2xl">Como tudo começou</h3>
           </motion.div>
 
           {/* Intro Nivea */}
-          <div className="flex flex-col md:flex-row gap-16 md:gap-24 items-center mb-40">
+          <div className="flex flex-col md:flex-row gap-12 md:gap-16 items-center mb-20">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -197,7 +197,7 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 1 }}
-            className="text-center max-w-4xl mx-auto mb-40 relative"
+            className="text-center max-w-4xl mx-auto mb-20 relative"
           >
             <div className="absolute -inset-10 bg-gradient-to-r from-transparent via-[#F17B37]/10 to-transparent blur-3xl z-0" />
             <p className="text-3xl md:text-4xl font-light leading-relaxed italic text-gray-100 relative z-10 drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
@@ -492,18 +492,20 @@ export default function LandingPage() {
             
             {/* DIREITOS AUTORAIS */}
             <div className="mt-12 text-center text-sm text-gray-500 opacity-60 flex flex-col items-center gap-4">
-              <button 
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="w-12 h-12 flex items-center justify-center rounded-full border border-gray-600 hover:border-[#F17B37] hover:text-[#F17B37] transition-all hover:scale-110 group mb-4"
-                title="Voltar ao Topo"
-              >
-                <ChevronDown className="w-6 h-6 rotate-180 group-hover:-translate-y-1 transition-transform" />
-              </button>
               <p>© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
             </div>
           </motion.div>
         </motion.div>
       </section>
+
+      {/* FIXED BACK TO TOP BUTTON */}
+      <button 
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className="fixed bottom-6 right-6 z-50 w-12 h-12 md:w-14 md:h-14 bg-[#0F1722]/80 backdrop-blur-md flex items-center justify-center rounded-full border-2 border-white/20 hover:border-[#F17B37] hover:bg-[#F17B37] text-white transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(241,123,55,0.6)] group"
+        title="Voltar ao Topo"
+      >
+        <ChevronDown className="w-6 h-6 md:w-8 md:h-8 rotate-180 group-hover:-translate-y-1 transition-transform" />
+      </button>
     </div>
   );
 }

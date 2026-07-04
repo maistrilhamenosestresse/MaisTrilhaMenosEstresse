@@ -39,7 +39,7 @@ export function Navigation() {
 
   return (
     <>
-      <nav className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-12 py-3 md:py-4 bg-transparent md:bg-gradient-to-b md:from-[#0F1722]/80 md:to-transparent md:backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-4 md:px-12 py-3 md:py-4 bg-[#0F1722]/95 backdrop-blur-md border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)] transition-all duration-300">
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/">
             <Image
