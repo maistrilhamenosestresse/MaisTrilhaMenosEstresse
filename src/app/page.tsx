@@ -103,9 +103,8 @@ export default function LandingPage() {
 
 
       {/* 1. HERO SECTION */}
-      <motion.section
+      <section
         id="hero"
-        style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
         className="relative h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden md:snap-start"
       >
         <video
@@ -153,7 +152,7 @@ export default function LandingPage() {
             <span className="relative z-10 flex items-center gap-2">Começar Aventura <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" /></span>
           </motion.button>
         </div>
-      </motion.section>
+      </section>
 
       {/* 2. A HISTÓRIA (NÍVEA E AS FUNDADORAS) */}
       <section id="essencia" className="py-16 md:py-24 px-6 relative z-20 bg-[#0F1722] overflow-hidden md:snap-start">

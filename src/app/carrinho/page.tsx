@@ -56,7 +56,7 @@ export default function CarrinhoPage() {
       <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-5 pointer-events-none" />
       
       <header className="px-6 pt-24 pb-8 relative z-10">
-        <button onClick={() => router.push('/')} className="bg-white/5 p-3 rounded-full border border-white/10 hover:bg-white/10 transition mb-6">
+        <button onClick={() => router.push('/agenda')} className="bg-white/5 p-3 rounded-full border border-white/10 hover:bg-white/10 transition mb-6">
           <ChevronLeft className="h-5 w-5" />
         </button>
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight flex items-center gap-3">
