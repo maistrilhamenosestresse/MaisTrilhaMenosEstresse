@@ -24,6 +24,25 @@ export default function LandingPage() {
   const [particles, setParticles] = useState<any[]>([]);
   const [sparks, setSparks] = useState<any[]>([]);
 
+  // Lógica para a seta de scroll global inteligente
+  const sections = ['hero', 'essencia', 'olhares', 'comunidade', 'footer'];
+  const scrollToNextSection = () => {
+    if (typeof window === 'undefined') return;
+    const scrollPosition = window.scrollY;
+    
+    for (let i = 0; i < sections.length; i++) {
+      const el = document.getElementById(sections[i]);
+      if (el) {
+        const top = el.offsetTop;
+        // Pula para a próxima seção que está pelo menos 100px abaixo da posição atual
+        if (top > scrollPosition + 100) {
+          window.scrollTo({ top, behavior: 'smooth' });
+          break;
+        }
+      }
+    }
+  };
+
   useEffect(() => {
     setIsClient(true);
     setParticles([...Array(50)].map(() => ({
@@ -85,8 +104,9 @@ export default function LandingPage() {
 
       {/* 1. HERO SECTION */}
       <motion.section
+        id="hero"
         style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
-        className="relative h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden"
+        className="relative h-[100dvh] w-full flex flex-col items-center justify-center overflow-hidden md:snap-start"
       >
         <video
           autoPlay
@@ -106,8 +126,11 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.5, delay: 0.2, ease: "easeOut" }}
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1] mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
-              Mais Trilha Menos Estresse.<br /> Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]">coragem que você nem sabia que existia</span>.
+            <h1 className="font-black tracking-tighter leading-[1.1] mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+              <span className="block text-2xl md:text-4xl lg:text-5xl md:whitespace-nowrap mb-2 md:mb-4 text-white/90">Mais Trilha Menos Estresse.</span>
+              <span className="block text-4xl md:text-6xl lg:text-7xl">
+                Descubra uma <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a03f]">coragem que você nem sabia que existia</span>.
+              </span>
             </h1>
           </motion.div>
 
@@ -130,19 +153,10 @@ export default function LandingPage() {
             <span className="relative z-10 flex items-center gap-2">Começar Aventura <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" /></span>
           </motion.button>
         </div>
-
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="absolute bottom-10 z-20 text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)] cursor-pointer hover:text-[#F17B37] transition-colors"
-          onClick={() => window.scrollTo({ top: typeof window !== 'undefined' ? window.innerHeight : 800, behavior: 'smooth' })}
-        >
-          <ChevronDown className="h-12 w-12 opacity-80" />
-        </motion.div>
       </motion.section>
 
       {/* 2. A HISTÓRIA (NÍVEA E AS FUNDADORAS) */}
-      <section className="py-16 md:py-24 px-6 relative z-20 bg-[#0F1722] overflow-hidden">
+      <section id="essencia" className="py-16 md:py-24 px-6 relative z-20 bg-[#0F1722] overflow-hidden md:snap-start">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#F17B37]/5 via-[#0F1722]/80 to-[#0F1722] z-0" />
 
         <div className="max-w-6xl mx-auto relative z-10">
@@ -269,7 +283,7 @@ export default function LandingPage() {
       </section>
 
       {/* 3. SEÇÃO "OLHARES" (CINEMATOGRÁFICO) */}
-      <section className="py-40 relative bg-black overflow-hidden flex flex-col items-center justify-center min-h-[90vh]">
+      <section id="olhares" className="py-40 relative bg-black overflow-hidden flex flex-col items-center justify-center min-h-[90vh] md:snap-start">
         <motion.div className="absolute inset-0 opacity-40" style={{ y: y3 }}>
           <Image src="/FotosEvideos/IMG_6341.webp" alt="Background Olhares" width={800} height={800} className="w-full h-[120%] object-cover blur-md scale-110" />
           <div className="absolute inset-0 bg-gradient-to-b from-black via-black/80 to-black" />
@@ -373,7 +387,7 @@ export default function LandingPage() {
       </section>
 
       {/* 4. GALERIA COMUNIDADE E PESSOAS ESPECIAIS (MASONRY REAL) */}
-      <section className="py-32 px-6 bg-[#0F1722] relative overflow-hidden">
+      <section id="comunidade" className="py-32 px-6 bg-[#0F1722] relative overflow-hidden md:snap-start min-h-screen flex flex-col justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-white/5 to-[#0F1722] z-0" />
 
         <div className="max-w-7xl mx-auto relative z-10">
@@ -440,7 +454,7 @@ export default function LandingPage() {
       </section>
 
       {/* 5. CALL TO ACTION & FOOTER */}
-      <section className="py-32 relative bg-gradient-to-t from-black to-[#0F1722] text-center px-6">
+      <section id="footer" className="py-32 relative bg-gradient-to-t from-black to-[#0F1722] text-center px-6 md:snap-start min-h-screen flex flex-col justify-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -506,6 +520,17 @@ export default function LandingPage() {
       >
         <ChevronDown className="w-6 h-6 md:w-8 md:h-8 rotate-180 group-hover:-translate-y-1 transition-transform" />
       </button>
+
+      {/* SMART SCROLL DOWN BUTTON */}
+      <motion.button 
+        animate={{ y: [0, 8, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+        onClick={scrollToNextSection}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-center text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)] hover:text-[#F17B37] transition-colors"
+        title="Próxima Seção"
+      >
+        <ChevronDown className="w-10 h-10 md:w-12 md:h-12 opacity-80" />
+      </motion.button>
     </div>
   );
 }

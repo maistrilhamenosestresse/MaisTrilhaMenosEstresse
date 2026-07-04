@@ -60,7 +60,7 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased md:snap-y md:snap-proximity`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col max-w-full overflow-x-hidden">
         
