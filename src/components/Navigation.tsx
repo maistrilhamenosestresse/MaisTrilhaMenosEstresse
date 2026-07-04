@@ -123,7 +123,7 @@ export function Navigation() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-[#0F1722]/95 backdrop-blur-xl flex flex-col items-center justify-center"
+            className="fixed inset-0 z-[110] bg-[#0F1722]/95 backdrop-blur-xl flex flex-col items-center justify-center"
           >
             <button 
               className="absolute top-6 right-6 text-white p-2 hover:bg-white/10 rounded-full transition-colors"
