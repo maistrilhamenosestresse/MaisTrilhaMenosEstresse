@@ -46,14 +46,16 @@ export async function POST(request: Request) {
       order_nsu 
     } = payloadInfo;
 
+    // Webhooks de PIX da InfinitePay podem não enviar o campo status explicitamente
     const isApprovedEvent = 
       (data.event && (data.event.includes('approve') || data.event.includes('paid'))) || 
       payloadInfo.status === 'approved' || 
-      payloadInfo.status === 'paid';
+      payloadInfo.status === 'paid' ||
+      (payloadInfo.capture_method === 'pix' && !!payloadInfo.receipt_url);
 
     // SECURITY: Validação estrita de pagamento integral (Impede fraude de pagamento parcial)
     // Exige que o valor pago seja igual ou maior que o valor cobrado na fatura.
-    const isFullyPaid = isApprovedEvent && paid_amount && amount && (Number(paid_amount) >= Number(amount));
+    const isFullyPaid = isApprovedEvent && paid_amount !== undefined && amount !== undefined && (Number(paid_amount) >= Number(amount));
 
     if (!isFullyPaid) {
       console.warn('Ignorando evento não finalizado ou com pagamento parcial/inválido:', data.event, payloadInfo.status, 'Pago:', paid_amount, 'Esperado:', amount);
