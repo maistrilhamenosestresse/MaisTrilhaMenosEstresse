@@ -7,7 +7,9 @@ import {
   Calendar, DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2, 
   CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation, 
   Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy
+} FileSignature, Trash2
 } from "lucide-react";
+import { PinModal } from "@/components/PinModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from 'recharts';
@@ -37,6 +39,33 @@ export default function AdminPage() {
   const [avaliacoesAdmin, setAvaliacoesAdmin] = useState<any[]>([]);
   const [printMode, setPrintMode] = useState<'todos' | 'van' | 'seguro'>('todos');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  const [selectedClients, setSelectedClients] = useState<string[]>([]);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinAction, setPinAction] = useState<{ name: string; onConfirm: () => void; onCancel: () => void } | null>(null);
+
+  const requirePin = async (actionName: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setPinAction({
+        name: actionName,
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false)
+      });
+      setIsPinModalOpen(true);
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!(await requirePin('Excluir ' + selectedClients.length + ' Clientes'))) return;
+    try {
+      const { error } = await supabase.from('clients').delete().in('id', selectedClients);
+      if (error) throw error;
+      setClients(clients.filter(c => !selectedClients.includes(c.id)));
+      setSelectedClients([]);
+      alert(selectedClients.length + ' clientes excluídos com sucesso!');
+    } catch (err: any) { alert('Erro ao excluir clientes.'); }
+  };
+
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -133,7 +162,8 @@ export default function AdminPage() {
   };
 
   
-  const generateWhatsAppVan = () => {
+  const generateWhatsAppVan = async () => {
+    if (!(await requirePin('Mensagem da Van'))) return;
     if (!selectedAgendaId) return;
     const agenda = agendas.find(a => a.id === selectedAgendaId);
     let text = `🚐 *LISTA DE EMBARQUE - ${agenda?.title.toUpperCase()}*\n📅 Data: ${formatDateDisplay(agenda?.date || '')}\n\n`;
@@ -146,7 +176,8 @@ export default function AdminPage() {
     alert("Lista de Van copiada para o WhatsApp!");
   };
 
-  const generateWhatsAppSeguro = () => {
+  const generateWhatsAppSeguro = async () => {
+    if (!(await requirePin('Mensagem de Seguro'))) return;
     if (!selectedAgendaId) return;
     const agenda = agendas.find(a => a.id === selectedAgendaId);
     let text = `🛡️ *LISTA PARA SEGURO - ${agenda?.title.toUpperCase()}*\n📅 Data: ${formatDateDisplay(agenda?.date || '')}\n\n`;
@@ -159,7 +190,8 @@ export default function AdminPage() {
     alert("Lista de Seguro copiada para o WhatsApp!");
   };
 
-  const handlePrint = (mode: 'todos' | 'van' | 'seguro') => {
+  const handlePrint = async (mode: 'todos' | 'van' | 'seguro') => {
+    if (!(await requirePin('Impressão de Listas'))) return;
     setPrintMode(mode);
     setTimeout(() => {
       window.print();
@@ -305,6 +337,7 @@ export default function AdminPage() {
   };
 
   const handleToggleMaintenance = async () => {
+    if (!(await requirePin('Pausar/Ativar Site'))) return;
     setIsTogglingMaintenance(true);
     try {
       const { error } = await supabase.from('settings').update({ maintenance_mode: !isMaintenance }).eq('id', 1);
@@ -338,6 +371,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteClient = async (id: string) => {
+    if (!(await requirePin('Excluir Cliente'))) return;
     if (!window.confirm("Tem certeza que deseja excluir este cliente permanentemente?")) return;
     try {
       await supabase.from('clients').delete().eq('id', id);
@@ -453,6 +487,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteCusto = async (id: string) => {
+    if (!(await requirePin('Excluir Custo'))) return;
     try {
       await supabase.from('trilha_custos').delete().eq('id', id);
       setCustos(custos.filter(c => c.id !== id));
@@ -480,6 +515,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteReserva = async (id: string) => {
+    if (!(await requirePin('Excluir Reserva'))) return;
     if (!window.confirm("Remover este passageiro da trilha?")) return;
     try {
       await supabase.from('reservas').delete().eq('id', id);
@@ -1234,6 +1270,17 @@ export default function AdminPage() {
                               </button>
                             </div>
                           </div>
+                          
+                          {/* Card Contratos */}
+                          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 shadow-sm mt-4">
+                            <h4 className="font-bold text-orange-900 text-lg flex items-center gap-2 mb-2"><FileSignature className="h-5 w-5" /> Lista de Contratos</h4>
+                            <p className="text-xs text-orange-700 mb-4">Gerencie as assinaturas digitais e baixe os contratos dos passageiros.</p>
+                            <div className="flex gap-2">
+                              <a href={`/admin/contratos?agendaId=${selectedAgendaId}`} className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-orange-700 transition shadow-sm">
+                                <ExternalLink className="h-4 w-4"/> Abrir Painel de Contratos
+                              </a>
+                            </div>
+                          </div>
                         </div>
 
 
@@ -1762,6 +1809,7 @@ export default function AdminPage() {
             )}
           </AnimatePresence>
         </div>
+        <PinModal isOpen={isPinModalOpen} onClose={() => { setIsPinModalOpen(false); if(pinAction) pinAction.onCancel(); }} onSuccess={() => { if(pinAction) pinAction.onConfirm(); }} actionName={pinAction?.name} />
       </main>
 
       {/* 3. BOTÃO FLUTUANTE (FAB) PARA NOVA TRILHA */}
