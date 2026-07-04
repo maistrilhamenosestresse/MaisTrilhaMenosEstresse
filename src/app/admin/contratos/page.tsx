@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, Printer, FileDown, ShieldCheck } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
 import { toast } from "sonner";
 
-export default function ContratosAdminPage() {
+function ContratosContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const agendaId = searchParams?.get('agendaId');
@@ -252,6 +252,14 @@ export default function ContratosAdminPage() {
         actionName={pinAction?.name} 
       />
     </main>
+  );
+}
+
+export default function ContratosAdminPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">Carregando Painel...</div>}>
+      <ContratosContent />
+    </Suspense>
   );
 }
 
