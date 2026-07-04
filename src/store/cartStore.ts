@@ -13,6 +13,7 @@ export interface CartItem {
   date: string;
   quantity: number;
   dependents: Dependent[];
+  availableSpots: number;
 }
 
 interface CartState {
@@ -34,7 +35,7 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           const existingItem = state.items.find((i) => i.agendaId === item.agendaId);
           if (existingItem) {
-            const newQuantity = existingItem.quantity + item.quantity;
+            const newQuantity = Math.min(existingItem.quantity + item.quantity, existingItem.availableSpots);
             // Pad dependents array with empty objects if quantity increases
             const currentDependents = [...(existingItem.dependents || [])];
             while (currentDependents.length < newQuantity - 1) {
@@ -63,10 +64,11 @@ export const useCartStore = create<CartState>()(
           items: state.items.filter((i) => i.agendaId !== agendaId),
         }));
       },
-      updateQuantity: (agendaId, quantity) => {
+      updateQuantity: (agendaId, requestedQuantity) => {
         set((state) => ({
           items: state.items.map((i) => {
             if (i.agendaId === agendaId) {
+              const quantity = Math.min(requestedQuantity, i.availableSpots);
               const currentDependents = [...(i.dependents || [])];
               // Adjust dependents array to match new quantity
               if (quantity > i.quantity) {

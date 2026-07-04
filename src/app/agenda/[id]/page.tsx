@@ -106,7 +106,8 @@ export default function AgendaDetailsPage() {
       price: agenda.price,
       date: eventDate,
       quantity: 1,
-      dependents: []
+      dependents: [],
+      availableSpots: remaining
     });
     router.push('/carrinho');
   };
