@@ -25,7 +25,7 @@ export default function LandingPage() {
   const [sparks, setSparks] = useState<any[]>([]);
 
   // Lógica para a seta de scroll global inteligente
-  const sections = ['hero', 'essencia', 'olhares', 'comunidade', 'footer'];
+  const sections = ['hero', 'essencia-1', 'essencia-2', 'essencia-3', 'olhares', 'comunidade', 'footer'];
   const scrollToNextSection = () => {
     if (typeof window === 'undefined') return;
     const scrollPosition = window.scrollY;
@@ -33,10 +33,11 @@ export default function LandingPage() {
     for (let i = 0; i < sections.length; i++) {
       const el = document.getElementById(sections[i]);
       if (el) {
-        const top = el.offsetTop;
+        // Calcula a posição absoluta da seção (funciona mesmo com parents 'relative')
+        const absoluteTop = el.getBoundingClientRect().top + scrollPosition;
         // Pula para a próxima seção que está pelo menos 100px abaixo da posição atual
-        if (top > scrollPosition + 100) {
-          window.scrollTo({ top, behavior: 'smooth' });
+        if (absoluteTop > scrollPosition + 100) {
+          window.scrollTo({ top: absoluteTop, behavior: 'smooth' });
           break;
         }
       }
@@ -170,7 +171,7 @@ export default function LandingPage() {
           </motion.div>
 
           {/* Intro Nivea */}
-          <div className="flex flex-col md:flex-row gap-12 md:gap-16 items-center mb-20">
+          <div id="essencia-1" className="flex flex-col md:flex-row gap-12 md:gap-16 items-center mb-20">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -205,6 +206,7 @@ export default function LandingPage() {
 
           {/* O Despertar (Bandeira) */}
           <motion.div
+            id="essencia-2"
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -228,7 +230,7 @@ export default function LandingPage() {
           </motion.div>
 
           {/* As Fundadoras */}
-          <div className="flex flex-col md:flex-row-reverse gap-16 md:gap-24 items-center">
+          <div id="essencia-3" className="flex flex-col md:flex-row-reverse gap-16 md:gap-24 items-center">
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -237,7 +239,7 @@ export default function LandingPage() {
               className="flex-1 space-y-6"
             >
               <p className="text-2xl leading-relaxed text-gray-300 font-light">
-                Decidi convidar meu tio para refazer uma trilha muito especial: a Cachoeira do Tabuleiro. Ele não pôde ir, então decidi ir sozinha. Ou pelo menos, essa era a ideia.
+                Tive a ideia de convidar meu tio para refazer uma trilha muito especial: a Cachoeira do Tabuleiro. Ele não pôde ir, então decidi ir sozinha. Ou pelo menos, essa era a ideia.
               </p>
               <p className="text-xl leading-relaxed text-gray-400 font-light">
                 Contei para uma amiga, que chamou outra, e de repente minha mãe e minha tia Juma também estavam dentro. Lá estávamos nós: <strong className="text-white font-medium">cinco mulheres</strong> de madrugada, dentro de um carro, prontas para viver algo que mudaria tudo.
