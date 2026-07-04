@@ -99,8 +99,6 @@ export default function LandingPage() {
   return (
     <div className="bg-[#0F1722] text-white min-h-screen overflow-x-hidden font-sans selection:bg-[#F17B37] selection:text-white">
 
-      {/* NAVEGAÇÃO GLOBAL */}
-      <Navigation />
 
       {/* 1. HERO SECTION */}
       <motion.section

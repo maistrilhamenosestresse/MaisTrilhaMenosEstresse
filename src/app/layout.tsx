@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import VisualEditorBridge from "@/components/VisualEditorBridge";
+import { Navigation } from "@/components/Navigation";
 import { Toaster } from "sonner";
 import Script from "next/script";
 
@@ -114,6 +115,7 @@ export default function RootLayout({
           }}
         />
 
+        <Navigation />
         {children}
         <script
           dangerouslySetInnerHTML={{
