@@ -170,10 +170,10 @@ function CheckoutAuthContent() {
               let epId;
               const { data: existingEp } = await supabase.from('clients').select('*').eq('cpf', dep.cpf).single();
               if (existingEp) {
-                 const { data: updatedEp } = await supabase.from('clients').update({ full_name: dep.name }).eq('id', existingEp.id).select();
+                 const { data: updatedEp } = await supabase.from('clients').update({ full_name: dep.name, phone: dep.phone }).eq('id', existingEp.id).select();
                  epId = updatedEp![0].id;
               } else {
-                 const { data: insertedEp } = await supabase.from('clients').insert([{ full_name: dep.name, cpf: dep.cpf }]).select();
+                 const { data: insertedEp } = await supabase.from('clients').insert([{ full_name: dep.name, cpf: dep.cpf, phone: dep.phone }]).select();
                  epId = insertedEp![0].id;
               }
               allReservationsToCreate.push({ client_id: epId, agenda_id: item.agendaId });

@@ -47,8 +47,22 @@ export default function CarrinhoPage() {
     return v;
   };
 
+  const formatPhone = (v: string) => {
+    v = v.replace(/\D/g, "");
+    if (v.length <= 11) {
+      v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+      v = v.replace(/(\d)(\d{4})$/, "$1-$2");
+    }
+    return v;
+  };
+
+  const handlePhoneChange = (agendaId: string, idx: number, val: string) => {
+    const formatted = formatPhone(val);
+    updateDependent(agendaId, idx, 'phone', formatted);
+  };
+
   const hasMissingDependents = items.some(item => 
-    item.quantity > 1 && item.dependents?.some(dep => !dep.name || dep.cpf.length < 14)
+    item.quantity > 1 && item.dependents?.some(dep => !dep.name || dep.cpf.length < 14 || !dep.phone || dep.phone.length < 14)
   );
 
   return (
@@ -162,6 +176,17 @@ export default function CarrinhoPage() {
                             <Loader2 className="absolute right-3 top-9 h-4 w-4 animate-spin text-[#F17B37]" />
                           )}
                         </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-bold text-gray-400 mb-1">WhatsApp (Acompanhante {idx + 1})</label>
+                          <input 
+                            type="text" 
+                            value={dep.phone || ''}
+                            maxLength={15}
+                            onChange={(e) => handlePhoneChange(item.agendaId, idx, e.target.value)}
+                            placeholder="(00) 00000-0000"
+                            className="w-full p-3 bg-white/5 border border-white/10 rounded-xl focus:ring-2 focus:ring-[#F17B37] outline-none text-sm transition"
+                          />
+                        </div>
                       </div>
                     ))}
                     <div className="mt-2 text-xs text-[#F17B37] font-medium bg-[#F17B37]/10 p-3 rounded-lg border border-[#F17B37]/20">
@@ -196,7 +221,7 @@ export default function CarrinhoPage() {
               </div>
               {hasMissingDependents && (
                 <p className="text-red-400 text-xs text-center mt-3 font-bold">
-                  Preencha o Nome e CPF de todos os acompanhantes para continuar.
+                  Preencha o Nome, CPF e WhatsApp de todos os acompanhantes para continuar.
                 </p>
               )}
             </div>

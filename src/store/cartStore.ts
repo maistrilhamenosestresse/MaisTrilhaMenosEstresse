@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 export interface Dependent {
   name: string;
   cpf: string;
+  phone?: string;
 }
 
 export interface CartItem {
@@ -21,7 +22,7 @@ interface CartState {
   addItem: (item: CartItem) => void;
   removeItem: (agendaId: string) => void;
   updateQuantity: (agendaId: string, quantity: number) => void;
-  updateDependent: (agendaId: string, dependentIndex: number, field: 'name' | 'cpf', value: string) => void;
+  updateDependent: (agendaId: string, dependentIndex: number, field: 'name' | 'cpf' | 'phone', value: string) => void;
   clearCart: () => void;
   getTotalQuantity: () => number;
   getTotalPrice: () => number;
@@ -39,7 +40,7 @@ export const useCartStore = create<CartState>()(
             // Pad dependents array with empty objects if quantity increases
             const currentDependents = [...(existingItem.dependents || [])];
             while (currentDependents.length < newQuantity - 1) {
-              currentDependents.push({ name: '', cpf: '' });
+              currentDependents.push({ name: '', cpf: '', phone: '' });
             }
             return {
               items: state.items.map((i) =>
@@ -53,7 +54,7 @@ export const useCartStore = create<CartState>()(
           // Ensure new item has correct number of dependents
           const initialDependents = item.dependents || [];
           while (initialDependents.length < item.quantity - 1) {
-            initialDependents.push({ name: '', cpf: '' });
+            initialDependents.push({ name: '', cpf: '', phone: '' });
           }
           
           return { items: [...state.items, { ...item, dependents: initialDependents }] };
@@ -73,7 +74,7 @@ export const useCartStore = create<CartState>()(
               // Adjust dependents array to match new quantity
               if (quantity > i.quantity) {
                 while (currentDependents.length < quantity - 1) {
-                  currentDependents.push({ name: '', cpf: '' });
+                  currentDependents.push({ name: '', cpf: '', phone: '' });
                 }
               } else if (quantity < i.quantity) {
                 currentDependents.splice(Math.max(0, quantity - 1));

@@ -46,12 +46,12 @@ export default function ContratosAdminPage() {
   const handleManualSign = async (client: any) => {
     try {
       const { error } = await supabase.from('clients').update({ 
-        contract_signature: 'ASSINATURA MANUAL - ' + new Date().toISOString() 
+        signature_url: 'ASSINATURA MANUAL - ' + new Date().toISOString() 
       }).eq('id', client.id);
       
       if (error) throw error;
       
-      setClients(clients.map(c => c.id === client.id ? { ...c, contract_signature: 'ASSINATURA MANUAL - ' + new Date().toISOString() } : c));
+      setClients(clients.map(c => c.id === client.id ? { ...c, signature_url: 'ASSINATURA MANUAL - ' + new Date().toISOString() } : c));
       toast.success(`Contrato de ${client.full_name} marcado como assinado manualmente!`);
     } catch (err) {
       toast.error('Erro ao marcar contrato como assinado.');
@@ -88,8 +88,8 @@ export default function ContratosAdminPage() {
     (c.cpf && c.cpf.includes(searchTerm))
   );
 
-  const clientsSigned = clients.filter(c => c.contract_signature);
-  const clientsPending = clients.filter(c => !c.contract_signature);
+  const clientsSigned = clients.filter(c => c.signature_url);
+  const clientsPending = clients.filter(c => !c.signature_url);
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">Carregando Contratos...</div>;
@@ -178,7 +178,7 @@ export default function ContratosAdminPage() {
                   <p className="text-xs text-gray-500 font-mono">{client.cpf}</p>
                 </div>
                 
-                {client.contract_signature ? (
+                {client.signature_url ? (
                   <div className="bg-emerald-50 text-emerald-600 p-2 rounded-full" title="Assinado">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
@@ -190,7 +190,7 @@ export default function ContratosAdminPage() {
               </div>
 
               <div className="flex gap-2 mt-2 border-t border-gray-100 pt-4">
-                {client.contract_signature ? (
+                {client.signature_url ? (
                   <>
                     <button 
                       onClick={() => requirePin('Ver Contrato de ' + client.full_name, () => setSelectedClientForModal(client))}
@@ -335,16 +335,16 @@ function ContractContent({ client }: { client: any }) {
 
       <div className="mt-12 flex flex-col items-center border-t-2 border-dashed border-gray-300 pt-8">
         <p className="mb-8 font-bold text-gray-500 uppercase tracking-wider text-xs">ASSINATURA DIGITAL DO CONTRATANTE</p>
-        {client.contract_signature ? (
-          <img src={client.contract_signature} alt="Assinatura" className="h-32 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        {client.signature_url ? (
+          <img src={client.signature_url} alt="Assinatura" className="h-32 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         ) : (
           <div className="h-32 flex items-center justify-center text-red-500 font-bold border-2 border-red-200 border-dashed w-full max-w-sm rounded-xl bg-red-50">
             NÃO ASSINADO
           </div>
         )}
         {/* Caso a string da assinatura não seja uma URL de imagem mas um texto manual de baixa */}
-        {client.contract_signature && client.contract_signature.startsWith('ASSINATURA MANUAL') && (
-           <p className="text-emerald-600 font-bold bg-emerald-50 px-4 py-2 rounded-xl mb-4">{client.contract_signature}</p>
+        {client.signature_url && client.signature_url.startsWith('ASSINATURA MANUAL') && (
+           <p className="text-emerald-600 font-bold bg-emerald-50 px-4 py-2 rounded-xl mb-4">{client.signature_url}</p>
         )}
         <div className="w-80 h-px bg-black mt-2 mb-2"></div>
         <p className="font-bold">{client.full_name}</p>
