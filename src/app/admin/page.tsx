@@ -391,7 +391,7 @@ export default function AdminPage() {
       if (error) throw error;
       setClients(clients.filter(c => !selectedClients.includes(c.id)));
       setSelectedClients([]);
-      toast.success(`${selectedClients.length} clientes excluídos com sucesso!`);
+      alert(`${selectedClients.length} clientes excluídos com sucesso!`);
     } catch (err: any) { alert("Erro ao excluir clientes em massa."); }
   };
 
