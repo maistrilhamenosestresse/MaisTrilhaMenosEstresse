@@ -194,11 +194,18 @@ export default function BolaoPage() {
             <div className="max-h-60 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
               {apostas.map((ap, i) => (
                 <div key={i} className="flex justify-between items-center bg-white/90 p-3 rounded-xl shadow-sm">
-                  <span className="font-medium text-gray-800 truncate max-w-[120px]">{ap.nome.split(' ')[0]}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-gray-800 truncate max-w-[120px]">{ap.nome.split(' ')[0]}</span>
+                    {ap.created_at && (
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(ap.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {new Date(ap.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 font-black bg-gray-100 px-3 py-1 rounded-lg">
                     <span className="text-green-600">{ap.placar_brasil}</span>
                     <span className="text-gray-400 text-xs">x</span>
-                    <span className="text-blue-600">{ap.placar_rival}</span>
+                    <span className="text-red-600">{ap.placar_rival}</span>
                   </div>
                 </div>
               ))}
