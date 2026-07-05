@@ -52,10 +52,10 @@ export async function POST(request: Request) {
       payloadInfo.status === 'approved' || 
       payloadInfo.status === 'paid' ||
       payloadInfo.status === 'authorized' ||
-      (payloadInfo.capture_method === 'pix' && !!payloadInfo.receipt_url);
+      !!payloadInfo.receipt_url;
 
     if (!isApprovedEvent) {
-      console.warn('Ignorando evento não finalizado ou com pagamento parcial/inválido:', data.event, payloadInfo.status);
+      console.warn('Ignorando evento não finalizado ou com pagamento parcial/inválido:', data.event, payloadInfo.status, payloadInfo.capture_method);
       return NextResponse.json({ success: true, message: 'Evento ignorado (pendente ou parcial)' }, { status: 200 });
     }
 
