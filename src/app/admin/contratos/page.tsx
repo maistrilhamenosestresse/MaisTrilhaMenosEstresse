@@ -120,21 +120,21 @@ export default function ContratosAdminPage() {
   };
 
   const generateContractHTML = (client: any) => {
-    let signatureHTML = \`
+    let signatureHTML = `
       <div style="height: 100px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #ef4444; border: 2px dashed #fca5a5; background: #fef2f2; border-radius: 8px; width: 300px; margin: 0 auto 10px auto;">
         NÃO ASSINADO
       </div>
-    \`;
+    `;
 
     if (client.signature_url) {
       if (client.signature_url.startsWith('ASSINATURA MANUAL')) {
-        signatureHTML = \`<div class="manual-sig">\${client.signature_url}</div>\`;
+        signatureHTML = `<div class="manual-sig">${client.signature_url}</div>`;
       } else {
-        signatureHTML = \`<img src="\${client.signature_url}" class="signature-image" alt="Assinatura" />\`;
+        signatureHTML = `<img src="${client.signature_url}" class="signature-image" alt="Assinatura" />`;
       }
     }
 
-    return \`
+    return `
       <div class="contract-container">
         <div class="header">
           <h1>TERMO DE RESPONSABILIDADE E CONTRATO GERAL</h1>
@@ -144,11 +144,11 @@ export default function ContratosAdminPage() {
         <p style="margin-bottom: 15px;">Pelo presente instrumento particular, de um lado, <strong>MAIS TRILHA MENOS ESTRESSE</strong>, empresa prestadora de serviços turísticos, e de outro lado:</p>
 
         <div class="client-box">
-          <p><strong>NOME DO CONTRATANTE:</strong> \${client.full_name}</p>
-          <p><strong>CPF:</strong> \${client.cpf} &nbsp;&nbsp;&nbsp; <strong>RG:</strong> \${client.rg || 'Não informado'}</p>
-          <p><strong>DATA DE NASCIMENTO:</strong> \${client.birth_date ? new Date(client.birth_date).toLocaleDateString('pt-BR') : 'Não informado'} (\${getAge(client.birth_date)} anos)</p>
-          <p><strong>CONTATO:</strong> \${client.phone}</p>
-          <p><strong>CONTATO DE EMERGÊNCIA:</strong> \${client.emergency_contact_phone || 'Não informado'}</p>
+          <p><strong>NOME DO CONTRATANTE:</strong> ${client.full_name}</p>
+          <p><strong>CPF:</strong> ${client.cpf} &nbsp;&nbsp;&nbsp; <strong>RG:</strong> ${client.rg || 'Não informado'}</p>
+          <p><strong>DATA DE NASCIMENTO:</strong> ${client.birth_date ? new Date(client.birth_date).toLocaleDateString('pt-BR') : 'Não informado'} (${getAge(client.birth_date)} anos)</p>
+          <p><strong>CONTATO:</strong> ${client.phone}</p>
+          <p><strong>CONTATO DE EMERGÊNCIA:</strong> ${client.emergency_contact_phone || 'Não informado'}</p>
         </div>
 
         <p style="margin-bottom: 15px;">Têm justo e contratado o presente, que se regerá pelas seguintes cláusulas e condições descritas abaixo para qualquer viagem, trilha ou evento fornecido pela Agência.</p>
@@ -170,14 +170,14 @@ export default function ContratosAdminPage() {
 
         <div class="signature-area">
           <p style="font-size: 10px; color: #888; font-weight: bold; margin-bottom: 15px;">ASSINATURA DIGITAL DO CONTRATANTE</p>
-          \${signatureHTML}
+          ${signatureHTML}
           <div class="line"></div>
-          <p style="font-weight: bold; margin-top: 5px;">\${client.full_name}</p>
-          <p style="font-size: 12px; color: #666; margin-top: 2px;">CPF: \${client.cpf}</p>
+          <p style="font-weight: bold; margin-top: 5px;">${client.full_name}</p>
+          <p style="font-size: 12px; color: #666; margin-top: 2px;">CPF: ${client.cpf}</p>
           <p class="footer-text">Documento validado eletronicamente na plataforma Mais Trilha Menos Estresse.<br/>Tem validade jurídica conforme MP nº 2.200-2/2001 e Código Civil Brasileiro.</p>
         </div>
       </div>
-    \`;
+    `;
   };
 
   const handlePrintAll = async () => {
@@ -189,9 +189,9 @@ export default function ContratosAdminPage() {
     }
 
     const fullHTML = signedClients.map((client, idx) => 
-      \`<div class="\${idx !== signedClients.length - 1 ? 'page-break' : ''}">
-        \${generateContractHTML(client)}
-      </div>\`
+      `<div class="${idx !== signedClients.length - 1 ? 'page-break' : ''}">
+        ${generateContractHTML(client)}
+      </div>`
     ).join('');
 
     executePrintWindow(fullHTML, "Todos os Contratos Assinados");
@@ -199,7 +199,7 @@ export default function ContratosAdminPage() {
 
   const handlePrintSingle = async (client: any) => {
     const html = generateContractHTML(client);
-    executePrintWindow(html, \`Contrato - \${client.full_name}\`);
+    executePrintWindow(html, `Contrato - ${client.full_name}`);
   };
   
   const handleViewContract = async (client: any) => {
