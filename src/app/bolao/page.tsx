@@ -13,7 +13,7 @@ export default function BolaoPage() {
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [apostas, setApostas] = useState<any[]>([]);
 
-  const rivalName = "Uruguai"; // Hoje é Brasil x Uruguai
+  const rivalName = "Noruega"; // Hoje é Brasil x Noruega
 
   const loadApostas = async () => {
     try {
@@ -80,13 +80,13 @@ export default function BolaoPage() {
 
       {/* Header */}
       <div className="w-full pt-8 pb-6 px-4 text-center">
-        <div className="inline-flex items-center justify-center p-3 bg-white/20 rounded-full mb-3 backdrop-blur-sm border border-white/30">
-          <Trophy className="w-8 h-8 text-yellow-300" />
+        <div className="inline-flex items-center justify-center bg-white/90 rounded-full mb-3 shadow-lg border border-white/50 p-2">
+          <img src="/logo_copa.png" alt="Mais Trilha Copa" className="h-20 w-auto rounded-full object-contain" />
         </div>
         <h1 className="text-3xl font-black text-white uppercase tracking-wider drop-shadow-md">
           Bolão Mais Trilhas
         </h1>
-        <p className="text-white/90 mt-2 font-medium">Adivinhe o placar e ganhe prêmios!</p>
+        <p className="text-white/90 mt-2 font-medium text-lg drop-shadow-sm">Adivinhe o placar e ganhe prêmios!</p>
       </div>
 
       {/* Main Card */}
@@ -146,7 +146,7 @@ export default function BolaoPage() {
 
                 {/* Rival */}
                 <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 bg-blue-500 rounded-full border-4 border-white flex items-center justify-center shadow-md">
+                  <div className="w-14 h-14 bg-red-600 rounded-full border-4 border-white flex items-center justify-center shadow-md">
                     <span className="text-xl font-bold text-white">{rivalName.substring(0,2).toUpperCase()}</span>
                   </div>
                   <span className="font-bold text-gray-800">{rivalName}</span>
@@ -155,7 +155,7 @@ export default function BolaoPage() {
                     min="0"
                     max="15"
                     required
-                    className="w-16 text-center text-2xl font-black py-2 bg-gray-100 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-16 text-center text-2xl font-black py-2 bg-gray-100 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none"
                     value={placarRival}
                     onChange={(e) => setPlacarRival(e.target.value ? parseInt(e.target.value) : "")}
                   />
