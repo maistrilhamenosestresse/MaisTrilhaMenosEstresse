@@ -14,6 +14,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
     }
 
+    // 0. Checa se a pessoa já apostou pelo whatsapp
+    const { data: existingUser } = await supabase
+      .from('bolao_apostas')
+      .select('placar_brasil, placar_rival')
+      .eq('whatsapp', whatsapp)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingUser) {
+      return NextResponse.json({ 
+        error: `Você já registrou um palpite (${existingUser.placar_brasil} x ${existingUser.placar_rival})! É permitida apenas uma aposta por WhatsApp.`
+      }, { status: 400 });
+    }
+
     // 1. Checa se o placar já existe
     const { data: existingBet, error: checkError } = await supabase
       .from('bolao_apostas')
