@@ -97,7 +97,7 @@ export function Navigation() {
 
 
           {/* Cart Icon & Comprar Button */}
-          {!pathname?.startsWith('/carrinho') && !pathname?.startsWith('/checkout') && (
+          {!pathname?.startsWith('/carrinho') && !pathname?.startsWith('/checkout') && !pathname?.startsWith('/bolao') && (
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => router.push('/carrinho')}
