@@ -13,8 +13,8 @@ export default function AvaliacoesPage() {
   const [rating, setRating] = useState(5);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [name, setName] = useState("");
+  const [trailName, setTrailName] = useState("");
   const [comment, setComment] = useState("");
-  const [agendaId, setAgendaId] = useState("");
   
   const [agendas, setAgendas] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
@@ -59,10 +59,9 @@ export default function AvaliacoesPage() {
     
     try {
       const { error } = await supabase.from('avaliacoes').insert([{
-        name,
-        rating,
-        comment,
-        agenda_id: agendaId || null,
+        name: name,
+        rating: rating,
+        comment: trailName.trim() ? `[Trilha: ${trailName}]\n${comment}` : comment,
         approved: false // Vai pro painel admin
       }]);
 
@@ -109,7 +108,7 @@ export default function AvaliacoesPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-10 pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
 
-      <header className="pt-24 pb-12 px-6 max-w-7xl mx-auto relative z-10 text-center">
+      <header className="pt-36 pb-12 px-6 max-w-7xl mx-auto relative z-10 text-center">
         <motion.div 
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -265,21 +264,13 @@ export default function AvaliacoesPage() {
                   
                   <div>
                     <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Qual trilha você fez?</label>
-                    <select
-                      value={agendaId}
-                      onChange={(e) => setAgendaId(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#F17B37] transition-colors appearance-none"
-                    >
-                      <option value="">Selecione a Trilha (Opcional)</option>
-                      {agendas.map(agenda => {
-                        const date = new Date(agenda.date + 'T12:00:00Z').toLocaleDateString('pt-BR');
-                        return (
-                          <option key={agenda.id} value={agenda.id}>
-                            {agenda.title} - {date}
-                          </option>
-                        );
-                      })}
-                    </select>
+                    <input
+                      type="text"
+                      placeholder="Ex: Pico da Bandeira"
+                      value={trailName}
+                      onChange={(e) => setTrailName(e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#F17B37] transition-colors"
+                    />
                   </div>
 
                   <div>

@@ -433,7 +433,7 @@ export default function LandingPage() {
                     alt={`Comunidade Foto ${idx + 1}`} 
                     width={800} 
                     height={800} 
-                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </motion.div>
@@ -478,21 +478,15 @@ export default function LandingPage() {
 
           <motion.div className="mt-24 pt-10 border-t border-white/10 flex flex-col items-center gap-8 text-gray-400">
             
-            {/* AVISO DE COPYRIGHT */}
-            <div className="text-sm md:text-base text-center">
-              &copy; {new Date().getFullYear()} MaisTrilhaMenosEstresse. Todos os direitos reservados. <br className="md:hidden" />
-              <a href="/termos-de-uso" className="text-[#F17B37] hover:underline font-bold transition-colors">Clique aqui</a> para ler os Termos de Uso e Direitos Autorais.
-            </div>
-
-            <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
               <div className="flex flex-col items-center md:items-start gap-2">
                 <div className="flex items-center gap-3">
-                  {/* AQUI ESTÁ O TRUQUE DE CSS: mix-blend-screen com contraste tira o fundo da JPG! */}
+                  {/* AQUI ESTÁ O TRUQUE DE CSS: mix-blend-lighten com alto contraste tenta mesclar o fundo escuro do JPG com o fundo preto da página */}
                   <img 
                     src="/FotosEvideos/logo/rodape.JPG" 
                     alt="Montanhas Mais Trilha" 
-                    className="h-12 w-auto mix-blend-screen"
-                    style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
+                    className="h-12 w-auto mix-blend-lighten rounded-lg"
+                    style={{ filter: 'contrast(2) brightness(0.9)' }} 
                   />
                   <span className="font-bold text-lg text-white">Mais Trilha Menos Estresse</span>
                 </div>
@@ -512,9 +506,10 @@ export default function LandingPage() {
               </div>
             </div>
             
-            {/* DIREITOS AUTORAIS */}
-            <div className="mt-12 text-center text-sm text-gray-500 opacity-60 flex flex-col items-center gap-4">
-              <p>© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
+            {/* AVISO DE COPYRIGHT */}
+            <div className="mt-8 text-center text-sm text-gray-500 opacity-80 flex flex-col items-center gap-2">
+              <p>&copy; {new Date().getFullYear()} Mais Trilha Menos Estresse. Todos os direitos reservados.</p>
+              <p><a href="/termos-de-uso" className="text-[#F17B37] hover:underline font-bold transition-colors">Clique aqui</a> para ler os Termos de Uso e Direitos Autorais.</p>
             </div>
           </motion.div>
         </motion.div>
