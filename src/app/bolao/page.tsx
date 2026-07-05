@@ -81,7 +81,7 @@ export default function BolaoPage() {
       {/* Header */}
       <div className="w-full pt-8 pb-6 px-4 text-center">
         <div className="inline-flex items-center justify-center bg-white/90 rounded-full mb-3 shadow-lg border border-white/50 p-2">
-          <img src="/logo_copa.png" alt="Mais Trilha Copa" className="h-20 w-auto rounded-full object-contain" />
+          <img src="/images/LogoDoBrasilMaisTrilhas.PNG" alt="Mais Trilha Copa" className="h-20 w-auto rounded-full object-contain" />
         </div>
         <h1 className="text-3xl font-black text-white uppercase tracking-wider drop-shadow-md">
           Bolão Mais Trilhas
@@ -127,8 +127,8 @@ export default function BolaoPage() {
               <div className="flex items-center justify-between gap-2">
                 {/* Brasil */}
                 <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 bg-green-500 rounded-full border-4 border-yellow-400 flex items-center justify-center shadow-md">
-                    <span className="text-xl font-bold text-white">BR</span>
+                  <div className="w-14 h-14 rounded-full border-4 border-yellow-400 flex items-center justify-center shadow-md overflow-hidden">
+                    <img src="/images/Brasil.png" alt="Brasil" className="w-full h-full object-cover" />
                   </div>
                   <span className="font-bold text-gray-800">Brasil</span>
                   <input
@@ -146,8 +146,8 @@ export default function BolaoPage() {
 
                 {/* Rival */}
                 <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 bg-red-600 rounded-full border-4 border-white flex items-center justify-center shadow-md">
-                    <span className="text-xl font-bold text-white">{rivalName.substring(0,2).toUpperCase()}</span>
+                  <div className="w-14 h-14 rounded-full border-4 border-white flex items-center justify-center shadow-md overflow-hidden">
+                    <img src="/images/Noruega.jpg" alt="Noruega" className="w-full h-full object-cover" />
                   </div>
                   <span className="font-bold text-gray-800">{rivalName}</span>
                   <input
