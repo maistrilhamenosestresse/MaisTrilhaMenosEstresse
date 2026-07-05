@@ -62,6 +62,21 @@ function ContratosContent() {
     fetchData();
   }, [agendaId, router]);
 
+  const handleManualSign = async (client: any) => {
+    try {
+      const { error } = await supabase.from('clients').update({ 
+        contract_signature: 'ASSINATURA MANUAL - ' + new Date().toISOString() 
+      }).eq('id', client.id);
+      
+      if (error) throw error;
+      
+      setClients(clients.map(c => c.id === client.id ? { ...c, contract_signature: 'ASSINATURA MANUAL - ' + new Date().toISOString() } : c));
+      toast.success(`Contrato de ${client.full_name} marcado como assinado manualmente!`);
+    } catch (err) {
+      toast.error('Erro ao marcar contrato como assinado.');
+    }
+  };
+
   const handleCobrarWhatsApp = (client: any) => {
     const link = `https://www.maistrilhasmenosestresse.com/cadastro?cpf=${client.cpf.replace(/[^0-9]/g, '')}`;
     const text = `Oi ${client.full_name.split(' ')[0]}, vi que você já garantiu sua vaga para a trilha *${agenda?.title}*, mas falta você preencher o seguro e *assinar o contrato digital*!\n\nPor favor, acesse o link abaixo para regularizar rapidinho (leva menos de 1 minuto): 👇\n${link}`;
@@ -137,11 +152,18 @@ function ContratosContent() {
 
       {/* CLIENTS LIST */}
       <div className="max-w-4xl mx-auto px-6 mt-12 print:hidden">
-        <h3 className="text-lg font-black text-gray-900 mb-6">Lista de Passageiros</h3>
+        <h3 className="text-lg font-black text-gray-900 mb-6">Lista de Passageiros ({clients.length})</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {clients.map(client => (
-            <div key={client.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+        {clients.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm flex flex-col items-center justify-center">
+            <XCircle className="w-16 h-16 text-gray-300 mb-4" />
+            <h4 className="text-xl font-bold text-gray-800 mb-2">Nenhum passageiro encontrado</h4>
+            <p className="text-gray-500">Nenhum passageiro com pagamento pago ou pendente nesta trilha.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {clients.map(client => (
+              <div key={client.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 {client.photo_url ? (
                   <img src={client.photo_url} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 shadow-sm" />
@@ -184,17 +206,26 @@ function ContratosContent() {
                     </button>
                   </>
                 ) : (
-                  <button 
-                    onClick={() => requirePin('Cobrar ' + client.full_name + ' no WhatsApp', () => handleCobrarWhatsApp(client))}
-                    className="w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-[#25D366]/30"
-                  >
-                    <Send className="w-4 h-4" /> Cobrar Assinatura via WhatsApp
-                  </button>
+                  <div className="flex flex-col gap-2 w-full">
+                    <button 
+                      onClick={() => requirePin('Assinar Manualmente ' + client.full_name, () => handleManualSign(client))}
+                      className="w-full bg-orange-100 hover:bg-orange-200 text-orange-700 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-orange-200"
+                    >
+                      <ShieldCheck className="w-4 h-4" /> Dar Baixa (Assinar Manualmente)
+                    </button>
+                    <button 
+                      onClick={() => requirePin('Cobrar ' + client.full_name + ' no WhatsApp', () => handleCobrarWhatsApp(client))}
+                      className="w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-[#25D366]/30"
+                    >
+                      <Send className="w-4 h-4" /> Cobrar Assinatura via WhatsApp
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* MODAL VER CONTRATO (VISUAL) */}

@@ -1124,7 +1124,7 @@ export default function AdminPage() {
                 {/* Abas Superiores de Clientes */}
                 <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden shrink-0 mb-4 print:hidden">
                   <button type="button" onClick={() => setClientesTab('todos')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'todos' ? 'border-[#F17B37] text-[#F17B37] bg-[#F17B37]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Todos Cadastrados</button>
-                  <button type="button" onClick={() => setClientesTab('listas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'listas' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Listas de Embarque/Seguro</button>
+                  <button type="button" onClick={() => setClientesTab('listas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'listas' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Listas de Embarque/Seguro/Contratos</button>
                   <button type="button" onClick={() => setClientesTab('avaliacoes')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'avaliacoes' ? 'border-[#25D366] text-[#25D366] bg-[#25D366]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Avaliações</button>
                 </div>
 
