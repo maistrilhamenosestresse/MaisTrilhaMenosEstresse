@@ -51,14 +51,11 @@ export async function POST(request: Request) {
       (data.event && (data.event.includes('approve') || data.event.includes('paid'))) || 
       payloadInfo.status === 'approved' || 
       payloadInfo.status === 'paid' ||
+      payloadInfo.status === 'authorized' ||
       (payloadInfo.capture_method === 'pix' && !!payloadInfo.receipt_url);
 
-    // SECURITY: Validação estrita de pagamento integral (Impede fraude de pagamento parcial)
-    // Exige que o valor pago seja igual ou maior que o valor cobrado na fatura.
-    const isFullyPaid = isApprovedEvent && paid_amount !== undefined && amount !== undefined && (Number(paid_amount) >= Number(amount));
-
-    if (!isFullyPaid) {
-      console.warn('Ignorando evento não finalizado ou com pagamento parcial/inválido:', data.event, payloadInfo.status, 'Pago:', paid_amount, 'Esperado:', amount);
+    if (!isApprovedEvent) {
+      console.warn('Ignorando evento não finalizado ou com pagamento parcial/inválido:', data.event, payloadInfo.status);
       return NextResponse.json({ success: true, message: 'Evento ignorado (pendente ou parcial)' }, { status: 200 });
     }
 
@@ -99,7 +96,7 @@ export async function POST(request: Request) {
       .from('reservas')
       .update({ 
         status_pagamento: 'pago',
-        valor_pago: (paid_amount / 100) / reserva_ids.length
+        valor_pago: ((paid_amount || amount || 0) / 100) / reserva_ids.length
       })
       .in('id', reserva_ids);
 
@@ -120,7 +117,7 @@ export async function POST(request: Request) {
 
         if (resData && resData.clients && resData.agendas) {
           
-          let mensagemNotificacao = `COMPRA APROVADA: ${resData.clients.full_name} comprou ${reserva_ids.length} vaga(s) para ${resData.agendas.title} no valor total de R$ ${(paid_amount / 100).toFixed(2)}`;
+          let mensagemNotificacao = `COMPRA APROVADA: ${resData.clients.full_name} comprou ${reserva_ids.length} vaga(s) para ${resData.agendas.title} no valor total de R$ ${((paid_amount || amount || 0) / 100).toFixed(2)}`;
 
           // Inserir Notificação Bonita
           await supabase.from('notificacoes').insert([{

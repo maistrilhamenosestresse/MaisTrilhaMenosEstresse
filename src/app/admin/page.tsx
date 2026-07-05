@@ -566,6 +566,7 @@ export default function AdminPage() {
 
   // --- Funções de Trilhas e IA (Mantidas intactos) ---
   const deleteAgenda = async (id: string) => {
+    if (!(await requirePin('Excluir Trilha'))) return;
     if (!window.confirm("Excluir esta trilha?")) return;
     try {
       await supabase.from('agendas').delete().eq('id', id);
@@ -778,6 +779,7 @@ export default function AdminPage() {
   };
   
   const deleteAvaliacao = async (id: string) => {
+    if (!(await requirePin('Excluir Avaliação'))) return;
     if(!window.confirm("Excluir esta avaliação permanentemente?")) return;
     try {
       const res = await fetch('/api/moderate-avaliacao', {
