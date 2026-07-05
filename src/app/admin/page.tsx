@@ -35,6 +35,7 @@ export default function AdminPage() {
   // Novos estados para a UI tipo App
   const [mainTab, setMainTab] = useState<'trilhas' | 'clientes' | 'reservas' | 'financas'>('trilhas');
   const [clientesTab, setClientesTab] = useState<'todos' | 'listas' | 'avaliacoes'>('todos');
+  const [clientSortMode, setClientSortMode] = useState<'recentes' | 'antigos' | 'az' | 'za'>('recentes');
   const [avaliacoesAdmin, setAvaliacoesAdmin] = useState<any[]>([]);
   const [printMode, setPrintMode] = useState<'todos' | 'van' | 'seguro'>('todos');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -360,13 +361,48 @@ export default function AdminPage() {
 
   // --- Funções de Clientes ---
   const normalizeString = (str: string) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
-  const filteredClients = clients.filter(c => 
-    normalizeString(c.full_name).includes(normalizeString(searchTerm)) || 
-    (c.cpf && c.cpf.includes(searchTerm))
-  );
+  
+  const isBirthday = (birthDateStr: string | null) => {
+    if (!birthDateStr) return false;
+    const today = new Date();
+    const bDate = new Date(birthDateStr);
+    bDate.setFullYear(today.getFullYear());
+    if (bDate < new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)) {
+      bDate.setFullYear(today.getFullYear() + 1);
+    }
+    const diffTime = Math.abs(bDate.getTime() - today.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 1;
+  };
+
+  const filteredClients = clients
+    .filter(c => normalizeString(c.full_name).includes(normalizeString(searchTerm)) || (c.cpf && c.cpf.includes(searchTerm)))
+    .sort((a, b) => {
+      const aBday = isBirthday(a.birth_date);
+      const bBday = isBirthday(b.birth_date);
+      if (aBday && !bBday) return -1;
+      if (!aBday && bBday) return 1;
+
+      if (clientSortMode === 'az') return normalizeString(a.full_name).localeCompare(normalizeString(b.full_name));
+      if (clientSortMode === 'za') return normalizeString(b.full_name).localeCompare(normalizeString(a.full_name));
+      if (clientSortMode === 'antigos') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   const toggleClientExpand = (id: string) => {
     setExpandedClientId(expandedClientId === id ? null : id);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!(await requirePin(`Excluir ${selectedClients.length} Clientes`))) return;
+    if (!window.confirm(`Tem certeza que deseja excluir ${selectedClients.length} clientes permanentemente?`)) return;
+    try {
+      const { error } = await supabase.from('clients').delete().in('id', selectedClients);
+      if (error) throw error;
+      setClients(clients.filter(c => !selectedClients.includes(c.id)));
+      setSelectedClients([]);
+      toast.success(`${selectedClients.length} clientes excluídos com sucesso!`);
+    } catch (err: any) { alert("Erro ao excluir clientes em massa."); }
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -1107,19 +1143,41 @@ export default function AdminPage() {
 
                 {/* Barra de Pesquisa */}
                 {clientesTab === 'todos' && (<>
-                <div className="relative print:hidden">
-                  <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                  <input 
-                    type="search" 
-                    placeholder="Buscar por nome ou CPF..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-[#F17B37] outline-none font-medium"
-                  />
+                <div className="flex flex-col md:flex-row gap-2 print:hidden mb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                    <input 
+                      type="search" 
+                      placeholder="Buscar por nome ou CPF..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-[#F17B37] outline-none font-medium"
+                    />
+                  </div>
+                  <select 
+                    value={clientSortMode}
+                    onChange={(e) => setClientSortMode(e.target.value as any)}
+                    className="bg-white border border-gray-200 rounded-2xl px-4 py-3.5 font-bold text-sm text-gray-700 outline-none focus:ring-2 focus:ring-[#F17B37] cursor-pointer shadow-sm"
+                  >
+                    <option value="recentes">Mais Recentes</option>
+                    <option value="antigos">Mais Antigos</option>
+                    <option value="az">Nome (A-Z)</option>
+                    <option value="za">Nome (Z-A)</option>
+                  </select>
                 </div>
 
                 <div className="print:hidden">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-2">Total: {filteredClients.length} Cadastrados</p>
+                  <div className="flex justify-between items-center mb-3">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">Total: {filteredClients.length} Cadastrados</p>
+                    {selectedClients.length > 0 && (
+                      <button 
+                        onClick={handleBulkDelete}
+                        className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" /> Excluir {selectedClients.length}
+                      </button>
+                    )}
+                  </div>
                   
                   {filteredClients.length === 0 ? (
                     <div className="text-center py-10">
@@ -1150,6 +1208,16 @@ export default function AdminPage() {
                             className={`p-4 flex items-center justify-between cursor-pointer ${isBirthdayClient ? 'bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100' : 'hover:bg-gray-50'}`}
                           >
                             <div className="flex items-center gap-3 min-w-0">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedClients.includes(client.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  if (e.target.checked) setSelectedClients([...selectedClients, client.id]);
+                                  else setSelectedClients(selectedClients.filter(id => id !== client.id));
+                                }}
+                                className="w-5 h-5 rounded border-gray-300 text-[#F17B37] focus:ring-[#F17B37] cursor-pointer"
+                              />
                               {client.photo_url ? (
                                 <img src={client.photo_url} className="h-12 w-12 rounded-full object-cover shrink-0 border-2 border-gray-100" />
                               ) : (
