@@ -55,16 +55,6 @@ export default function AdminPage() {
     });
   };
 
-  const handleBulkDelete = async () => {
-    if (!(await requirePin('Excluir ' + selectedClients.length + ' Clientes'))) return;
-    try {
-      const { error } = await supabase.from('clients').delete().in('id', selectedClients);
-      if (error) throw error;
-      setClients(clients.filter(c => !selectedClients.includes(c.id)));
-      setSelectedClients([]);
-      alert(selectedClients.length + ' clientes excluídos com sucesso!');
-    } catch (err: any) { alert('Erro ao excluir clientes.'); }
-  };
 
 
   useEffect(() => {
@@ -1353,7 +1343,7 @@ export default function AdminPage() {
                             <h4 className="font-bold text-orange-900 text-lg flex items-center gap-2 mb-2"><FileSignature className="h-5 w-5" /> Lista de Contratos</h4>
                             <p className="text-xs text-orange-700 mb-4">Gerencie as assinaturas digitais e baixe os contratos dos passageiros.</p>
                             <div className="flex gap-2">
-                              <a href={`/admin/contratos?agendaId=${selectedAgendaId}`} className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-orange-700 transition shadow-sm">
+                              <a href="/admin/contratos" className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-orange-700 transition shadow-sm">
                                 <ExternalLink className="h-4 w-4"/> Abrir Painel de Contratos
                               </a>
                             </div>
