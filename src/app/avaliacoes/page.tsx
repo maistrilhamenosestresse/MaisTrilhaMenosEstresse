@@ -74,7 +74,7 @@ export default function AvaliacoesPage() {
         setName("");
         setComment("");
         setRating(5);
-        setAgendaId("");
+        setTrailName("");
       }, 3000);
       
     } catch (err: any) {
