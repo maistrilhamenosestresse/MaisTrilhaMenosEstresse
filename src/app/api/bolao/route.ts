@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('bolao_apostas')
       .select('nome, placar_brasil, placar_rival, created_at')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
     
