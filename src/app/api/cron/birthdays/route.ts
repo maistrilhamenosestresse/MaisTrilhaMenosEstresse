@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { sendWhatsAppText, sendWhatsAppImage } from '@/lib/whatsapp';
 
 export async function GET(request: Request) {
   try {
@@ -42,43 +43,55 @@ export async function GET(request: Request) {
         upcomingBirthdays.push(client);
       }
 
-      // Se o aniversário for HOJE, manda email de parabéns direto pro cliente
-      if (diffDays === 0 && client.email) {
-        const clientHtml = `
-          <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; border-radius: 15px; overflow: hidden; border: 1px solid #eee; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-            <div style="background: linear-gradient(135deg, #F17B37, #d96220); padding: 30px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 28px;">Feliz Aniversário, ${client.full_name.split(' ')[0]}! 🎁</h1>
-            </div>
-            <div style="padding: 30px; background-color: #ffffff; text-align: center;">
-              <p style="font-size: 18px; color: #444; line-height: 1.6;">
-                Hoje é um dia muito especial! A equipe da <strong>Mais Trilha Menos Estresse</strong> deseja que sua vida seja uma jornada repleta de saúde, paz, alegria e paisagens inesquecíveis!
-              </p>
-              <p style="font-size: 16px; color: #666; margin-top: 20px;">
-                Que o seu novo ano traga muitas aventuras e momentos incríveis. Esperamos você em nossa próxima trilha para comemorarmos juntos! 🥾⛰️
-              </p>
-              <div style="margin-top: 30px;">
-                <a href="https://wa.me/5531989025078" style="background-color: #25D366; color: white; text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 16px; display: inline-block;">Falar com a Nívea</a>
+      // Se o aniversário for HOJE, manda email e WhatsApp de parabéns direto pro cliente
+      if (diffDays === 0) {
+        if (client.email) {
+          const clientHtml = `
+            <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; border-radius: 15px; overflow: hidden; border: 1px solid #eee; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+              <div style="background: linear-gradient(135deg, #F17B37, #d96220); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Feliz Aniversário, ${client.full_name.split(' ')[0]}! 🎁</h1>
+              </div>
+              <div style="padding: 30px; background-color: #ffffff; text-align: center;">
+                <p style="font-size: 18px; color: #444; line-height: 1.6;">
+                  Hoje é um dia muito especial! A equipe da <strong>Mais Trilha Menos Estresse</strong> deseja que sua vida seja uma jornada repleta de saúde, paz, alegria e paisagens inesquecíveis!
+                </p>
+                <p style="font-size: 16px; color: #666; margin-top: 20px;">
+                  Que o seu novo ano traga muitas aventuras e momentos incríveis. Esperamos você em nossa próxima trilha para comemorarmos juntos! 🥾⛰️
+                </p>
+                <div style="margin-top: 30px;">
+                  <a href="https://wa.me/5531989025078" style="background-color: #25D366; color: white; text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 16px; display: inline-block;">Falar com a Nívea</a>
+                </div>
+              </div>
+              <div style="background-color: #f8f9fa; padding: 15px; text-align: center; color: #999; font-size: 12px;">
+                Enviado com carinho por Mais Trilha Menos Estresse.
               </div>
             </div>
-            <div style="background-color: #f8f9fa; padding: 15px; text-align: center; color: #999; font-size: 12px;">
-              Enviado com carinho por Mais Trilha Menos Estresse.
-            </div>
-          </div>
-        `;
-        
-        await fetch(`${baseUrl}/api/send-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: client.email,
-            subject: `🎉 Feliz Aniversário, ${client.full_name.split(' ')[0]}! - Mais Trilha Menos Estresse`,
-            html: clientHtml
-          })
-        }).catch(e => console.error("Erro ao enviar email de parabéns", e));
-        emailsSentToClients++;
+          `;
+          
+          await fetch(`${baseUrl}/api/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: client.email,
+              subject: `🎉 Feliz Aniversário, ${client.full_name.split(' ')[0]}! - Mais Trilha Menos Estresse`,
+              html: clientHtml
+            })
+          }).catch(e => console.error("Erro ao enviar email de parabéns", e));
+          emailsSentToClients++;
+        }
+
+        // WhatsApp de Parabéns
+        if (client.phone) {
+          const zapBdayMsg = `Feliz Aniversário, *${client.full_name.split(' ')[0]}*! 🎁🎉\n\nHoje é um dia muito especial! A equipe da *Mais Trilha Menos Estresse* deseja que sua vida seja uma jornada repleta de saúde, paz, alegria e paisagens inesquecíveis!\n\nQue o seu novo ano traga muitas aventuras e momentos incríveis. Esperamos você em nossa próxima trilha para comemorarmos juntos! 🥾⛰️`;
+          
+          // Imagem genérica bonita de natureza comemorativa (pode ser substituída no painel depois)
+          const bdayImageUrl = "https://images.unsplash.com/photo-1501555088652-021faa106b9b?q=80&w=800&auto=format&fit=crop"; 
+          
+          await sendWhatsAppImage(client.phone, bdayImageUrl, zapBdayMsg);
+        }
       }
 
-      // Se o aniversário for AMANHÃ, registra notificação no painel admin
+      // Se o aniversário for AMANHÃ, registra notificação no painel admin e manda zap pro admin
       if (diffDays === 1) {
         const { error: supErr } = await supabase.from('notificacoes').insert({
           tipo: 'aniversario',
@@ -88,6 +101,11 @@ export async function GET(request: Request) {
         });
         if (supErr) console.error("Erro ao registrar notificacao de aniversario", supErr);
         notificationsCreated++;
+
+        const adminNumber = process.env.WHATSAPP_ADMIN_NUMBER;
+        if (adminNumber) {
+          await sendWhatsAppText(adminNumber, `📅 *Lembrete de Aniversário*\n\nO cliente *${client.full_name}* faz aniversário amanhã!`);
+        }
       }
     }
 

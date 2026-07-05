@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendPurchaseEmail } from '@/lib/email';
+import { sendWhatsAppText } from '@/lib/whatsapp';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -131,6 +132,23 @@ export async function POST(request: Request) {
             await sendPurchaseEmail(resData.clients, resData.agendas, allRes || []);
           } catch (emailErr) {
              console.error("Erro ao enviar email de compra aprovada", emailErr);
+          }
+
+          // Disparar WhatsApp para o Admin
+          try {
+            const adminNumber = process.env.WHATSAPP_ADMIN_NUMBER;
+            if (adminNumber) {
+              const zapMsg = `✅ *NOVA VENDA CONFIRMADA!*\n\n` +
+                             `👤 *Cliente:* ${resData.clients.full_name}\n` +
+                             `🎒 *Trilha:* ${resData.agendas.title}\n` +
+                             `🎟️ *Vagas:* ${reserva_ids.length}\n` +
+                             `💰 *Valor:* R$ ${((paid_amount || amount || 0) / 100).toFixed(2)}\n\n` +
+                             `📱 *Contato:* ${resData.clients.phone}\n` +
+                             `O sistema já disparou o email de confirmação e atualizou a agenda.`;
+              await sendWhatsAppText(adminNumber, zapMsg);
+            }
+          } catch (zapErr) {
+             console.error("Erro ao enviar WhatsApp de compra", zapErr);
           }
         }
       } catch (notifErr) {
