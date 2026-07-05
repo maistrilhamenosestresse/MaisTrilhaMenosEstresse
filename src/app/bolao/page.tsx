@@ -15,6 +15,21 @@ export default function BolaoPage() {
 
   const rivalName = "Noruega"; // Hoje é Brasil x Noruega
 
+  // Trava de Horário (16:55 do dia 05/07/2026)
+  const isLocked = () => {
+    const lockTime = new Date('2026-07-05T16:55:00-03:00').getTime();
+    return new Date().getTime() >= lockTime;
+  };
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    setLocked(isLocked());
+    const interval = setInterval(() => {
+      setLocked(isLocked());
+    }, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   const loadApostas = async () => {
     try {
       const res = await fetch("/api/bolao");
@@ -75,7 +90,7 @@ export default function BolaoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-600 via-[#F17B37] to-yellow-500 font-sans pb-10">
       <Head>
-        <title>Bolão Mais Trilhas - Copa</title>
+        <title>Palpite Mais Trilha - Copa</title>
       </Head>
 
       {/* Header */}
@@ -96,91 +111,106 @@ export default function BolaoPage() {
           <div className="absolute -top-16 -right-16 w-32 h-32 bg-yellow-100 rounded-full opacity-50 blur-2xl"></div>
           <div className="absolute -bottom-16 -left-16 w-32 h-32 bg-green-100 rounded-full opacity-50 blur-2xl"></div>
 
-          <form onSubmit={handleSubmit} className="relative z-10 space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Seu Nome Completo</label>
-              <input
-                type="text"
-                required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F17B37] focus:border-transparent outline-none transition-all"
-                placeholder="Ex: João Silva"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Seu WhatsApp</label>
-              <input
-                type="tel"
-                required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F17B37] focus:border-transparent outline-none transition-all"
-                placeholder="(31) 99999-9999"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-              />
-            </div>
-
-            <div className="pt-4 pb-2 border-t border-gray-100">
-              <p className="text-center text-sm font-bold text-gray-500 mb-4 uppercase tracking-widest">O Jogo de Hoje</p>
-              
-              <div className="flex items-center justify-between gap-2">
-                {/* Brasil */}
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 rounded-full border-4 border-yellow-400 flex items-center justify-center shadow-md overflow-hidden">
-                    <img src="/images/Brasil.png" alt="Brasil" className="w-full h-full object-cover" />
-                  </div>
-                  <span className="font-bold text-gray-800">Brasil</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="15"
-                    required
-                    className="w-16 text-center text-2xl font-black py-2 bg-gray-100 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
-                    value={placarBrasil}
-                    onChange={(e) => setPlacarBrasil(e.target.value ? parseInt(e.target.value) : "")}
-                  />
-                </div>
-
-                <div className="text-xl font-black text-gray-300 pt-8">X</div>
-
-                {/* Rival */}
-                <div className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-14 h-14 rounded-full border-4 border-white flex items-center justify-center shadow-md overflow-hidden">
-                    <img src="/images/Noruega.jpg" alt="Noruega" className="w-full h-full object-cover" />
-                  </div>
-                  <span className="font-bold text-gray-800">{rivalName}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="15"
-                    required
-                    className="w-16 text-center text-2xl font-black py-2 bg-gray-100 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none"
-                    value={placarRival}
-                    onChange={(e) => setPlacarRival(e.target.value ? parseInt(e.target.value) : "")}
-                  />
-                </div>
+          {locked ? (
+            <div className="relative z-10 flex flex-col items-center justify-center py-8 text-center space-y-6">
+              <Trophy className="w-20 h-20 text-yellow-500 mb-2 drop-shadow-md" />
+              <h2 className="text-3xl font-black text-gray-800 uppercase tracking-wide">
+                Bolão Encerrado!
+              </h2>
+              <p className="text-gray-600 font-medium text-lg">
+                Os palpites foram fechados às 16:55.
+              </p>
+              <div className="bg-[#F17B37]/10 p-4 rounded-xl border border-[#F17B37]/20 w-full mt-4">
+                <p className="text-[#F17B37] font-black text-xl">Boa Sorte! 🇧🇷🍀</p>
               </div>
             </div>
-
-            {message && (
-              <div className={`p-4 rounded-xl flex items-start gap-3 text-sm font-medium ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
-                {message.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
-                <p>{message.text}</p>
+          ) : (
+            <form onSubmit={handleSubmit} className="relative z-10 space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Seu Nome Completo</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F17B37] focus:border-transparent outline-none transition-all"
+                  placeholder="Ex: João Silva"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                />
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 mt-2 bg-[#F17B37] hover:bg-[#d96220] active:scale-95 transition-all text-white font-black text-lg rounded-xl shadow-[0_4px_14px_0_rgba(241,123,55,0.39)] disabled:opacity-70 flex justify-center items-center gap-2"
-            >
-              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "REGISTRAR PALPITE"}
-            </button>
-            <p className="text-xs text-center text-gray-400 mt-2">
-              Regra: Não é permitido placares repetidos! Quem chutar primeiro, leva.
-            </p>
-          </form>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Seu WhatsApp</label>
+                <input
+                  type="tel"
+                  required
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#F17B37] focus:border-transparent outline-none transition-all"
+                  placeholder="(31) 99999-9999"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4 pb-2 border-t border-gray-100">
+                <p className="text-center text-sm font-bold text-gray-500 mb-4 uppercase tracking-widest">O Jogo de Hoje</p>
+
+                <div className="flex items-center justify-between gap-2">
+                  {/* Brasil */}
+                  <div className="flex-1 flex flex-col items-center gap-2">
+                    <div className="w-14 h-14 rounded-full border-4 border-yellow-400 flex items-center justify-center shadow-md overflow-hidden">
+                      <img src="/images/Brasil.png" alt="Brasil" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="font-bold text-gray-800">Brasil</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="15"
+                      required
+                      className="w-16 text-center text-2xl font-black py-2 bg-gray-100 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 outline-none"
+                      value={placarBrasil}
+                      onChange={(e) => setPlacarBrasil(e.target.value ? parseInt(e.target.value) : "")}
+                    />
+                  </div>
+
+                  <div className="text-xl font-black text-gray-300 pt-8">X</div>
+
+                  {/* Rival */}
+                  <div className="flex-1 flex flex-col items-center gap-2">
+                    <div className="w-14 h-14 rounded-full border-4 border-white flex items-center justify-center shadow-md overflow-hidden">
+                      <img src="/images/Noruega.jpg" alt="Noruega" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="font-bold text-gray-800">{rivalName}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="15"
+                      required
+                      className="w-16 text-center text-2xl font-black py-2 bg-gray-100 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 outline-none"
+                      value={placarRival}
+                      onChange={(e) => setPlacarRival(e.target.value ? parseInt(e.target.value) : "")}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {message && (
+                <div className={`p-4 rounded-xl flex items-start gap-3 text-sm font-medium ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                  {message.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
+                  <p>{message.text}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 mt-2 bg-[#F17B37] hover:bg-[#d96220] active:scale-95 transition-all text-white font-black text-lg rounded-xl shadow-[0_4px_14px_0_rgba(241,123,55,0.39)] disabled:opacity-70 flex justify-center items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : "REGISTRAR PALPITE"}
+              </button>
+              <p className="text-xs text-center text-gray-400 mt-2">
+                Regra: Não é permitido placares repetidos! Quem chutar primeiro, leva.
+              </p>
+            </form>
+          )}
         </div>
       </div>
 

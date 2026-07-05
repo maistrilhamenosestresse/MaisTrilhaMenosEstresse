@@ -8,6 +8,11 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
+    const lockTime = new Date('2026-07-05T16:55:00-03:00').getTime();
+    if (new Date().getTime() >= lockTime) {
+      return NextResponse.json({ error: 'O Bolão já está encerrado! Boa sorte aos participantes.' }, { status: 400 });
+    }
+
     const { nome, whatsapp, placar_brasil, placar_rival, rival_nome } = await request.json();
 
     if (!nome || !whatsapp || placar_brasil === undefined || placar_rival === undefined) {
