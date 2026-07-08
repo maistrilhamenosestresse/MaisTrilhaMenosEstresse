@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, MessageCircle, X, CheckCircle, ChevronLeft, Loader2, MapPin } from "lucide-react";
+import { Star, MessageCircle, X, CheckCircle, ChevronLeft, ChevronRight, Loader2, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
 import { supabase } from "@/lib/supabase";
@@ -18,7 +18,18 @@ export default function AvaliacoesPage() {
   
   const [agendas, setAgendas] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+
+  const renderComment = (comment: string) => {
+    const match = comment.match(/^\[Trilha:\s*(.*?)\]\n?(.*)$/s);
+    if (match) {
+      return { trail: match[1], actualComment: match[2].trim() };
+    }
+    return { trail: null, actualComment: comment };
+  };
+
+const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState(false);
 
@@ -156,41 +167,91 @@ export default function AvaliacoesPage() {
             <h2 className="text-xl font-bold text-white mb-2">Seja o primeiro a avaliar!</h2>
             <p className="text-gray-400">Nenhuma avaliação foi aprovada ainda.</p>
           </div>
-        ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {avaliacoes.map((av, index) => (
-              <motion.div 
-                key={av.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] break-inside-avoid backdrop-blur-sm hover:bg-white/10 transition-colors"
-              >
-                <div className="flex gap-1 text-[#F17B37] mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`h-4 w-4 ${i < av.rating ? 'fill-current' : 'text-gray-600'}`} />
-                  ))}
+        ) : (() => {
+            const totalPages = Math.ceil(avaliacoes.length / ITEMS_PER_PAGE);
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const currentAvaliacoes = avaliacoes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+            
+            return (
+              <>
+                <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+                  {currentAvaliacoes.map((av, index) => {
+                    const { trail, actualComment } = renderComment(av.comment);
+                    return (
+                      <motion.div 
+                        key={av.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-[2rem] break-inside-avoid backdrop-blur-sm hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex gap-1 text-[#F17B37]">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`h-4 w-4 ${i < av.rating ? 'fill-current' : 'text-gray-600'}`} />
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {trail && (
+                          <div className="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-lg bg-[#F17B37]/10 border border-[#F17B37]/20 text-[#F17B37]">
+                            <MapPin className="h-4 w-4" />
+                            <span className="text-sm font-bold">{trail}</span>
+                          </div>
+                        )}
+                        
+                        <p className="text-gray-200 text-lg italic leading-relaxed mb-6">
+                          "{actualComment}"
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <div className={`h-12 w-12 rounded-full bg-gradient-to-tr ${colors[index % colors.length]} flex items-center justify-center text-xl font-bold`}>
+                            {getInitials(av.name)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-white">{av.name}</p>
+                            {av.agendas && !trail && (
+                              <p className="text-sm text-gray-500 flex items-center gap-1">
+                                <MapPin className="h-3 w-3" /> {av.agendas.title}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
-                <p className="text-gray-200 text-lg italic leading-relaxed mb-6">
-                  "{av.comment}"
-                </p>
-                <div className="flex items-center gap-4">
-                  <div className={`h-12 w-12 rounded-full bg-gradient-to-tr ${colors[index % colors.length]} flex items-center justify-center text-xl font-bold`}>
-                    {getInitials(av.name)}
+                
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-12">
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                      disabled={currentPage === 1} 
+                      className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
+                       <button 
+                        key={i} 
+                        onClick={() => setCurrentPage(i + 1)} 
+                        className={`w-10 h-10 rounded-xl font-bold transition ${currentPage === i + 1 ? 'bg-[#F17B37] text-white shadow-[0_0_15px_rgba(241,123,55,0.4)]' : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'}`}
+                       >
+                         {i + 1}
+                       </button>
+                    ))}
+                    <button 
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                      disabled={currentPage === totalPages} 
+                      className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white disabled:opacity-30 hover:bg-white/10 transition"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
                   </div>
-                  <div>
-                    <p className="font-bold text-white">{av.name}</p>
-                    {av.agendas && (
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> {av.agendas.title}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                )}
+              </>
+            );
+          })()
+        }
       </div>
 
       {/* Modal de Avaliação */}

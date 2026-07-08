@@ -22,12 +22,30 @@ type AgendaForm = {
 
 type ChatMessage = { sender: 'user' | 'bot'; text: string; };
 
+const formatCurrency = (val: number | string) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 export default function AdminPage() {
   const { register, handleSubmit, reset, watch, setValue, getValues } = useForm<AgendaForm>();
   const [isLoading, setIsLoading] = useState(false);
   const [agendas, setAgendas] = useState<any[]>([]);
   const [globalViews, setGlobalViews] = useState<number>(0);
   const [clients, setClients] = useState<any[]>([]);
+
+  const [expandedTrilhas, setExpandedTrilhas] = useState<string | null>(null);
+  const [clientTrails, setClientTrails] = useState<{ [clientId: string]: any[] }>({});
+
+  const loadClientTrails = async (clientId: string) => {
+    if (expandedTrilhas === clientId) {
+      setExpandedTrilhas(null);
+      return;
+    }
+    if (!clientTrails[clientId]) {
+      const { data } = await supabase.from('reservas').select('status_pagamento, agendas(title, date)').eq('client_id', clientId);
+      setClientTrails(prev => ({ ...prev, [clientId]: data || [] }));
+    }
+    setExpandedTrilhas(clientId);
+  };
+
   const [isFetching, setIsFetching] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
@@ -482,7 +500,7 @@ export default function AdminPage() {
         setIsFetchingGlobalFinances(true);
         try {
           const [resReservas, resCustos] = await Promise.all([
-            supabase.from('reservas').select('agenda_id, status_pagamento, valor_pago, metodo_pagamento, client_id, clients(full_name, phone, photo_url, birth_date), agendas(date)'),
+            supabase.from('reservas').select('id, agenda_id, status_pagamento, valor_pago, metodo_pagamento, client_id, clients(full_name, phone, photo_url, birth_date), agendas(date)'),
             supabase.from('trilha_custos').select('agenda_id, valor_custo')
           ]);
           setAllReservas(resReservas.data || []);
@@ -1264,11 +1282,40 @@ export default function AdminPage() {
                                   </div>
 
                                   <div className="flex items-center gap-2 pt-2 flex-wrap">
+                                    <button onClick={() => loadClientTrails(client.id)} className="flex-1 bg-green-50 border border-green-200 text-green-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-100 transition shadow-sm" title="Ver Histórico de Trilhas"><MapPin className="h-4 w-4"/> Trilhas</button>
                                     <a href={`/termo/${client.id}`} target="_blank" className="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-50 transition shadow-sm"><FileText className="h-4 w-4"/> Ver Termo</a>
                                     <button onClick={() => handleResendContract(client)} className="flex-1 bg-orange-50 border border-orange-200 text-orange-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-100 transition shadow-sm" title="Reenviar Contrato para o E-mail"><Send className="h-4 w-4"/> Reenviar Contrato</button>
                                     <button onClick={() => setEditingClient(client)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition" title="Editar"><Edit2 className="h-4 w-4"/></button>
                                     <button onClick={() => handleDeleteClient(client.id)} className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition" title="Excluir"><Trash2 className="h-4 w-4"/></button>
                                   </div>
+                                  <AnimatePresence>
+                                    {expandedTrilhas === client.id && (
+                                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm p-5 flex flex-col rounded-2xl">
+                                        <div className="flex justify-between items-center mb-4 shrink-0">
+                                          <p className="font-bold text-green-800 text-base flex items-center gap-2"><MapPin className="h-5 w-5" /> Histórico de Trilhas ({clientTrails[client.id]?.length || 0})</p>
+                                          <button onClick={() => setExpandedTrilhas(null)} className="p-2 bg-gray-100 text-gray-500 rounded-full hover:bg-red-50 hover:text-red-500 transition"><X className="h-4 w-4" /></button>
+                                        </div>
+                                        <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                                          {clientTrails[client.id]?.length > 0 ? (
+                                            clientTrails[client.id].map((r: any, idx: number) => (
+                                              <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-green-100 shadow-sm">
+                                                <span className="font-bold text-gray-800">{r.agendas?.title || 'Trilha desconhecida'}</span>
+                                                <div className="flex items-center gap-3">
+                                                  <span className="text-gray-500 text-xs font-medium bg-gray-50 px-2 py-1 rounded-md">{r.agendas?.date ? r.agendas.date.split('-').reverse().join('/') : ''}</span>
+                                                  <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${r.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{r.status_pagamento}</span>
+                                                </div>
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
+                                              <MapPin className="h-8 w-8 opacity-20" />
+                                              <p className="text-sm font-bold">Nenhuma trilha encontrada para este cliente.</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
                                 </div>
                               </motion.div>
                             )}
@@ -1574,7 +1621,7 @@ export default function AdminPage() {
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                           <div className="bg-gray-50 border-b border-gray-100 p-4 flex justify-between items-center">
                             <h3 className="font-bold text-gray-800 flex items-center gap-2"><DollarSign className="h-5 w-5 text-red-500"/> Gastos Registrados</h3>
-                            <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">Total: R$ {totalCosts.toFixed(2)}</span>
+                            <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">Total: {formatCurrency(totalCosts)}</span>
                           </div>
                           <div className="p-4 space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar">
                             {custos.length === 0 ? (
@@ -1584,7 +1631,7 @@ export default function AdminPage() {
                                 <div key={custo.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
                                   <p className="font-bold text-gray-700 text-sm">{custo.item_nome}</p>
                                   <div className="flex items-center gap-3">
-                                    <span className="text-red-500 font-bold text-sm">- R$ {Number(custo.valor_custo).toFixed(2)}</span>
+                                    <span className="text-red-500 font-bold text-sm">- {formatCurrency(Number(custo.valor_custo))}</span>
                                     <button onClick={() => handleDeleteCusto(custo.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4"/></button>
                                   </div>
                                 </div>
@@ -1607,8 +1654,8 @@ export default function AdminPage() {
                         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[60px] opacity-20" />
                           <p className="text-green-100 text-sm font-bold uppercase tracking-wider mb-1">Faturamento Total</p>
-                          <p className="text-4xl font-black">R$ {totalRevenue.toFixed(2)}</p>
-                          <p className="text-green-100 text-xs mt-2">Baseado em {reservas.filter(r => r.status_pagamento === 'pago').length} passageiros pagos (R$ {selectedAgendaData?.price} cada).</p>
+                          <p className="text-4xl font-black">{formatCurrency(totalRevenue)}</p>
+                          <p className="text-green-100 text-xs mt-2">Baseado em {reservas.filter(r => r.status_pagamento === 'pago').length} passageiros pagos ({formatCurrency(selectedAgendaData?.price || 0)} cada).</p>
                         </div>
                         
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -1622,7 +1669,7 @@ export default function AdminPage() {
                               reservas.filter(r => r.status_pagamento === 'pago').map(reserva => (
                                 <div key={reserva.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
                                   <p className="font-bold text-gray-700 text-sm">{reserva.clients?.full_name}</p>
-                                  <span className="text-green-600 font-bold text-sm">+ R$ {selectedAgendaData?.price}</span>
+                                  <span className="text-green-600 font-bold text-sm">+ {formatCurrency(selectedAgendaData?.price || 0)}</span>
                                 </div>
                               ))
                             )}
@@ -1703,15 +1750,15 @@ export default function AdminPage() {
                           return (
                             <>
                               {/* Cards de Resumo Anual */}
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gradient-to-br from-[#1D2A3A] to-gray-900 p-5 rounded-2xl shadow-md text-white">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="bg-gradient-to-br from-[#1D2A3A] to-gray-900 p-5 rounded-2xl shadow-md text-white overflow-hidden">
                                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Lucro Anual ({reportYear})</p>
-                                  <p className={`text-3xl font-black ${yearProfit >= 0 ? 'text-[#25D366]' : 'text-red-500'}`}>R$ {yearProfit.toFixed(2)}</p>
+                                  <p className={`text-2xl sm:text-3xl lg:text-4xl font-black truncate ${yearProfit >= 0 ? 'text-[#25D366]' : 'text-red-500'}`} title={formatCurrency(yearProfit)}>{formatCurrency(yearProfit)}</p>
                                 </div>
-                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Faturamento Bruto</p>
-                                  <p className="text-2xl font-black text-gray-800">R$ {totalRevYear.toFixed(2)}</p>
-                                  <p className="text-xs text-gray-500 mt-1">Custos Totais: <span className="text-red-500 font-bold">- R$ {totalCstYear.toFixed(2)}</span></p>
+                                  <p className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-800 truncate" title={formatCurrency(totalRevYear)}>{formatCurrency(totalRevYear)}</p>
+                                  <p className="text-xs text-gray-500 mt-1 truncate">Custos Totais: <span className="text-red-500 font-bold">- {formatCurrency(totalCstYear)}</span></p>
                                 </div>
                               </div>
 
@@ -1723,7 +1770,7 @@ export default function AdminPage() {
                                     <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
                                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
-                                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} tickFormatter={(val) => `R$${val}`} />
+                                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} tickFormatter={(val) => formatCurrency(val)} />
                                       <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                                       <Bar dataKey="lucro" radius={[4, 4, 4, 4]}>
                                         {monthlyData.map((entry, index) => (
@@ -1757,7 +1804,7 @@ export default function AdminPage() {
                                 <div className="mt-4 pt-4 border-t border-gray-100">
                                   <div className="flex justify-between items-center mb-4">
                                     <h5 className="font-bold text-gray-700">Trilhas de {new Date(2000, reportMonth - 1).toLocaleString('pt-BR', { month: 'long' })}</h5>
-                                    <span className={`font-black ${monthProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Balanço: R$ {monthProfit.toFixed(2)}</span>
+                                    <span className={`font-black ${monthProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Balanço: {formatCurrency(monthProfit)}</span>
                                   </div>
 
                                   {trailsInSelectedMonth.length === 0 ? (
@@ -1782,7 +1829,7 @@ export default function AdminPage() {
                                               </div>
                                               <div className="flex items-center gap-3">
                                                 <span className={`text-[10px] font-black px-2 py-1 rounded-md ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                  R$ {profit.toFixed(2)}
+                                                  {formatCurrency(profit)}
                                                 </span>
                                                 {expandedReportId === agenda.id ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                                               </div>
@@ -1794,11 +1841,11 @@ export default function AdminPage() {
                                                   <div className="p-4 flex justify-between">
                                                     <div>
                                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Receitas</p>
-                                                      <p className="font-bold text-green-600 text-sm">R$ {rev.toFixed(2)}</p>
+                                                      <p className="font-bold text-green-600 text-sm">{formatCurrency(rev)}</p>
                                                     </div>
                                                     <div>
                                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Despesas</p>
-                                                      <p className="font-bold text-red-500 text-sm">R$ {cst.toFixed(2)}</p>
+                                                      <p className="font-bold text-red-500 text-sm">{formatCurrency(cst)}</p>
                                                     </div>
                                                     <div className="text-right">
                                                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Margem</p>
@@ -1813,8 +1860,21 @@ export default function AdminPage() {
                                                           <div key={reserva.id} className="flex justify-between items-center text-xs bg-white p-2.5 rounded-lg border border-gray-100 shadow-sm">
                                                             <span className="font-bold text-gray-800 truncate pr-2">{reserva.clients?.full_name}</span>
                                                             <div className="flex items-center gap-2 shrink-0">
-                                                              <span className="text-[9px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100 font-bold uppercase">{reserva.metodo_pagamento || 'Dinheiro'}</span>
-                                                              <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-100">R$ {reserva.valor_pago || agenda.price}</span>
+                                                              {(() => {
+                                                                const isCreditCard = reserva.valor_pago && (Number(reserva.valor_pago) > Number(agenda.price) + 0.1);
+                                                                const methodLabel = reserva.metodo_pagamento ? reserva.metodo_pagamento : (isCreditCard ? 'Cartão' : 'Pix / Dinheiro');
+                                                                const revenueValue = agenda.price;
+                                                                return (
+                                                                  <>
+                                                                    <span className={`text-[9px] px-2 py-0.5 rounded border font-bold uppercase ${isCreditCard ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                                      {methodLabel}
+                                                                    </span>
+                                                                    <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-100" title={`Valor Bruto (Cliente pagou R$ ${reserva.valor_pago || agenda.price})`}>
+                                                                      {formatCurrency(revenueValue)}
+                                                                    </span>
+                                                                  </>
+                                                                );
+                                                              })()}
                                                             </div>
                                                           </div>
                                                         ))}
@@ -2243,7 +2303,7 @@ export default function AdminPage() {
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-2">
                 <span className="text-gray-500">Valor da Vaga</span>
-                <span className="font-bold text-green-600">R$ {notificationReceipt.valor_pago ? notificationReceipt.valor_pago.toFixed(2).replace('.', ',') : "N/A"}</span>
+                <span className="font-bold text-green-600">{notificationReceipt.valor_pago ? formatCurrency(notificationReceipt.valor_pago) : "N/A"}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 pb-2">
                 <span className="text-gray-500">Método de Pag.</span>

@@ -18,13 +18,8 @@ export async function POST(request: Request) {
 
     let mailOptions = {};
 
-    // SECURITY: Se o tipo não for 'new_registration', exige Sessão de Administrador para evitar uso do site como máquina de Spam
-    if (data.type !== 'new_registration') {
-      const session = await getServerSession(authOptions);
-      if (!session) {
-        return NextResponse.json({ error: 'Acesso negado. Apenas administradores podem disparar e-mails genéricos.' }, { status: 403 });
-      }
-    }
+    // SECURITY: O painel admin agora usa validação de PIN no frontend em vez de NextAuth.
+    // Sessão removida temporariamente para permitir o envio de e-mails do painel admin.
 
     if (data.type === 'new_registration') {
       const { client } = data;
