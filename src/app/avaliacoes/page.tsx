@@ -22,7 +22,7 @@ export default function AvaliacoesPage() {
   const ITEMS_PER_PAGE = 6;
 
   const renderComment = (comment: string) => {
-    const match = comment.match(/^\[Trilha:\s*(.*?)\]\n?(.*)$/s);
+    const match = comment.match(/^\[Trilha:\s*(.*?)\]\n?([\s\S]*)$/);
     if (match) {
       return { trail: match[1], actualComment: match[2].trim() };
     }
