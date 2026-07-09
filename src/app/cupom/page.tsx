@@ -13,6 +13,7 @@ export default function CupomVIPPage() {
   const [couponCode, setCouponCode] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [personName, setPersonName] = useState("");
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -25,7 +26,7 @@ export default function CupomVIPPage() {
       return;
     }
 
-    setRevealState("LOADING");
+    setIsFetching(true);
 
     try {
       const response = await fetch('/api/reveal-coupon', {
@@ -75,6 +76,8 @@ export default function CupomVIPPage() {
     } catch (error) {
       console.error(error);
       setRevealState("ERROR");
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -182,37 +185,24 @@ export default function CupomVIPPage() {
 
                 <button 
                   onClick={handleReveal}
-                  className="w-full btn-neon text-white font-black text-lg py-4 rounded-xl transition-all transform hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 mb-4"
+                  disabled={isFetching}
+                  className="w-full btn-neon text-white font-black text-lg py-4 rounded-xl transition-all transform hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 mb-4 disabled:opacity-50 disabled:cursor-wait"
                 >
-                  <Sparkles className="w-5 h-5" /> Testar Sorte
+                  {isFetching ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" /> Verificando...</>
+                  ) : (
+                    <><Sparkles className="w-5 h-5" /> Testar Sorte</>
+                  )}
                 </button>
 
                 <button 
                   onClick={() => window.location.href = '/agenda'}
-                  className="w-full bg-white/5 hover:bg-white/10 text-gray-300 font-bold py-3 rounded-xl transition-all text-sm"
+                  disabled={isFetching}
+                  className="w-full bg-white/5 hover:bg-white/10 text-gray-300 font-bold py-3 rounded-xl transition-all text-sm disabled:opacity-50"
                 >
                   Ver Trilhas Disponíveis
                 </button>
               </div>
-            </motion.div>
-          )}
-
-          {/* LOADING STATE */}
-          {revealState === "LOADING" && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center py-20"
-            >
-              <div className="relative">
-                <Loader2 className="w-16 h-16 text-[#F17B37] animate-spin mb-6 relative z-10" />
-                <div className="absolute inset-0 bg-[#F17B37] blur-[30px] opacity-30 rounded-full" />
-              </div>
-              <p className="text-[#F17B37] font-bold text-lg animate-pulse tracking-widest uppercase">
-                Dissipando a névoa...
-              </p>
             </motion.div>
           )}
 
