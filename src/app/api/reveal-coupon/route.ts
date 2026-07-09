@@ -3,10 +3,13 @@ import { supabase } from '@/lib/supabase';
 
 const CAMPAIGN_ID = 'treasure_hunt_maistrilha2';
 const MAX_REDEMPTIONS = 2;
-const COUPON_CODE = 'MAISTRILHA2';
+const COUPONS = ['MAISTRILHA-1', 'MAISTRILHA-2'];
 
 export async function POST(request: Request) {
   try {
+    const body = await request.json().catch(() => ({}));
+    const personName = body.personName || 'Anônimo';
+
     // 1. Pegar informações do usuário (IP e UserAgent)
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'IP_Desconhecido';
     const userAgent = request.headers.get('user-agent') || 'Desconhecido';
@@ -31,7 +34,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Salvar o IP e Registrar que alguém resgatou agora
+    // 4. Selecionar o cupom baseado em quem chegou primeiro (0 ou 1)
+    const assignedCoupon = COUPONS[count || 0];
+
+    // 5. Salvar o IP e o NOME, e Registrar que alguém resgatou agora
     // Isso deve ser inserido antes de enviar o código, como trava
     const { error: insertError } = await supabase
       .from('coupon_redemptions')
@@ -39,7 +45,8 @@ export async function POST(request: Request) {
         {
           campaign_id: CAMPAIGN_ID,
           ip_address: ipAddress,
-          user_agent: userAgent
+          user_agent: userAgent,
+          person_name: personName
         }
       ]);
 
@@ -48,10 +55,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Erro ao processar sua solicitação.' }, { status: 500 });
     }
 
-    // 5. Sucesso! Enviar o código para a pessoa
+    // 6. Sucesso! Enviar o código para a pessoa
     return NextResponse.json({
       success: true,
-      coupon_code: COUPON_CODE
+      coupon_code: assignedCoupon
     });
 
   } catch (error) {
