@@ -91,18 +91,60 @@ export default function CupomVIPPage() {
       
       {/* CSS para a fumaça mágica e bordas pulsantes */}
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes smoke-1 {
-          0% { transform: translateX(-100%) translateY(10%) scale(1); opacity: 0; filter: blur(15px); }
-          50% { opacity: 0.6; filter: blur(20px); }
-          100% { transform: translateX(100%) translateY(-10%) scale(1.5); opacity: 0; filter: blur(25px); }
+        /* Fumaça Inspirada no Repositório do GitHub */
+        .smoke-wrap {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: -20px;
+          pointer-events: none;
+          z-index: 10;
         }
-        @keyframes smoke-2 {
-          0% { transform: translateX(100%) translateY(-10%) scale(1.5); opacity: 0; filter: blur(20px); }
-          50% { opacity: 0.5; filter: blur(25px); }
-          100% { transform: translateX(-100%) translateY(10%) scale(1); opacity: 0; filter: blur(15px); }
+
+        .smoke, .smoke2, .smoke3 {
+          filter: blur(5px);
+          transform-origin: 50% 50%;
+          opacity: 0;
+          width: 300px; /* Tamanho da fumaça */
         }
-        .smoke-particle-1 { animation: smoke-1 8s infinite linear; }
-        .smoke-particle-2 { animation: smoke-2 10s infinite linear; animation-delay: 2s; }
+
+        .smoke {
+          animation: smoke1 3s linear infinite;
+          animation-delay: 0.5s;
+        }
+        .smoke2 {
+          animation: smoke2 3s linear infinite;
+          animation-delay: 1.5s;
+        }
+        .smoke3 {
+          width: 350px;
+          animation: smoke3 4s linear infinite;
+          animation-delay: 2.5s;
+        }
+
+        @keyframes smoke1 {
+          0% { filter: blur(0px); transform: translateY(0px) scale(-1, 1); opacity: 0; }
+          25% { filter: blur(3px); transform: translateY(-20px) scale(-1, 1.05); opacity: 0.5; }
+          50% { filter: blur(5px); transform: translateY(-40px) scale(-1, 1.1); opacity: 0.8; }
+          75% { filter: blur(5px); transform: translateY(-60px) scale(-1, 1.15); opacity: 0.5; }
+          100% { filter: blur(7px); transform: translateY(-80px) scale(-1, 1.2); opacity: 0; }
+        }
+
+        @keyframes smoke2 {
+          0% { filter: blur(0px); transform: translateY(0px) scale(1); opacity: 0; }
+          25% { filter: blur(3px); transform: translateY(-20px) scale(1.05); opacity: 0.5; }
+          50% { filter: blur(5px); transform: translateY(-40px) scale(1.1); opacity: 0.8; }
+          75% { filter: blur(5px); transform: translateY(-60px) scale(1.15); opacity: 0.5; }
+          100% { filter: blur(7px); transform: translateY(-80px) scale(1.2); opacity: 0; }
+        }
+
+        @keyframes smoke3 {
+          0% { filter: blur(0px); transform: translateY(0px) scale(1); opacity: 0; }
+          25% { filter: blur(3px); transform: translateY(-30px) scale(1.05); opacity: 0.5; }
+          50% { filter: blur(5px); transform: translateY(-60px) scale(1.1); opacity: 0.8; }
+          75% { filter: blur(5px); transform: translateY(-90px) scale(1.15); opacity: 0.5; }
+          100% { filter: blur(7px); transform: translateY(-120px) scale(1.2); opacity: 0; }
+        }
         
         .btn-neon {
           background: linear-gradient(90deg, #F17B37, #f9a03f, #F17B37);
@@ -166,15 +208,21 @@ export default function CupomVIPPage() {
                   Apenas as <strong className="text-[#F17B37]">2 primeiras</strong> pessoas vão conseguir abrir a névoa e resgatar o prêmio misterioso.
                 </p>
 
-                {/* Blured Box with Smoke Effect */}
-                <div className="relative mb-6 w-full h-24 bg-black/50 border border-white/5 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
-                  {/* Fumaça animada */}
-                  <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-                    <div className="absolute w-[200%] h-full bg-white/10 smoke-particle-1" />
-                    <div className="absolute w-[200%] h-full bg-[#F17B37]/20 smoke-particle-2" />
-                    <CloudFog className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 text-white/30 animate-pulse" />
+                {/* Blured Box with Realistic Smoke Effect */}
+                <div className="relative mb-6 w-full h-32 bg-black/50 border border-[#F17B37]/20 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
+                  {/* Fumaça animada com imagens (Estilo GitHub repo) */}
+                  <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-10">
+                    <div className="smoke-wrap">
+                      <Image className="smoke opacity-70" src="/images/smoke.png" alt="smoke" width={300} height={300} />
+                    </div>
+                    <div className="smoke-wrap">
+                      <Image className="smoke2 opacity-70" src="/images/smoke.png" alt="smoke" width={300} height={300} />
+                    </div>
+                    <div className="smoke-wrap">
+                      <Image className="smoke3 opacity-70" src="/images/smoke.png" alt="smoke" width={350} height={350} />
+                    </div>
                   </div>
-                  <span className="text-3xl font-black text-white/5 blur-[6px] select-none tracking-widest relative z-0">
+                  <span className="text-3xl font-black text-[#F17B37]/30 blur-[6px] select-none tracking-widest relative z-0">
                     ???CUPOM???
                   </span>
                 </div>
