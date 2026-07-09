@@ -91,59 +91,37 @@ export default function CupomVIPPage() {
       
       {/* CSS para a fumaça mágica e bordas pulsantes */}
       <style dangerouslySetInnerHTML={{__html: `
-        /* Fumaça Inspirada no Repositório do GitHub */
+        /* Fumaça Horizontal Intensa */
         .smoke-wrap {
           position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: -20px;
+          top: 50%;
+          transform: translateY(-50%);
           pointer-events: none;
           z-index: 10;
+          display: flex;
+          align-items: center;
         }
 
-        .smoke, .smoke2, .smoke3 {
+        .smoke, .smoke2, .smoke3, .smoke4, .smoke5 {
           filter: blur(5px);
           transform-origin: 50% 50%;
           opacity: 0;
-          width: 300px; /* Tamanho da fumaça */
+          width: 250px;
+          height: auto;
         }
 
-        .smoke {
-          animation: smoke1 3s linear infinite;
-          animation-delay: 0.5s;
-        }
-        .smoke2 {
-          animation: smoke2 3s linear infinite;
-          animation-delay: 1.5s;
-        }
-        .smoke3 {
-          width: 350px;
-          animation: smoke3 4s linear infinite;
-          animation-delay: 2.5s;
-        }
+        .smoke { animation: smokeHorizontal 4s linear infinite; animation-delay: 0s; }
+        .smoke2 { animation: smokeHorizontal 4s linear infinite; animation-delay: 0.8s; }
+        .smoke3 { animation: smokeHorizontal 4s linear infinite; animation-delay: 1.6s; width: 300px; }
+        .smoke4 { animation: smokeHorizontal 4s linear infinite; animation-delay: 2.4s; }
+        .smoke5 { animation: smokeHorizontal 4s linear infinite; animation-delay: 3.2s; width: 350px; }
 
-        @keyframes smoke1 {
-          0% { filter: blur(0px); transform: translateY(0px) scale(-1, 1); opacity: 0; }
-          25% { filter: blur(3px); transform: translateY(-20px) scale(-1, 1.05); opacity: 0.5; }
-          50% { filter: blur(5px); transform: translateY(-40px) scale(-1, 1.1); opacity: 0.8; }
-          75% { filter: blur(5px); transform: translateY(-60px) scale(-1, 1.15); opacity: 0.5; }
-          100% { filter: blur(7px); transform: translateY(-80px) scale(-1, 1.2); opacity: 0; }
-        }
-
-        @keyframes smoke2 {
-          0% { filter: blur(0px); transform: translateY(0px) scale(1); opacity: 0; }
-          25% { filter: blur(3px); transform: translateY(-20px) scale(1.05); opacity: 0.5; }
-          50% { filter: blur(5px); transform: translateY(-40px) scale(1.1); opacity: 0.8; }
-          75% { filter: blur(5px); transform: translateY(-60px) scale(1.15); opacity: 0.5; }
-          100% { filter: blur(7px); transform: translateY(-80px) scale(1.2); opacity: 0; }
-        }
-
-        @keyframes smoke3 {
-          0% { filter: blur(0px); transform: translateY(0px) scale(1); opacity: 0; }
-          25% { filter: blur(3px); transform: translateY(-30px) scale(1.05); opacity: 0.5; }
-          50% { filter: blur(5px); transform: translateY(-60px) scale(1.1); opacity: 0.8; }
-          75% { filter: blur(5px); transform: translateY(-90px) scale(1.15); opacity: 0.5; }
-          100% { filter: blur(7px); transform: translateY(-120px) scale(1.2); opacity: 0; }
+        @keyframes smokeHorizontal {
+          0% { filter: blur(0px); transform: translateX(250px) scale(1); opacity: 0; }
+          20% { filter: blur(2px); transform: translateX(150px) scale(1.05); opacity: 0.6; }
+          50% { filter: blur(5px); transform: translateX(0px) scale(1.1); opacity: 0.9; }
+          80% { filter: blur(5px); transform: translateX(-150px) scale(1.15); opacity: 0.6; }
+          100% { filter: blur(8px); transform: translateX(-250px) scale(1.2); opacity: 0; }
         }
         
         .btn-neon {
@@ -210,19 +188,25 @@ export default function CupomVIPPage() {
 
                 {/* Blured Box with Realistic Smoke Effect */}
                 <div className="relative mb-6 w-full h-32 bg-black/50 border border-[#F17B37]/20 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
-                  {/* Fumaça animada com imagens (Estilo GitHub repo) */}
-                  <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-10">
+                  {/* Fumaça animada com imagens mais densa e horizontal */}
+                  <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-10 flex items-center justify-center">
                     <div className="smoke-wrap">
-                      <Image className="smoke opacity-70" src="/images/smoke.png" alt="smoke" width={300} height={300} />
+                      <Image className="smoke opacity-80" src="/images/smoke.png" alt="smoke" width={250} height={250} />
                     </div>
                     <div className="smoke-wrap">
-                      <Image className="smoke2 opacity-70" src="/images/smoke.png" alt="smoke" width={300} height={300} />
+                      <Image className="smoke2 opacity-80" src="/images/smoke.png" alt="smoke" width={250} height={250} />
                     </div>
                     <div className="smoke-wrap">
-                      <Image className="smoke3 opacity-70" src="/images/smoke.png" alt="smoke" width={350} height={350} />
+                      <Image className="smoke3 opacity-90" src="/images/smoke.png" alt="smoke" width={300} height={300} />
+                    </div>
+                    <div className="smoke-wrap">
+                      <Image className="smoke4 opacity-80" src="/images/smoke.png" alt="smoke" width={250} height={250} />
+                    </div>
+                    <div className="smoke-wrap">
+                      <Image className="smoke5 opacity-90" src="/images/smoke.png" alt="smoke" width={350} height={350} />
                     </div>
                   </div>
-                  <span className="text-3xl font-black text-[#F17B37]/30 blur-[6px] select-none tracking-widest relative z-0">
+                  <span className="text-3xl font-black text-[#F17B37]/20 blur-[6px] select-none tracking-widest relative z-0">
                     ???CUPOM???
                   </span>
                 </div>

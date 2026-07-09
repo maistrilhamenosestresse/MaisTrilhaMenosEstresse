@@ -83,8 +83,10 @@ export default function RootLayout({
         <div id="_tela" style={{ display: 'none' }}></div>
         
         {/* JSON-LD Schema.org para o Google Search (Associação da Marca e Sitelinks) */}
-        <script
+        <Script
+          id="json-ld-organization"
           type="application/ld+json"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
@@ -103,8 +105,10 @@ export default function RootLayout({
             })
           }}
         />
-        <script
+        <Script
+          id="json-ld-website"
           type="application/ld+json"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
@@ -117,7 +121,9 @@ export default function RootLayout({
 
         <Navigation />
         {children}
-        <script
+        <Script
+          id="service-worker-registration"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
