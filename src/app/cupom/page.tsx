@@ -271,9 +271,9 @@ export default function CupomVIPPage() {
           {revealState === "SUCCESS" && (
             <motion.div
               key="success"
-              initial={{ opacity: 0, y: 50, scale: 0.8 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: "spring", bounce: 0.5 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="flex flex-col items-center text-center w-full"
             >
               <div className="bg-gradient-to-b from-[#1A2230] to-[#0A0F16] border-2 border-[#F17B37] rounded-3xl p-8 shadow-[0_0_50px_rgba(241,123,55,0.3)] w-full relative">

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const runtime = 'edge';
+
 const CAMPAIGN_ID = 'treasure_hunt_maistrilha2';
 const MAX_REDEMPTIONS = 2;
 const COUPONS = ['MAISTRILHA-1', 'MAISTRILHA-2'];
