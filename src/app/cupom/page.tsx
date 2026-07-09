@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Copy, CheckCircle2, ShieldAlert, Sparkles, Loader2, User, Flame, Lock } from "lucide-react";
+import { Ticket, Copy, CheckCircle2, ShieldAlert, Sparkles, Loader2, User, Flame, Lock, CloudFog } from "lucide-react";
 import confetti from "canvas-confetti";
 import Image from "next/image";
 
