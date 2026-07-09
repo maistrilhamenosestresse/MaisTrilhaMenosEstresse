@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Ticket, Copy, CheckCircle2, ShieldAlert, Sparkles, Loader2, CloudFog, User, Flame } from "lucide-react";
+import { Ticket, Copy, CheckCircle2, ShieldAlert, Sparkles, Loader2, User, Flame, Lock } from "lucide-react";
 import confetti from "canvas-confetti";
 import Image from "next/image";
 
@@ -92,38 +92,8 @@ export default function CupomVIPPage() {
   return (
     <div className="min-h-screen bg-[#0A0F16] flex flex-col items-center justify-center relative overflow-hidden font-sans">
       
-      {/* CSS para a fumaça mágica e bordas pulsantes */}
+      {/* Animação simplificada do botão Neon */}
       <style dangerouslySetInnerHTML={{__html: `
-        /* Fumaça Horizontal Intensa */
-        .smoke-wrap {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-          z-index: 10;
-          display: flex;
-          align-items: center;
-        }
-
-        .smoke, .smoke2, .smoke3 {
-          transform-origin: 50% 50%;
-          opacity: 0;
-          height: auto;
-          /* Removemos o filter: blur() pois causava lag extremo em celulares */
-        }
-
-        .smoke { animation: smokeHorizontal 18s linear infinite; animation-delay: -2s; width: 350px; }
-        .smoke2 { animation: smokeHorizontal 22s linear infinite; animation-delay: -8s; width: 400px; }
-        .smoke3 { animation: smokeHorizontal 26s linear infinite; animation-delay: -14s; width: 450px; }
-
-        @keyframes smokeHorizontal {
-          0% { transform: translateX(300px) scale(1); opacity: 0; }
-          20% { transform: translateX(150px) scale(1.1); opacity: 0.4; }
-          50% { transform: translateX(0px) scale(1.2); opacity: 0.7; }
-          80% { transform: translateX(-150px) scale(1.3); opacity: 0.4; }
-          100% { transform: translateX(-300px) scale(1.4); opacity: 0; }
-        }
-        
         .btn-neon {
           background: linear-gradient(90deg, #F17B37, #f9a03f, #F17B37);
           background-size: 200% auto;
@@ -186,26 +156,14 @@ export default function CupomVIPPage() {
                   Apenas as <strong className="text-[#F17B37]">2 primeiras</strong> pessoas vão conseguir abrir a névoa e resgatar este super cupom de desconto.
                 </p>
 
-                {/* Blured Box with Realistic Smoke Effect */}
-                <div 
-                  className="relative mb-8 w-full h-40 flex items-center justify-center overflow-hidden" 
-                  style={{ maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 70%)', WebkitMaskImage: '-webkit-radial-gradient(center, ellipse cover, black 30%, transparent 70%)' }}
-                >
-                  {/* Fumaça animada Otimizada para Celular (Sem Blur e 3 camadas) */}
-                  <div className="absolute inset-0 w-full h-full pointer-events-none z-10 flex items-center justify-center">
-                    <div className="smoke-wrap">
-                      <Image className="smoke opacity-70" src="/images/smoke.png" alt="smoke" width={350} height={350} />
-                    </div>
-                    <div className="smoke-wrap">
-                      <Image className="smoke2 opacity-60" src="/images/smoke.png" alt="smoke" width={400} height={400} />
-                    </div>
-                    <div className="smoke-wrap">
-                      <Image className="smoke3 opacity-80" src="/images/smoke.png" alt="smoke" width={450} height={450} />
-                    </div>
-                  </div>
-                  <span className="text-4xl font-black text-[#F17B37]/30 blur-[8px] select-none tracking-[0.3em] relative z-0 mix-blend-screen">
+                {/* Caixa Bloqueada Simples */}
+                <div className="relative mb-8 w-full h-24 bg-black/40 border border-[#F17B37]/30 backdrop-blur-md rounded-2xl p-6 overflow-hidden flex items-center justify-center">
+                  <span className="text-3xl font-black text-white/10 blur-[8px] select-none tracking-widest relative z-0">
                     ???CUPOM???
                   </span>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    <Lock className="w-8 h-8 text-[#F17B37]/50" />
+                  </div>
                 </div>
 
                 {/* Input de Nome */}
