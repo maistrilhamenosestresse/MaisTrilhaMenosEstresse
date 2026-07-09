@@ -110,18 +110,18 @@ export default function CupomVIPPage() {
           height: auto;
         }
 
-        .smoke { animation: smokeHorizontal 4s linear infinite; animation-delay: 0s; }
-        .smoke2 { animation: smokeHorizontal 4s linear infinite; animation-delay: 0.8s; }
-        .smoke3 { animation: smokeHorizontal 4s linear infinite; animation-delay: 1.6s; width: 300px; }
-        .smoke4 { animation: smokeHorizontal 4s linear infinite; animation-delay: 2.4s; }
-        .smoke5 { animation: smokeHorizontal 4s linear infinite; animation-delay: 3.2s; width: 350px; }
+        .smoke { animation: smokeHorizontal 18s linear infinite; animation-delay: -2s; }
+        .smoke2 { animation: smokeHorizontal 22s linear infinite; animation-delay: -8s; }
+        .smoke3 { animation: smokeHorizontal 26s linear infinite; animation-delay: -14s; width: 350px; }
+        .smoke4 { animation: smokeHorizontal 20s linear infinite; animation-delay: -19s; }
+        .smoke5 { animation: smokeHorizontal 30s linear infinite; animation-delay: -5s; width: 400px; }
 
         @keyframes smokeHorizontal {
-          0% { filter: blur(0px); transform: translateX(250px) scale(1); opacity: 0; }
-          20% { filter: blur(2px); transform: translateX(150px) scale(1.05); opacity: 0.6; }
-          50% { filter: blur(5px); transform: translateX(0px) scale(1.1); opacity: 0.9; }
-          80% { filter: blur(5px); transform: translateX(-150px) scale(1.15); opacity: 0.6; }
-          100% { filter: blur(8px); transform: translateX(-250px) scale(1.2); opacity: 0; }
+          0% { filter: blur(2px); transform: translateX(300px) scale(1); opacity: 0; }
+          20% { filter: blur(5px); transform: translateX(150px) scale(1.1); opacity: 0.4; }
+          50% { filter: blur(8px); transform: translateX(0px) scale(1.2); opacity: 0.7; }
+          80% { filter: blur(10px); transform: translateX(-150px) scale(1.3); opacity: 0.4; }
+          100% { filter: blur(12px); transform: translateX(-300px) scale(1.4); opacity: 0; }
         }
         
         .btn-neon {
@@ -187,26 +187,29 @@ export default function CupomVIPPage() {
                 </p>
 
                 {/* Blured Box with Realistic Smoke Effect */}
-                <div className="relative mb-6 w-full h-32 bg-black/50 border border-[#F17B37]/20 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
+                <div 
+                  className="relative mb-8 w-full h-40 flex items-center justify-center overflow-hidden" 
+                  style={{ maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 70%)', WebkitMaskImage: '-webkit-radial-gradient(center, ellipse cover, black 30%, transparent 70%)' }}
+                >
                   {/* Fumaça animada com imagens mais densa e horizontal */}
-                  <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-10 flex items-center justify-center">
+                  <div className="absolute inset-0 w-full h-full pointer-events-none z-10 flex items-center justify-center">
                     <div className="smoke-wrap">
-                      <Image className="smoke opacity-80" src="/images/smoke.png" alt="smoke" width={250} height={250} />
+                      <Image className="smoke opacity-70" src="/images/smoke.png" alt="smoke" width={300} height={300} />
                     </div>
                     <div className="smoke-wrap">
-                      <Image className="smoke2 opacity-80" src="/images/smoke.png" alt="smoke" width={250} height={250} />
+                      <Image className="smoke2 opacity-60" src="/images/smoke.png" alt="smoke" width={300} height={300} />
                     </div>
                     <div className="smoke-wrap">
-                      <Image className="smoke3 opacity-90" src="/images/smoke.png" alt="smoke" width={300} height={300} />
+                      <Image className="smoke3 opacity-80" src="/images/smoke.png" alt="smoke" width={350} height={350} />
                     </div>
                     <div className="smoke-wrap">
-                      <Image className="smoke4 opacity-80" src="/images/smoke.png" alt="smoke" width={250} height={250} />
+                      <Image className="smoke4 opacity-70" src="/images/smoke.png" alt="smoke" width={300} height={300} />
                     </div>
                     <div className="smoke-wrap">
-                      <Image className="smoke5 opacity-90" src="/images/smoke.png" alt="smoke" width={350} height={350} />
+                      <Image className="smoke5 opacity-80" src="/images/smoke.png" alt="smoke" width={400} height={400} />
                     </div>
                   </div>
-                  <span className="text-3xl font-black text-[#F17B37]/20 blur-[6px] select-none tracking-widest relative z-0">
+                  <span className="text-4xl font-black text-[#F17B37]/30 blur-[8px] select-none tracking-[0.3em] relative z-0 mix-blend-screen">
                     ???CUPOM???
                   </span>
                 </div>
