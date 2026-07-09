@@ -49,7 +49,7 @@ export function Navigation() {
   const cartQuantity = mounted ? getTotalQuantity() : 0;
 
   // Hide the navigation on admin or specific pages if needed.
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/cadastro') || pathname?.startsWith('/gerenciador')) return null;
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/cadastro') || pathname?.startsWith('/gerenciador') || pathname?.startsWith('/cupom')) return null;
 
   return (
     <>
