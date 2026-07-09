@@ -82,7 +82,10 @@ export default function CupomVIPPage() {
     if (couponCode) {
       navigator.clipboard.writeText(couponCode);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Redireciona o usuário para a agenda 1.5 segundos após copiar o cupom
+      setTimeout(() => {
+        window.location.href = '/agenda';
+      }, 1500);
     }
   };
 
@@ -183,7 +186,7 @@ export default function CupomVIPPage() {
                 <Flame className="w-12 h-12 text-[#F17B37] mx-auto mb-4 drop-shadow-[0_0_15px_rgba(241,123,55,0.8)]" />
                 <h2 className="text-2xl md:text-3xl font-black text-white mb-2 tracking-wide">Baú Secreto</h2>
                 <p className="text-gray-400 text-xs md:text-sm mb-6 leading-relaxed">
-                  Apenas as <strong className="text-[#F17B37]">2 primeiras</strong> pessoas vão conseguir abrir a névoa e resgatar o prêmio misterioso.
+                  Apenas as <strong className="text-[#F17B37]">2 primeiras</strong> pessoas vão conseguir abrir a névoa e resgatar este super cupom de desconto.
                 </p>
 
                 {/* Blured Box with Realistic Smoke Effect */}
@@ -230,9 +233,16 @@ export default function CupomVIPPage() {
 
                 <button 
                   onClick={handleReveal}
-                  className="w-full btn-neon text-white font-black text-lg py-4 rounded-xl transition-all transform hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full btn-neon text-white font-black text-lg py-4 rounded-xl transition-all transform hover:scale-[1.03] active:scale-95 flex items-center justify-center gap-2 mb-4"
                 >
-                  <Sparkles className="w-5 h-5" /> Tentar a Sorte
+                  <Sparkles className="w-5 h-5" /> Testar Sorte
+                </button>
+
+                <button 
+                  onClick={() => window.location.href = '/agenda'}
+                  className="w-full bg-white/5 hover:bg-white/10 text-gray-300 font-bold py-3 rounded-xl transition-all text-sm"
+                >
+                  Ver Trilhas Disponíveis
                 </button>
               </div>
             </motion.div>
