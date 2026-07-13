@@ -125,8 +125,8 @@ export default function AgendaList() {
             className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md max-w-2xl mx-auto"
           >
             <Calendar className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium">O calendário está sendo preparado.</p>
-            <p className="text-sm text-gray-500 mt-2">Nenhuma trilha futura cadastrada no momento.</p>
+            <p className="text-gray-400 font-medium">Nenhuma trilha encontrada neste momento.</p>
+            <p className="text-sm text-gray-500 mt-2">Novas aventuras serão adicionadas em breve.</p>
           </motion.div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8">
