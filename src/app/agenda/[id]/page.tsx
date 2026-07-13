@@ -69,6 +69,20 @@ export default function AgendaDetailsPage() {
     fetchAgenda();
   }, [params.id]);
 
+  if (isMaintenance) {
+    return (
+      <div className="min-h-screen bg-[#0F1722] text-white font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-center">
+        <h1 className="text-4xl md:text-6xl font-black text-[#F17B37] mb-6">Em Manutenção 🚧</h1>
+        <p className="text-gray-300 max-w-lg mb-8 text-lg md:text-xl">
+          Estamos atualizando esta trilha! Por favor, volte em alguns instantes.
+        </p>
+        <button onClick={() => router.push('/agenda')} className="bg-[#F17B37] px-8 py-4 rounded-2xl font-bold transition">
+          Voltar para a Agenda
+        </button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return <div className="min-h-screen bg-[#0F1722] flex items-center justify-center text-[#F17B37]">Carregando trilha...</div>;
   }

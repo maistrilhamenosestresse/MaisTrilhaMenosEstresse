@@ -33,12 +33,12 @@ export default function AgendaList() {
         console.error("Erro ao registrar acesso global", e);
       }
 
-      // const { data: resSettings } = await supabase.from('settings').select('*').single();
-      // if (resSettings && resSettings.maintenance_mode) {
-      //   setIsMaintenance(true);
-      //   setIsLoading(false);
-      //   return;
-      // }
+      const { data: resSettings } = await supabase.from('settings').select('*').single();
+      if (resSettings && resSettings.maintenance_mode) {
+        setIsMaintenance(true);
+        setIsLoading(false);
+        return;
+      }
       
       try {
         const { data, error } = await supabase

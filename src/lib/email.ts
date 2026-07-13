@@ -6,15 +6,18 @@ export async function sendPurchaseEmail(client: Client, agenda: Agenda, allReser
     throw new Error('Dados insuficientes para enviar email.');
   }
 
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+  const gmailUser = process.env.GMAIL_USER || 'maistrilhamenosestresse@gmail.com';
+  const gmailPass = process.env.GMAIL_APP_PASSWORD || 'gutowhvztxakiilf';
+
+  if (!gmailUser || !gmailPass) {
     throw new Error('Credenciais de email não configuradas.');
   }
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: gmailUser,
+      pass: gmailPass,
     },
   });
 

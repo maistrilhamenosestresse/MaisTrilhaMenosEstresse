@@ -6,13 +6,15 @@ import { authOptions } from '../auth/[...nextauth]/route';
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    
+    const gmailUser = process.env.GMAIL_USER || 'maistrilhamenosestresse@gmail.com';
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || 'gutowhvztxakiilf';
+
     // Configuração do transporter (usa variáveis de ambiente)
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
+        user: gmailUser,
+        pass: gmailPass,
       },
     });
 

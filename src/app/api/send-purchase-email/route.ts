@@ -10,15 +10,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Dados insuficientes para enviar email.' }, { status: 400 });
     }
 
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    const gmailUser = process.env.GMAIL_USER || 'maistrilhamenosestresse@gmail.com';
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || 'gutowhvztxakiilf';
+
+    if (!gmailUser || !gmailPass) {
       return NextResponse.json({ success: false, error: 'Credenciais de email não configuradas.' }, { status: 500 });
     }
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
+        user: gmailUser,
+        pass: gmailPass,
       },
     });
 
