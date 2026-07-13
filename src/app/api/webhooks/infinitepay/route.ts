@@ -6,8 +6,8 @@ import { sendPurchaseEmail } from '@/lib/email';
 import { sendWhatsAppText } from '@/lib/whatsapp';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yslikzkgiaxafcgrqvzh.supabase.co'),
+  process.env.SUPABASE_SERVICE_ROLE_KEY || (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_P08GCyftnuBDqcOaCdS92g_8AZYEWoj')
 );
 
 export async function POST(request: Request) {

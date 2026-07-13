@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yslikzkgiaxafcgrqvzh.supabase.co'),
+  (process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_ENlwK2X7Uo2CfRLh_9RBwg_KbtgUUbO')
 );
 
 export async function POST(request: Request) {
