@@ -10,7 +10,6 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useCartStore } from "@/store/cartStore";
 import { Users } from "lucide-react";
-import imageCompression from 'browser-image-compression';
 
 function CadastroContent() {
   const [step, setStep] = useState(1);
@@ -183,19 +182,12 @@ function CadastroContent() {
 
       // 1. Upload Photo
       if (formData.photo) {
-        const compressOptions = {
-          maxSizeMB: 0.15,
-          maxWidthOrHeight: 800,
-          useWebWorker: true,
-          fileType: "image/webp"
-        };
-        
-        const compressedFile = await imageCompression(formData.photo, compressOptions);
-        const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.webp`;
+        const fileExt = formData.photo.name.split('.').pop();
+        const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('fotos_agendas')
-          .upload(fileName, compressedFile);
+          .upload(fileName, formData.photo);
           
         if (uploadError) throw uploadError;
         

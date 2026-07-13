@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     title: 'Painel Administrativo | Mais Trilha Menos Estresse',
     description: 'Área restrita para gerenciamento de trilhas, clientes e seguros.',
     images: [{
-      url: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+      url: 'https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
       width: 1200,
       height: 630,
       alt: 'Logo Mais Trilha',
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Painel Administrativo | Mais Trilha Menos Estresse',
     description: 'Área restrita para gerenciamento de trilhas, clientes e seguros.',
-    images: ['https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png'],
+    images: ['https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png'],
   },
 };
 

@@ -12,7 +12,6 @@ import { PinModal } from "@/components/PinModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from 'recharts';
-import imageCompression from 'browser-image-compression';
 
 type AgendaForm = {
   title: string; location: string; date: string; price: string;
@@ -730,22 +729,11 @@ export default function AdminPage() {
       let imageUrls: string[] = editingAgenda ? editingAgenda.images || [] : [];
       let videoUrl: string | null = editingAgenda ? editingAgenda.video_url : null;
       let flyerUrl: string | null = editingAgenda ? editingAgenda.flyer_url : null;
-
-      const compressOptions = {
-        maxSizeMB: 0.15,
-        maxWidthOrHeight: 1200,
-        useWebWorker: true,
-        fileType: "image/webp"
-      };
       
       // Upload Flyer
       if (data.flyer && data.flyer.length > 0) {
-        let file: File | Blob = data.flyer[0];
-        if (file.type.startsWith('image/')) {
-          file = await imageCompression(file as File, compressOptions);
-        }
-        const ext = file.type === 'image/webp' ? 'webp' : (data.flyer[0].name.split('.').pop() || 'jpg');
-        const fileName = `flyer_${Date.now()}.${ext}`;
+        const file = data.flyer[0];
+        const fileName = `flyer_${Date.now()}.${file.name.split('.').pop()}`;
         await supabase.storage.from('fotos_agendas').upload(fileName, file);
         flyerUrl = supabase.storage.from('fotos_agendas').getPublicUrl(fileName).data.publicUrl;
       }
@@ -753,12 +741,8 @@ export default function AdminPage() {
       if (data.images && data.images.length > 0) {
         if (!editingAgenda) imageUrls = [];
         for (let i = 0; i < data.images.length; i++) {
-          let file: File | Blob = data.images[i];
-          if (file.type.startsWith('image/')) {
-            file = await imageCompression(file as File, compressOptions);
-          }
-          const ext = file.type === 'image/webp' ? 'webp' : (data.images[i].name.split('.').pop() || 'jpg');
-          const fileName = `img_${Date.now()}_${i}.${ext}`;
+          const file = data.images[i];
+          const fileName = `img_${Date.now()}_${i}.${file.name.split('.').pop()}`;
           await supabase.storage.from('fotos_agendas').upload(fileName, file);
           imageUrls.push(supabase.storage.from('fotos_agendas').getPublicUrl(fileName).data.publicUrl);
         }

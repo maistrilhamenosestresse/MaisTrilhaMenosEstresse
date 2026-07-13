@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin, DollarSign, ChevronRight, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { getLowestGrossPrice } from "@/lib/fees";
 import { Navigation } from "@/components/Navigation";
 
 export default function AgendaList() {
@@ -28,19 +27,34 @@ export default function AgendaList() {
               await supabase.from('global_stats').update({ total_views: (stats.total_views || 0) + 1 }).eq('id', 1);
               localStorage.setItem('viewed_global', 'true');
             }
+  async function fetchAgendas() {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Busca e Atualiza Contador Global de Acessos
+    try {
+      if (typeof window !== 'undefined') {
+        const hasViewedGlobal = localStorage.getItem('viewed_global');
+        if (!hasViewedGlobal) {
+          // Busca o total atual
+          const { data: stats } = await supabase.from('global_stats').select('total_views').eq('id', 1).single();
+          if (stats) {
+            await supabase.from('global_stats').update({ total_views: (stats.total_views || 0) + 1 }).eq('id', 1);
+            localStorage.setItem('viewed_global', 'true');
           }
         }
-      } catch (e) {
-        console.error("Erro ao registrar acesso global", e);
       }
+    } catch (e) {
+      console.error("Erro ao registrar acesso global", e);
+    }
 
-      // const { data: resSettings } = await supabase.from('settings').select('*').single();
-      // if (resSettings && resSettings.maintenance_mode) {
-      //   setIsMaintenance(true);
-      //   setIsLoading(false);
-      //   return;
-      // }
-      
+    // const { data: resSettings } = await supabase.from('settings').select('*').single();
+    // if (resSettings && resSettings.maintenance_mode) {
+    //   setIsMaintenance(true);
+    //   setIsLoading(false);
+    //   return;
+    // }
+    
+    try {
       const { data, error } = await supabase
         .from('agendas')
         .select('*, reservas(status_pagamento)')
@@ -50,8 +64,14 @@ export default function AgendaList() {
       if (!error && data) {
         setAgendas(data);
       }
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchAgendas();
   }, []);
 
@@ -83,35 +103,20 @@ export default function AgendaList() {
       
       {/* Background Decorativo */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-10 pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
 
-      <header className="pt-16 pb-12 px-6 max-w-7xl mx-auto relative z-10 text-center">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 backdrop-blur-md"
-        >
-          <span className="text-[#F17B37] text-sm font-bold tracking-widest uppercase">Mais Trilha Menos Estresse</span>
-        </motion.div>
-        
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 leading-tight"
-        >
-          Calendário <br className="md:hidden" />de <span className="text-[#F17B37]">Aventuras</span>
-        </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-gray-400 text-lg max-w-2xl mx-auto"
-        >
-          Escolha o seu próximo destino, convide a galera e recarregue as energias.
-        </motion.p>
-      </header>
+      {/* Hero Simples */}
+      <div className="pt-32 pb-10 px-6 max-w-7xl mx-auto relative z-10 text-center">
+        <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
+          Próximas <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a06b]">Trilhas</span>
+        </h1>
+        <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          Escolha sua próxima aventura. Vagas limitadas, garanta a sua com antecedência.
+        </p>
+      </div>
 
-      <div className="px-6 max-w-7xl mx-auto relative z-10">
+      {/* Lista de Trilhas */}
+      <div className="px-3 md:px-6 max-w-7xl mx-auto relative z-10">
         {isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3].map(i => (
@@ -185,7 +190,7 @@ export default function AgendaList() {
                         </div>
                         <div className="flex items-center gap-1.5 md:gap-3 text-xs md:text-sm text-gray-400">
                           <DollarSign className={`h-3 w-3 md:h-4 md:w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
-                          <span className="font-semibold text-white text-xs text-gray-400">a partir de</span> <span className="font-black text-white">R$ {getLowestGrossPrice(agenda.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-semibold text-white">R$ {agenda.price}</span>
                         </div>
                       </div>
 
