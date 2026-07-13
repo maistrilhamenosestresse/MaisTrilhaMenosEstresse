@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
 import { sendPurchaseEmail } from '@/lib/email';
 import { sendWhatsAppText } from '@/lib/whatsapp';
 
