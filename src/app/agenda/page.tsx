@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin, DollarSign, ChevronRight, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { getLowestGrossPrice } from "@/lib/fees";
 import { Navigation } from "@/components/Navigation";
 
 export default function AgendaList() {
@@ -33,12 +34,12 @@ export default function AgendaList() {
         console.error("Erro ao registrar acesso global", e);
       }
 
-      const { data: resSettings } = await supabase.from('settings').select('*').single();
-      if (resSettings && resSettings.maintenance_mode) {
-        setIsMaintenance(true);
-        setIsLoading(false);
-        return;
-      }
+      // const { data: resSettings } = await supabase.from('settings').select('*').single();
+      // if (resSettings && resSettings.maintenance_mode) {
+      //   setIsMaintenance(true);
+      //   setIsLoading(false);
+      //   return;
+      // }
       
       const { data, error } = await supabase
         .from('agendas')
@@ -184,7 +185,7 @@ export default function AgendaList() {
                         </div>
                         <div className="flex items-center gap-1.5 md:gap-3 text-xs md:text-sm text-gray-400">
                           <DollarSign className={`h-3 w-3 md:h-4 md:w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
-                          <span className="font-semibold text-white">R$ {agenda.price}</span>
+                          <span className="font-semibold text-white text-xs text-gray-400">a partir de</span> <span className="font-black text-white">R$ {getLowestGrossPrice(agenda.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 
