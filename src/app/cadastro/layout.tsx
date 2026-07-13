@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     description: 'Preencha seus dados para o seguro aventura e assine o termo de responsabilidade da Mais Trilha Menos Estresse.',
     siteName: 'Mais Trilha Menos Estresse',
     images: [{
-      url: 'https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+      url: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
       width: 1200,
       height: 630,
       alt: 'Mais Trilha Menos Estresse Logo',
@@ -19,10 +19,10 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Ficha de Cadastro | Mais Trilha Menos Estresse',
     description: 'Preencha seus dados para o seguro aventura e assine o termo de responsabilidade.',
-    images: ['https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png'],
+    images: ['https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png'],
   },
   icons: {
-    icon: 'https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+    icon: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
   }
 };
 
