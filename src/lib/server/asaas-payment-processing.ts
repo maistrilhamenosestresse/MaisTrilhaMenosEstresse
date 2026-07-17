@@ -11,7 +11,16 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
   const reference = String(payment.externalReference || '');
   const paymentId = String(payment.id || '');
   const paidValue = Number(payment.value || 0);
-  if (!reference || !paymentId || !Number.isFinite(paidValue) || paidValue <= 0) throw new Error('Pagamento Asaas inválido');
+  const isInternalAppCheckout = reference.startsWith('TRILHA_APP:') && paymentId.startsWith('INTERNAL:');
+  if (
+    !reference ||
+    !paymentId ||
+    !Number.isFinite(paidValue) ||
+    paidValue < 0 ||
+    (paidValue === 0 && !isInternalAppCheckout)
+  ) {
+    throw new Error('Pagamento Asaas inválido');
+  }
 
   if (reference.startsWith('RECARGA:')) {
     const clientId = reference.split(':')[1];
@@ -57,6 +66,34 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
     return 'completed';
   }
 
+  if (reference.startsWith('TRILHA_APP:')) {
+    const benefitId = reference.split(':')[1];
+    const { data: processed, error } = await supabase.rpc('finalize_app_trail_checkout', {
+      p_benefit_id: benefitId,
+      p_payment_id: paymentId,
+      p_paid_amount: paidValue,
+      p_billing_type: payment.billingType || 'ASAAS',
+    });
+    if (error) throw error;
+    if (!processed) return 'duplicate';
+    const { data: benefit, error: benefitError } = await supabase
+      .from('trail_checkout_benefits')
+      .select('reservation_ids, owner_id')
+      .eq('id', benefitId)
+      .single();
+    if (benefitError || !benefit?.reservation_ids?.length) {
+      throw benefitError || new Error('Checkout do aplicativo não encontrado');
+    }
+    return completeTrailPayment(
+      supabase,
+      benefit.reservation_ids,
+      paymentId,
+      paidValue,
+      true,
+      benefit.owner_id,
+    );
+  }
+
   const reservationIds = await reservationIdsFromReference(supabase, reference);
   return processTrailPayment(supabase, reservationIds, paymentId, paidValue, payment.billingType);
 }
@@ -81,6 +118,18 @@ export async function processCanceledAsaasPayment(supabase: SupabaseAdmin, payme
     if (error) throw error;
     return data ? 'completed' : 'duplicate';
   }
+  if (reference.startsWith('TRILHA_APP:')) {
+    const status = event === 'PAYMENT_OVERDUE'
+      ? 'expirado'
+      : ['PAYMENT_REFUNDED', 'PAYMENT_CHARGEBACK_REQUESTED'].includes(event) ? 'estornado' : 'cancelado';
+    const { data, error } = await supabase.rpc('cancel_app_trail_checkout', {
+      p_benefit_id: reference.split(':')[1],
+      p_payment_id: paymentId,
+      p_status: status,
+    });
+    if (error) throw error;
+    return data ? 'completed' : 'duplicate';
+  }
   const reservationIds = await reservationIdsFromReference(supabase, reference);
   const { data, error } = await supabase.rpc('cancel_trail_payment', {
     p_reservation_ids: reservationIds, p_payment_id: paymentId,
@@ -90,6 +139,15 @@ export async function processCanceledAsaasPayment(supabase: SupabaseAdmin, payme
 }
 
 async function reservationIdsFromReference(supabase: SupabaseAdmin, reference: string) {
+  if (reference.startsWith('TRILHA_APP:')) {
+    const { data, error } = await supabase
+      .from('trail_checkout_benefits')
+      .select('reservation_ids')
+      .eq('id', reference.split(':')[1])
+      .single();
+    if (error || !data?.reservation_ids?.length) throw error || new Error('Checkout do aplicativo não encontrado');
+    return data.reservation_ids;
+  }
   if (!reference.startsWith('TRILHA:')) return reference.split(',').filter(Boolean);
   const batchId = reference.split(':')[1];
   const { data, error } = await supabase.from('reservas').select('id').eq('checkout_batch_id', batchId);
@@ -106,17 +164,33 @@ async function processTrailPayment(supabase: SupabaseAdmin, reservationIds: stri
   });
   if (error) throw error;
   if (!processed) return 'duplicate';
+  return completeTrailPayment(supabase, reservationIds, paymentId, paidValue, false);
+}
 
+async function completeTrailPayment(
+  supabase: SupabaseAdmin,
+  reservationIds: string[],
+  paymentId: string,
+  paidValue: number,
+  rewardEligible: boolean,
+  ownerId?: string,
+) {
   const { data: reservations, error: reservationError } = await supabase.from('reservas')
     .select('*, clients!reservas_client_id_fkey(*), agendas(*)').in('id', reservationIds);
   if (reservationError) throw reservationError;
-  const principal = reservations?.find((item: any) => item.clients?.email) || reservations?.[0];
+  const principal = reservations?.find((item: any) => ownerId && item.client_id === ownerId)
+    || reservations?.find((item: any) => item.clients?.email)
+    || reservations?.[0];
   if (!principal?.clients || !principal?.agendas) return 'completed';
 
-  await supabase.rpc('award_points_from_asaas', {
-    p_client_id: principal.clients.id, p_payment_id: paymentId,
-    p_points: Math.floor(paidValue), p_description: 'Compra de trilha',
-  });
+  if (rewardEligible && Math.floor(paidValue) > 0) {
+    await supabase.rpc('award_points_from_asaas', {
+      p_client_id: principal.clients.id,
+      p_payment_id: paymentId,
+      p_points: Math.floor(paidValue),
+      p_description: 'Compra de trilha pelo app',
+    });
+  }
   const { count } = await supabase.from('reservas').select('id', { count: 'exact', head: true })
     .eq('client_id', principal.clients.id).eq('status_pagamento', 'pago');
   if ((count || 0) >= REQUIRED_PAID_TRAILS && !principal.clients.membro_vip) {

@@ -2,15 +2,22 @@ import { NextResponse } from 'next/server';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
-import { readJsonBody } from '@/lib/server/request';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 export const dynamic = 'force-dynamic';
 
 type DependentInput = { name?: string; cpf?: string; phone?: string };
 type ReservationItem = { agendaId?: string; dependents?: DependentInput[] };
-type ReservationBody = { items?: ReservationItem[]; agenda_id?: string; client_id?: string };
+type ReservationBody = {
+  items?: ReservationItem[];
+  agenda_id?: string;
+  client_id?: string;
+  checkout_source?: 'site' | 'app';
+};
 
 export async function POST(request: Request) {
+  const originError = assertSameOrigin(request);
+  if (originError) return originError;
   const auth = await requireAuthenticatedUser();
   if (auth.response) return auth.response;
   const parsed = await readJsonBody<ReservationBody>(request, 100_000);
@@ -60,6 +67,15 @@ export async function POST(request: Request) {
     if (batchError) throw batchError;
     const { data: reservations, error: reservationError } = await supabase.from('reservas').select('*').in('id', reservationIds || []);
     if (reservationError || !reservations?.length) throw reservationError || new Error('Reservas não foram criadas');
+    if (parsed.data.checkout_source === 'app') {
+      const { error: sourceError } = await supabase
+        .from('reservas')
+        .update({ purchase_channel: 'app' })
+        .in('id', reservationIds || [])
+        .eq('status_pagamento', 'pendente');
+      if (sourceError) throw sourceError;
+      for (const reservation of reservations) reservation.purchase_channel = 'app';
+    }
 
     const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     const inviteRows = [...pendingInvites].map(([clientId, invite]) => ({
@@ -78,7 +94,11 @@ export async function POST(request: Request) {
       actor_email: auth.user.email,
       action: 'reservation.create',
       resource_type: 'reservation_batch',
-      metadata: { batchId, reservationIds: reservations.map((item) => item.id) },
+      metadata: {
+        batchId,
+        reservationIds: reservations.map((item) => item.id),
+        checkoutSource: parsed.data.checkout_source || 'site',
+      },
     });
     return NextResponse.json({
       success: true,

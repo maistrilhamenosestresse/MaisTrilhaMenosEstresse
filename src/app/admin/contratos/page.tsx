@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, Printer, FileDown, ShieldCheck, Search } from "lucide-react";
+import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, Printer, FileDown, ShieldCheck, Search, Loader2 } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
-import { toast } from "sonner";
-import { createRoot } from "react-dom/client";
 
 export default function ContratosAdminPage() {
   const router = useRouter();
@@ -15,12 +13,11 @@ export default function ContratosAdminPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<'assinados' | 'pendentes'>('pendentes');
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   
   // PIN Security
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinAction, setPinAction] = useState<{ name: string; onConfirm: () => void; onCancel: () => void } | null>(null);
-
-  const [selectedClientForModal, setSelectedClientForModal] = useState<any>(null);
 
   const requirePin = async (actionName: string): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -36,9 +33,10 @@ export default function ContratosAdminPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: clientsData, error } = await supabase.from('clients').select('*').order('full_name', { ascending: true });
-        if (error) throw error;
-        if (clientsData) setClients(clientsData);
+        const response = await fetch('/api/admin/contracts', { cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Falha ao carregar contratos');
+        setClients(result.clients || []);
       } catch (err) {
         console.error("Erro ao carregar clientes para contratos:", err);
       } finally {
@@ -60,7 +58,7 @@ export default function ContratosAdminPage() {
       
       setClients(clients.map(c => c.id === client.id ? { ...c, signature_url: 'ASSINATURA MANUAL - ' + new Date().toISOString() } : c));
       alert(`Contrato de ${client.full_name} marcado como assinado manualmente!`);
-    } catch (err) {
+    } catch {
       alert('Erro ao marcar contrato como assinado.');
     }
   };
@@ -68,8 +66,8 @@ export default function ContratosAdminPage() {
   const handleCobrarWhatsApp = async (client: any) => {
     if (!(await requirePin(`Cobrar ${client.full_name} no WhatsApp`))) return;
 
-    const link = `https://www.maistrilhasmenosestresse.com/cadastro?cpf=${client.cpf.replace(/[^0-9]/g, '')}`;
-    const text = `Oi ${client.full_name.split(' ')[0]}, vi que você já garantiu sua vaga com a Mais Trilha, mas falta você preencher o seguro e *assinar o contrato digital*!\n\nPor favor, acesse o link abaixo para regularizar rapidinho (leva menos de 1 minuto): 👇\n${link}`;
+    const link = `https://www.maistrilhasmenosestresse.com/app/termos`;
+    const text = `Oi ${client.full_name.split(' ')[0]}, atualizamos o termo de responsabilidade e a autorização do seguro da Mais Trilha. Entre no app, leia e *assine os dois documentos atualizados*, por favor: 👇\n${link}`;
     window.open(`https://wa.me/55${client.phone?.replace(/[^0-9]/g, '') || ''}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -197,16 +195,37 @@ export default function ContratosAdminPage() {
     executePrintWindow(fullHTML, "Todos os Contratos Assinados");
   };
 
+  const handleDownloadVersionedContracts = async (clientId?: string) => {
+    if (!(await requirePin('Baixar arquivo seguro de contratos'))) return;
+    setIsDownloadingAll(true);
+    try {
+      const params = clientId ? `?clientId=${encodeURIComponent(clientId)}` : '';
+      const response = await fetch(`/api/admin/contracts/download${params}`, { cache: 'no-store' });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Não foi possível preparar os contratos.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = clientId
+        ? `contratos-passageiro-${clientId.slice(0, 8)}.zip`
+        : `contratos-assinados-${new Date().toISOString().slice(0, 10)}.zip`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      alert(error.message || 'Erro ao baixar contratos.');
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
   const handlePrintSingle = async (client: any) => {
     const html = generateContractHTML(client);
     executePrintWindow(html, `Contrato - ${client.full_name}`);
   };
   
-  const handleViewContract = async (client: any) => {
-    if (!(await requirePin('Ver Contrato de ' + client.full_name))) return;
-    setSelectedClientForModal(client);
-  };
-
   const normalizeString = (str: string) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
   
   const filteredClients = clients.filter(c => 
@@ -214,8 +233,11 @@ export default function ContratosAdminPage() {
     (c.cpf && c.cpf.includes(searchTerm))
   );
 
-  const clientsSigned = filteredClients.filter(c => c.signature_url);
-  const clientsPending = filteredClients.filter(c => !c.signature_url);
+  const hasCurrentDocuments = (client: any) =>
+    client.contract_current?.responsibility === true &&
+    client.contract_current?.insurance === true;
+  const clientsSigned = filteredClients.filter(hasCurrentDocuments);
+  const clientsPending = filteredClients.filter(c => !hasCurrentDocuments(c));
 
   const displayedClients = activeTab === 'assinados' ? clientsSigned : clientsPending;
 
@@ -247,21 +269,31 @@ export default function ContratosAdminPage() {
           <div className="flex gap-8 items-center w-full md:w-auto">
             <div>
               <p className="text-xs font-bold text-gray-500 uppercase">Assinados</p>
-              <p className="text-3xl font-black text-emerald-500">{clients.filter(c => c.signature_url).length}</p>
+              <p className="text-3xl font-black text-emerald-500">{clients.filter(hasCurrentDocuments).length}</p>
             </div>
             <div className="w-px h-12 bg-gray-200"></div>
             <div>
               <p className="text-xs font-bold text-gray-500 uppercase">Pendentes</p>
-              <p className="text-3xl font-black text-red-500">{clients.filter(c => !c.signature_url).length}</p>
+              <p className="text-3xl font-black text-red-500">{clients.filter(c => !hasCurrentDocuments(c)).length}</p>
             </div>
           </div>
           
-          <button 
-            onClick={handlePrintAll}
-            className="w-full md:w-auto bg-[#F17B37] text-white px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#d6672c] transition shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-          >
-            <Printer className="h-5 w-5" /> Imprimir Contratos Assinados
-          </button>
+          <div className="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={() => handleDownloadVersionedContracts()}
+              disabled={isDownloadingAll}
+              className="w-full md:w-auto bg-[#F17B37] text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#d6672c] transition shadow-lg disabled:opacity-60"
+            >
+              {isDownloadingAll ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileDown className="h-5 w-5" />}
+              Baixar PDFs em ZIP
+            </button>
+            <button
+              onClick={handlePrintAll}
+              className="w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition"
+            >
+              <Printer className="h-5 w-5" /> Imprimir legados
+            </button>
+          </div>
         </div>
       </div>
 
@@ -308,7 +340,7 @@ export default function ContratosAdminPage() {
               <div key={client.id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 {client.photo_url ? (
-                  <img src={client.photo_url} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 shadow-sm" />
+                  <img src={client.photo_url} alt={`Foto de ${client.full_name}`} className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 shadow-sm" />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-200 shadow-sm text-gray-400 font-black text-xl">
                     {client.full_name.charAt(0)}
@@ -318,9 +350,21 @@ export default function ContratosAdminPage() {
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-gray-900 truncate">{client.full_name}</h4>
                   <p className="text-xs text-gray-500 font-mono">{client.cpf}</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      client.contract_current?.responsibility ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                    }`}>
+                      Responsabilidade
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                      client.contract_current?.insurance ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                    }`}>
+                      Seguro
+                    </span>
+                  </div>
                 </div>
                 
-                {client.signature_url ? (
+                {hasCurrentDocuments(client) ? (
                   <div className="bg-emerald-50 text-emerald-600 p-2 rounded-full" title="Assinado">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
@@ -332,13 +376,13 @@ export default function ContratosAdminPage() {
               </div>
 
               <div className="flex gap-2 mt-2 border-t border-gray-100 pt-4">
-                {client.signature_url ? (
+                {hasCurrentDocuments(client) ? (
                   <>
                     <button 
-                      onClick={() => handleViewContract(client)}
+                      onClick={() => handleDownloadVersionedContracts(client.id)}
                       className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 border border-gray-200"
                     >
-                      <FileSignature className="w-4 h-4" /> Visualizar
+                      <FileDown className="w-4 h-4" /> Baixar ZIP
                     </button>
                     <button 
                       onClick={() => handlePrintSingle(client)}
@@ -369,26 +413,6 @@ export default function ContratosAdminPage() {
           </div>
         )}
       </div>
-
-      {/* MODAL VER CONTRATO (VISUAL) */}
-      {selectedClientForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="font-black text-gray-800 flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-emerald-500"/> Contrato Assinado</h2>
-              <button onClick={() => setSelectedClientForModal(null)} className="text-gray-400 hover:text-gray-800 p-2 bg-white rounded-full shadow-sm"><XCircle className="w-5 h-5"/></button>
-            </div>
-            <div className="p-8 overflow-y-auto custom-scrollbar">
-               <div dangerouslySetInnerHTML={{ __html: generateContractHTML(selectedClientForModal) }} />
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-2">
-              <button onClick={() => handlePrintSingle(selectedClientForModal)} className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl flex justify-center items-center gap-2 hover:bg-emerald-700 transition">
-                <Printer className="w-5 h-5" /> Imprimir Contrato
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <PinModal 
         isOpen={isPinModalOpen} 

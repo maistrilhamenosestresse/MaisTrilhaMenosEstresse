@@ -4,12 +4,14 @@ import { User, Settings, ShieldCheck, LogOut, Heart, ChevronRight, Camera, Loade
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { ProfilePhotoCropper } from "@/components/app/ProfilePhotoCropper";
 
 export default function PwaPerfil() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -47,10 +49,14 @@ export default function PwaPerfil() {
     alert("Esta funcionalidade estará disponível em breve!");
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !client) return;
-    
+    setSelectedPhoto(file);
+    e.target.value = "";
+  };
+
+  const uploadCroppedPhoto = async (photo: Blob) => {
     setUploading(true);
     try {
       // 1. Pedir URL pré-assinada para a AWS
@@ -58,10 +64,10 @@ export default function PwaPerfil() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          filename: file.name, 
-          contentType: file.type, 
+          filename: 'perfil-recortado.jpg',
+          contentType: 'image/jpeg',
           folder: 'app-profiles',
-          size: file.size
+          size: photo.size
         })
       });
       const dataRes = await res.json();
@@ -72,8 +78,8 @@ export default function PwaPerfil() {
       // 2. Fazer upload direto para o bucket S3
       const uploadRes = await fetch(dataRes.signedUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
+        headers: { 'Content-Type': 'image/jpeg' },
+        body: photo,
       });
 
       if (!uploadRes.ok) {
@@ -90,7 +96,7 @@ export default function PwaPerfil() {
       if (!profileResponse.ok) throw new Error(profileResult.error || 'Falha ao atualizar o perfil.');
 
       setClient(profileResult.client);
-      alert("Foto de perfil atualizada com sucesso!");
+      setSelectedPhoto(null);
     } catch (err: any) {
       console.error(err);
       alert("Erro ao enviar foto: " + err.message);
@@ -169,7 +175,7 @@ export default function PwaPerfil() {
         <div>
           <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 px-2">Minha Conta</h3>
           <div className="bg-white rounded-3xl p-2 shadow-sm border border-gray-100">
-            <button onClick={handleComingSoon} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
+            <button onClick={() => router.push('/app/termos')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-blue-50 p-2.5 rounded-xl text-blue-600"><User className="w-5 h-5" /></div>
                 <span className="font-bold text-gray-800 text-sm">Dados Pessoais</span>
@@ -192,7 +198,7 @@ export default function PwaPerfil() {
             <button onClick={handleComingSoon} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-gray-50 p-2.5 rounded-xl text-gray-600"><ShieldCheck className="w-5 h-5" /></div>
-                <span className="font-bold text-gray-800 text-sm">Privacidade e Termos</span>
+                <span className="font-bold text-gray-800 text-sm">Termos, contratos e seguro</span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-300" />
             </button>
@@ -210,6 +216,12 @@ export default function PwaPerfil() {
           <LogOut className="w-5 h-5" /> Sair da Conta
         </button>
       </div>
+
+      <ProfilePhotoCropper
+        file={selectedPhoto}
+        onCancel={() => setSelectedPhoto(null)}
+        onConfirm={uploadCroppedPhoto}
+      />
     </div>
   );
 }

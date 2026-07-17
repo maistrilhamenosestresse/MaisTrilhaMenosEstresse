@@ -27,6 +27,36 @@ html, body {
   width: 100%;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+.app-mobile-scroll {
+  scrollbar-width: none;
+}
+
+.app-mobile-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .custom-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Custom Scrollbar para conteudos internos (Textareas e Divs de conteudo longo) */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

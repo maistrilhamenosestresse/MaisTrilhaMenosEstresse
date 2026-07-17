@@ -19,14 +19,14 @@ export default function MobileAppShell({ children }: { children: React.ReactNode
 
   return (
     <RequireAuth>
-      <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-20">
-        <main className="flex-1 w-full max-w-lg mx-auto bg-white shadow-xl min-h-screen relative overflow-x-hidden">
+      <div className="h-[100dvh] bg-slate-100 flex flex-col overflow-hidden">
+        <main className="app-mobile-scroll flex-1 min-h-0 w-full max-w-2xl mx-auto bg-white sm:shadow-xl relative overflow-x-hidden overflow-y-auto overscroll-contain">
           {children}
         </main>
 
         {!isLoginPage && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 pb-safe">
-            <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-2">
+          <nav className="shrink-0 bg-white/95 backdrop-blur-xl border-t border-gray-200 z-50 pb-safe shadow-[0_-8px_30px_rgba(15,23,42,0.08)]">
+            <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-1 sm:px-4">
               {navItems.map((item) => {
                 const isActive = pathname === item.path || (item.path !== "/app" && pathname.startsWith(item.path));
 

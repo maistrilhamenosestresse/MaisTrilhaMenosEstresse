@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, MapPin, Calendar, Users, Info, ShieldAlert, CheckCircle2, Navigation, Sparkles, Loader2, DollarSign, ShoppingCart } from "lucide-react";
+import { ChevronLeft, MapPin, Calendar, Users, Info, ShieldAlert, CheckCircle2, Navigation, Sparkles, Loader2, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useState, useEffect, use } from "react";
@@ -39,6 +39,7 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
   const [agenda, setAgenda] = useState<any>(null);
   const [clientData, setClientData] = useState<any>(null);
   const [jaTemReserva, setJaTemReserva] = useState(false);
+  const [pendingReservationId, setPendingReservationId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -65,7 +66,7 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
           if (client) {
             setClientData(client);
 
-            // 3. Verificar se já tem reserva paga para esta agenda
+            // 3. Verificar se já existe uma compra nesta agenda.
             const { data: reservaExistente } = await supabase
               .from('reservas')
               .select('id, status_pagamento')
@@ -76,15 +77,16 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
               .single();
 
             if (reservaExistente) {
-              setJaTemReserva(true);
-            } else {
-              router.replace(`/agenda/${unwrappedParams.id}`);
+              setJaTemReserva(reservaExistente.status_pagamento === 'pago');
+              setPendingReservationId(
+                reservaExistente.status_pagamento === 'pendente' ? reservaExistente.id : null
+              );
             }
           } else {
-            router.replace(`/agenda/${unwrappedParams.id}`);
+            router.replace('/app/login');
           }
         } else {
-          router.replace(`/agenda/${unwrappedParams.id}`);
+          router.replace('/app/login');
         }
       } catch (err) {
         console.error("Erro ao carregar dados da trilha:", err);
@@ -105,13 +107,18 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
 
     setPurchasing(true);
     try {
+      if (pendingReservationId) {
+        router.push(`/app/trilhas/${unwrappedParams.id}/checkout?reservaId=${pendingReservationId}&agendaId=${unwrappedParams.id}`);
+        return;
+      }
       // 1. Criar reserva pendente
       const res = await fetch('/api/create-reserva', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: clientData.id,
-          agenda_id: unwrappedParams.id
+          agenda_id: unwrappedParams.id,
+          checkout_source: 'app',
         })
       });
       const data = await res.json();
@@ -146,7 +153,7 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
   const checklist = agenda?.checklist_items || DEFAULT_CHECKLIST;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col h-[100dvh]">
+    <div className="h-full min-h-0 bg-gray-50 flex flex-col">
       {/* Header Fixo */}
       <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-gray-100 sticky top-0 z-50">
         <button 
@@ -319,7 +326,7 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* BOTÃO DE COMPRA FIXO NO RODAPÉ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 p-4 pb-6 shadow-2xl">
+      <div className="shrink-0 sticky bottom-0 z-50 bg-white border-t border-gray-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
         {jaTemReserva ? (
           <div className="w-full bg-green-50 border border-green-200 text-green-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
             <CheckCircle2 className="w-5 h-5" />
@@ -336,7 +343,8 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
             ) : (
               <>
                 <ShoppingCart className="w-5 h-5" />
-                Comprar Vaga {agenda?.price ? `— ${formatCurrency(agenda.price)}` : ''}
+                {pendingReservationId ? 'Continuar pagamento' : 'Comprar vaga no app'}
+                {agenda?.price ? ` — ${formatCurrency(agenda.price)}` : ''}
               </>
             )}
           </button>

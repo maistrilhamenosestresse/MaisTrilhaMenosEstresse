@@ -30,6 +30,9 @@ export interface Client {
   image_authorization?: boolean;
   signature_url?: string;
   accepted_terms_at?: string;
+  photo_url?: string;
+  pontos?: number;
+  cashback_saldo?: number;
   created_at?: string;
 }
 
@@ -37,8 +40,12 @@ export interface Reserva {
   id: string;
   client_id: string;
   agenda_id: string;
-  status_pagamento: 'pago' | 'pendente' | 'cancelado';
+  status_pagamento: 'pago' | 'pendente' | 'atrasado' | 'cancelado' | 'estornado' | 'expirado';
   valor_pago: number;
+  valor_original?: number;
+  cashback_usado?: number;
+  pontos_usados?: number;
+  purchase_channel?: 'site' | 'app' | 'admin';
   created_at?: string;
   clients?: Client;
   agendas?: Agenda;

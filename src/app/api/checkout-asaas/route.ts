@@ -5,6 +5,7 @@ import { calculateGrossPrice } from '@/lib/fees';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
+import { processConfirmedAsaasPayment } from '@/lib/server/asaas-payment-processing';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,9 @@ type CheckoutBody = {
     holderName?: string; number?: string; expiryMonth?: string; expiryYear?: string; ccv?: string;
   };
   installments?: number;
+  checkout_source?: 'site' | 'app';
+  use_cashback?: boolean;
+  use_points?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
   const reservationIds = [...new Set(parsed.data.reserva_ids || [])];
   const paymentMethod = parsed.data.payment_method;
   const installments = Number(parsed.data.installments || 1);
+  const isAppCheckout = parsed.data.checkout_source === 'app';
   if (
     !reservationIds.length || reservationIds.length > 20 || reservationIds.some((id) => !isUuid(id)) ||
     !paymentMethod || !['PIX', 'CREDIT_CARD', 'BOLETO'].includes(paymentMethod) ||
@@ -50,7 +55,7 @@ export async function POST(request: Request) {
   if (!principal) return NextResponse.json({ error: 'Cadastro não encontrado' }, { status: 403 });
 
   const { data: reservations, error: reservationError } = await supabase.from('reservas')
-    .select('id, agenda_id, status_pagamento, checkout_owner_id, checkout_batch_id, nsu_transacao')
+    .select('id, agenda_id, status_pagamento, checkout_owner_id, checkout_batch_id, nsu_transacao, purchase_channel')
     .in('id', reservationIds);
   if (reservationError || !reservations || reservations.length !== reservationIds.length) {
     return NextResponse.json({ error: 'Reservas não encontradas' }, { status: 404 });
@@ -62,6 +67,9 @@ export async function POST(request: Request) {
     )
   ) {
     return NextResponse.json({ error: 'Lote de reservas já processado ou não autorizado' }, { status: 409 });
+  }
+  if (isAppCheckout && reservations.some((item) => item.purchase_channel !== 'app')) {
+    return NextResponse.json({ error: 'O desconto da carteira só pode ser usado no checkout do aplicativo' }, { status: 409 });
   }
 
   const agendaIds = [...new Set(reservations.map((item) => item.agenda_id))];
@@ -93,7 +101,60 @@ export async function POST(request: Request) {
 
   const attemptId = randomUUID();
   let claimed = false;
+  let paymentCreated = false;
+  let benefitId: string | null = null;
   try {
+    let paymentTotal = total;
+    let benefitSummary: Record<string, unknown> | null = null;
+    if (isAppCheckout) {
+      const prepared = await supabase.rpc('prepare_app_trail_checkout', {
+        p_reservation_ids: reservationIds,
+        p_owner_id: principal.id,
+        p_gross_amount: total,
+        p_use_cashback: parsed.data.use_cashback === true,
+        p_use_points: parsed.data.use_points === true,
+      });
+      if (prepared.error) {
+        return NextResponse.json({ error: prepared.error.message }, { status: 409 });
+      }
+      benefitSummary = prepared.data as Record<string, unknown>;
+      benefitId = String(benefitSummary.benefit_id);
+      paymentTotal = Number(benefitSummary.amount_due || 0);
+    }
+
+    const claim = await supabase.rpc('claim_reservation_checkout', {
+      p_reservation_ids: reservationIds,
+      p_owner_id: principal.id,
+      p_attempt_id: attemptId,
+    });
+    if (claim.error) {
+      if (benefitId) await supabase.rpc('release_app_trail_checkout', { p_benefit_id: benefitId });
+      return NextResponse.json({ error: claim.error.message }, { status: 409 });
+    }
+    claimed = true;
+
+    const trailReference = benefitId
+      ? `TRILHA_APP:${benefitId}`
+      : `TRILHA:${claim.data}`;
+
+    if (benefitId && paymentTotal <= 0) {
+      const internalPaymentId = `INTERNAL:${benefitId}`;
+      await processConfirmedAsaasPayment(supabase, {
+        id: internalPaymentId,
+        externalReference: trailReference,
+        value: 0,
+        billingType: 'SALDO_E_PONTOS',
+      });
+      claimed = false;
+      return NextResponse.json({
+        success: true,
+        type: 'INTERNAL',
+        paymentId: internalPaymentId,
+        status: 'CONFIRMED',
+        benefits: benefitSummary,
+      });
+    }
+
     const customerId = await createOrUpdateCustomer({
       name: principal.full_name,
       email: principal.email,
@@ -102,14 +163,6 @@ export async function POST(request: Request) {
       postalCode: postalCode || undefined,
       addressNumber: addressNumber || undefined,
     });
-    const claim = await supabase.rpc('claim_reservation_checkout', {
-      p_reservation_ids: reservationIds,
-      p_owner_id: principal.id,
-      p_attempt_id: attemptId,
-    });
-    if (claim.error) return NextResponse.json({ error: claim.error.message }, { status: 409 });
-    claimed = true;
-    const trailReference = `TRILHA:${claim.data}`;
 
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 1);
@@ -119,7 +172,7 @@ export async function POST(request: Request) {
       dueDate: dueDate.toISOString().split('T')[0],
       description: `Mais Trilha - Lote ${String(claim.data).slice(0, 8)}`,
       externalReference: trailReference,
-      ...(installments > 1 ? { installmentCount: installments, totalValue: total } : { value: total }),
+      ...(installments > 1 ? { installmentCount: installments, totalValue: paymentTotal } : { value: paymentTotal }),
     };
     if (paymentMethod === 'CREDIT_CARD') {
       const card = parsed.data.credit_card_data!;
@@ -141,18 +194,26 @@ export async function POST(request: Request) {
     }
 
     const payment = await createPayment(payload);
+    paymentCreated = true;
     claimed = false;
     await supabase.from('reservas').update({
       nsu_transacao: payment.id,
       metodo_pagamento: paymentMethod,
     }).in('id', reservationIds).eq('nsu_transacao', `CREATING:${attemptId}`);
+    if (benefitId) {
+      const attached = await supabase.rpc('attach_app_trail_payment', {
+        p_benefit_id: benefitId,
+        p_payment_id: payment.id,
+      });
+      if (attached.error) throw attached.error;
+    }
     await supabase.from('asaas_payments').upsert({
       id: payment.id,
       kind: 'trail',
       reference: trailReference,
       client_id: principal.id,
       status: payment.status || 'PENDING',
-      amount: total,
+      amount: paymentTotal,
       updated_at: new Date().toISOString(),
     });
 
@@ -161,21 +222,32 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true, type: 'PIX', paymentId: payment.id,
         encodedImage: pix.encodedImage, payload: pix.payload, expirationDate: pix.expirationDate,
+        benefits: benefitSummary,
       });
     }
     if (paymentMethod === 'BOLETO') {
       return NextResponse.json({
         success: true, type: 'BOLETO', paymentId: payment.id,
         bankSlipUrl: payment.bankSlipUrl, invoiceUrl: payment.invoiceUrl,
+        benefits: benefitSummary,
       });
     }
-    return NextResponse.json({ success: true, type: 'CREDIT_CARD', paymentId: payment.id, status: payment.status });
+    return NextResponse.json({
+      success: true,
+      type: 'CREDIT_CARD',
+      paymentId: payment.id,
+      status: payment.status,
+      benefits: benefitSummary,
+    });
   } catch (error: any) {
     if (claimed) {
       await supabase.rpc('release_reservation_checkout_claim', {
         p_reservation_ids: reservationIds,
         p_attempt_id: attemptId,
       });
+    }
+    if (benefitId && !paymentCreated) {
+      await supabase.rpc('release_app_trail_checkout', { p_benefit_id: benefitId });
     }
     console.error('Erro no checkout Asaas:', error);
     return NextResponse.json({ error: error.message || 'Falha ao processar pagamento' }, { status: 502 });

@@ -15,6 +15,7 @@ import GamificacaoDashboard from "@/components/admin/GamificacaoDashboard";
 import AssistenteFinanceiroView from "@/components/admin/AssistenteFinanceiroView";
 import { MediaUploadSection } from "@/components/admin/MediaUploadSection";
 import { PhotosUploadModal } from "@/components/admin/PhotosUploadModal";
+import { ReservationPaymentEditor } from "@/components/admin/ReservationPaymentEditor";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from 'recharts';
@@ -155,6 +156,7 @@ export default function AdminPage() {
   const [novaReservaClientId, setNovaReservaClientId] = useState('');
   const [novaReservaStatus, setNovaReservaStatus] = useState('pago');
   const [novaReservaValorPago, setNovaReservaValorPago] = useState('');
+  const [editingReservationPayment, setEditingReservationPayment] = useState<any | null>(null);
 
   // Estados de IA e Gravação (Mantidos intactos)
   const [isFormattingMeetingPoint, setIsFormattingMeetingPoint] = useState(false);
@@ -629,7 +631,13 @@ export default function AdminPage() {
 
     try {
       const { data, error } = await supabase.from('reservas').insert([
-        { agenda_id: selectedAgendaId, client_id: novaReservaClientId, status_pagamento: novaReservaStatus, valor_pago: Number(novaReservaValorPago.replace(',', '.')) || 0 }
+        {
+          agenda_id: selectedAgendaId,
+          client_id: novaReservaClientId,
+          status_pagamento: novaReservaStatus,
+          valor_pago: Number(novaReservaValorPago.replace(',', '.')) || 0,
+          purchase_channel: 'admin',
+        }
       ]).select('*, clients!reservas_client_id_fkey(*)').single();
       
       if (error) throw error;
@@ -648,18 +656,18 @@ export default function AdminPage() {
     } catch (err: any) { alert("Erro ao remover passageiro."); }
   };
 
-  const handleToggleStatusPagamento = async (id: string, currentStatus: string) => {
-    let nextStatus = 'pendente';
-    if (currentStatus === 'pendente') nextStatus = 'pago';
-    else if (currentStatus === 'pago') nextStatus = 'atrasado';
-    else nextStatus = 'pendente';
+  const handleEditReservationPayment = async (reservation: any) => {
+    if (!(await requirePin(`Editar pagamento de ${reservation.clients?.full_name || 'reserva'}`))) return;
+    setEditingReservationPayment(reservation);
+  };
 
-    if (!(await requirePin(`Alterar status para ${nextStatus.toUpperCase()}`))) return;
-    try {
-      const { error } = await supabase.from('reservas').update({ status_pagamento: nextStatus }).eq('id', id);
-      if (error) throw error;
-      setReservas(reservas.map(r => r.id === id ? { ...r, status_pagamento: nextStatus } : r));
-    } catch (err: any) { alert("Erro ao atualizar status."); }
+  const handleReservationPaymentSaved = (updated: any) => {
+    setReservas((current) => current.map((reservation) =>
+      reservation.id === updated.id ? { ...reservation, ...updated } : reservation
+    ));
+    setAllReservas((current) => current.map((reservation) =>
+      reservation.id === updated.id ? { ...reservation, ...updated } : reservation
+    ));
   };
 
   const selectedAgendaData = agendas.find(a => a.id === selectedAgendaId);
@@ -1187,7 +1195,7 @@ export default function AdminPage() {
       </header>
 
       {/* 2. ÁREA CENTRAL DE CONTEÚDO ROLÁVEL */}
-      <main className="flex-1 overflow-y-auto print:overflow-visible custom-scrollbar p-4 md:p-8 pb-28 md:pb-8">
+      <main className="flex-1 min-w-0 overflow-y-auto print:overflow-visible custom-scrollbar p-3 sm:p-4 lg:p-6 pb-28 md:pb-6 overscroll-contain">
         <div className="max-w-7xl mx-auto w-full">
           
           <AnimatePresence mode="wait">
@@ -1371,7 +1379,7 @@ export default function AdminPage() {
                       <p className="text-gray-500">Nenhum cliente encontrado.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 pb-2">
+                    <div className="space-y-3 md:max-h-[55vh] md:overflow-y-auto custom-scrollbar md:pr-2 pb-2">
                       {filteredClients.map(client => {
   const today = new Date();
   let isBirthdayClient = false;
@@ -1505,7 +1513,7 @@ export default function AdminPage() {
                                           <p className="font-bold text-green-800 text-base flex items-center gap-2"><MapPin className="h-5 w-5" /> Histórico de Trilhas ({clientTrails[client.id]?.length || 0})</p>
                                           <button onClick={() => setExpandedTrilhas(null)} className="p-2 bg-gray-100 text-gray-500 rounded-full hover:bg-red-50 hover:text-red-500 transition"><X className="h-4 w-4" /></button>
                                         </div>
-                                        <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                                        <div className="space-y-2 md:overflow-y-auto custom-scrollbar flex-1 md:pr-2">
                                           {clientTrails[client.id]?.length > 0 ? (
                                             clientTrails[client.id].map((r: any, idx: number) => (
                                               <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-green-100 shadow-sm">
@@ -1767,7 +1775,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       
-                      <div className="p-4 space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                      <div className="p-3 sm:p-4 space-y-3 md:max-h-[48vh] md:overflow-y-auto custom-scrollbar">
                         {reservas.filter(r => reservaFilter === 'ALL' || r.status_pagamento === reservaFilter).length === 0 ? (
                           <p className="text-center text-gray-400 py-6 text-sm font-medium">Nenhum passageiro {reservaFilter !== 'ALL' ? 'neste status' : 'nesta trilha ainda'}.</p>
                         ) : (
@@ -1812,7 +1820,7 @@ export default function AdminPage() {
                                 </div>
                                 <button 
                                   title="Alternar Status de Pagamento"
-                                  onClick={() => handleToggleStatusPagamento(reserva.id, reserva.status_pagamento)} 
+                                  onClick={() => handleEditReservationPayment(reserva)} 
                                   className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                 >
                                   <Edit2 className="h-4 w-4"/>
@@ -1930,7 +1938,7 @@ export default function AdminPage() {
                             <h3 className="font-bold text-gray-800 flex items-center gap-2"><DollarSign className="h-5 w-5 text-red-500"/> Gastos Registrados</h3>
                             <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">Total: {formatCurrency(totalCosts)}</span>
                           </div>
-                          <div className="p-4 space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                          <div className="p-4 space-y-3 md:max-h-[48vh] md:overflow-y-auto custom-scrollbar">
                             {custos.length === 0 ? (
                               <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum custo registrado.</p>
                             ) : (
@@ -1969,7 +1977,7 @@ export default function AdminPage() {
                           <div className="bg-gray-50 border-b border-gray-100 p-4">
                             <h3 className="font-bold text-gray-800 text-sm">Origem das Receitas (Passageiros Pagos)</h3>
                           </div>
-                          <div className="p-4 space-y-2 max-h-[40vh] overflow-y-auto custom-scrollbar">
+                          <div className="p-4 space-y-2 md:max-h-[48vh] md:overflow-y-auto custom-scrollbar">
                             {reservas.filter(r => r.status_pagamento === 'pago').length === 0 ? (
                               <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum pagamento confirmado.</p>
                             ) : (
@@ -2959,6 +2967,12 @@ export default function AdminPage() {
           </form>
         </div>
       )}
+
+      <ReservationPaymentEditor
+        reservation={editingReservationPayment}
+        onClose={() => setEditingReservationPayment(null)}
+        onSaved={handleReservationPaymentSaved}
+      />
 
       {selectedPhotosAgendaId && (
         <PhotosUploadModal 

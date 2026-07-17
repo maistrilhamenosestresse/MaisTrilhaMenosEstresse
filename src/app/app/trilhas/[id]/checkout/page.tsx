@@ -4,12 +4,13 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft, QrCode, CreditCard, Copy, CheckCircle2,
-  Loader2, Calendar, ShieldCheck, Sparkles, X
+  Loader2, Calendar, ShieldCheck, Sparkles, X, WalletCards, Coins
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { calculateGrossPrice } from "@/lib/fees";
 
 function TrailCheckoutContent() {
   const router = useRouter();
@@ -33,6 +34,8 @@ function TrailCheckoutContent() {
     ccv: "",
   });
   const [installments, setInstallments] = useState(1);
+  const [useCashback, setUseCashback] = useState(false);
+  const [usePoints, setUsePoints] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -59,7 +62,7 @@ function TrailCheckoutContent() {
   const handleCheckout = async () => {
     if (!client || !agenda || !reservaId) return;
 
-    if (paymentMethod === "CREDIT_CARD") {
+    if (paymentMethod === "CREDIT_CARD" && amountDue > 0) {
       if (!cardData.number || !cardData.holderName || !cardData.expiry || !cardData.ccv) {
         alert("Preencha todos os dados do cartão.");
         return;
@@ -71,8 +74,11 @@ function TrailCheckoutContent() {
       const [month, year] = cardData.expiry.split("/");
       const payload: any = {
         reserva_ids: [reservaId],
-        payment_method: paymentMethod,
-        installments: paymentMethod === "CREDIT_CARD" ? installments : 1,
+        payment_method: amountDue <= 0 ? "PIX" : paymentMethod,
+        installments: paymentMethod === "CREDIT_CARD" && amountDue > 0 ? installments : 1,
+        checkout_source: "app",
+        use_cashback: useCashback,
+        use_points: usePoints,
         customer_data: {
           name: client.full_name || "Cliente",
           email: client.email,
@@ -83,7 +89,7 @@ function TrailCheckoutContent() {
         },
       };
 
-      if (paymentMethod === "CREDIT_CARD") {
+      if (paymentMethod === "CREDIT_CARD" && amountDue > 0) {
         payload.credit_card_data = {
           holderName: cardData.holderName,
           number: cardData.number.replace(/\D/g, ""),
@@ -105,7 +111,7 @@ function TrailCheckoutContent() {
 
       if (data.type === "PIX") {
         setPixData({ encodedImage: data.encodedImage, payload: data.payload });
-      } else if (data.type === "CREDIT_CARD") {
+      } else if (data.type === "CREDIT_CARD" || data.type === "INTERNAL") {
         setSuccess(true);
       }
     } catch (err: any) {
@@ -181,6 +187,16 @@ function TrailCheckoutContent() {
   }
 
   const price = Number(agenda?.price || 0);
+  const grossPrice = agenda?.taxa_gratis
+    ? price
+    : calculateGrossPrice(price, paymentMethod, paymentMethod === "CREDIT_CARD" ? installments : 1);
+  const cashbackAvailable = Math.max(0, Number(client?.cashback_saldo || 0));
+  const pointsAvailable = Math.max(0, Number(client?.pontos || 0));
+  const cashbackApplied = useCashback ? Math.min(cashbackAvailable, grossPrice) : 0;
+  const pointsApplied = usePoints
+    ? Math.min(pointsAvailable, Math.floor(Math.max(0, grossPrice - cashbackApplied) * 100))
+    : 0;
+  const amountDue = Math.max(0, grossPrice - cashbackApplied - pointsApplied / 100);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
@@ -210,9 +226,85 @@ function TrailCheckoutContent() {
             <span>{agenda?.date ? formatDate(agenda.date) : "Data a confirmar"}</span>
           </div>
           <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-            <span className="text-purple-200 text-sm font-medium">Total</span>
-            <span className="text-2xl font-black">{formatCurrency(price)}</span>
+            <span className="text-purple-200 text-sm font-medium">Total do checkout</span>
+            <span className="text-2xl font-black">{formatCurrency(grossPrice)}</span>
           </div>
+        </div>
+
+        {/* Benefícios da carteira */}
+        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-3">
+          <div>
+            <h3 className="font-black text-gray-800">Usar seus benefícios?</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Você escolhe agora. O saldo só é reservado ao confirmar o checkout.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={cashbackAvailable <= 0 || Boolean(pixData)}
+            onClick={() => setUseCashback((value) => !value)}
+            className={`w-full rounded-2xl border p-4 text-left flex items-center gap-3 transition ${
+              useCashback ? "border-emerald-300 bg-emerald-50" : "border-gray-200 bg-gray-50"
+            } disabled:opacity-50`}
+          >
+            <span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-emerald-600 shadow-sm">
+              <WalletCards className="w-5 h-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-black text-gray-800">Cashback</span>
+              <span className="block text-xs text-gray-500">
+                Saldo disponível: {formatCurrency(cashbackAvailable)}
+              </span>
+            </span>
+            <span className={`w-11 h-6 rounded-full p-1 transition ${useCashback ? "bg-emerald-500" : "bg-gray-300"}`}>
+              <span className={`block w-4 h-4 bg-white rounded-full transition-transform ${useCashback ? "translate-x-5" : ""}`} />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            disabled={pointsAvailable <= 0 || Boolean(pixData)}
+            onClick={() => setUsePoints((value) => !value)}
+            className={`w-full rounded-2xl border p-4 text-left flex items-center gap-3 transition ${
+              usePoints ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-gray-50"
+            } disabled:opacity-50`}
+          >
+            <span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-amber-600 shadow-sm">
+              <Coins className="w-5 h-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-black text-gray-800">Pontos</span>
+              <span className="block text-xs text-gray-500">
+                {pointsAvailable} pontos = {formatCurrency(pointsAvailable / 100)}
+              </span>
+            </span>
+            <span className={`w-11 h-6 rounded-full p-1 transition ${usePoints ? "bg-amber-500" : "bg-gray-300"}`}>
+              <span className={`block w-4 h-4 bg-white rounded-full transition-transform ${usePoints ? "translate-x-5" : ""}`} />
+            </span>
+          </button>
+
+          <div className="rounded-2xl bg-gray-900 text-white p-4 space-y-2 text-sm">
+            {cashbackApplied > 0 && (
+              <div className="flex justify-between text-emerald-300">
+                <span>Cashback utilizado</span>
+                <span>- {formatCurrency(cashbackApplied)}</span>
+              </div>
+            )}
+            {pointsApplied > 0 && (
+              <div className="flex justify-between text-amber-300">
+                <span>{pointsApplied} pontos utilizados</span>
+                <span>- {formatCurrency(pointsApplied / 100)}</span>
+              </div>
+            )}
+            <div className="flex justify-between font-black text-base pt-2 border-t border-white/10">
+              <span>Você paga agora</span>
+              <span>{formatCurrency(amountDue)}</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-500">
+            Compras concluídas nesta tela geram 1 ponto por real efetivamente pago. Compras feitas fora do app não geram pontos.
+          </p>
         </div>
 
         {/* Seleção de Método de Pagamento */}
@@ -223,7 +315,10 @@ function TrailCheckoutContent() {
               exit={{ opacity: 0, height: 0 }}
               className="space-y-4"
             >
-              <h3 className="font-bold text-gray-700 text-sm">Forma de Pagamento</h3>
+              <h3 className="font-bold text-gray-700 text-sm">
+                {amountDue > 0 ? "Forma de Pagamento" : "Pagamento coberto pelos benefícios"}
+              </h3>
+              {amountDue > 0 && (
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setPaymentMethod("PIX")}
@@ -258,10 +353,11 @@ function TrailCheckoutContent() {
                   </span>
                 </button>
               </div>
+              )}
 
               {/* Formulário de Cartão */}
               <AnimatePresence>
-                {paymentMethod === "CREDIT_CARD" && (
+                {paymentMethod === "CREDIT_CARD" && amountDue > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -343,7 +439,7 @@ function TrailCheckoutContent() {
                       >
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                           <option key={n} value={n}>
-                            {n}x de {formatCurrency(price / n)} {n === 1 ? "(sem juros)" : ""}
+                            {n}x de {formatCurrency(amountDue / n)} {n === 1 ? "(sem juros)" : ""}
                           </option>
                         ))}
                       </select>
@@ -359,6 +455,8 @@ function TrailCheckoutContent() {
               >
                 {processing ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>
+                ) : amountDue <= 0 ? (
+                  <><CheckCircle2 className="w-5 h-5" /> Confirmar com benefícios</>
                 ) : paymentMethod === "PIX" ? (
                   <><QrCode className="w-5 h-5" /> Gerar QR Code Pix</>
                 ) : (
@@ -399,10 +497,10 @@ function TrailCheckoutContent() {
                 )}
               </button>
               <button
-                onClick={() => setPixData(null)}
+                onClick={() => router.push(`/app/trilhas/${agendaId}`)}
                 className="w-full bg-gray-50 hover:bg-gray-100 text-gray-500 font-bold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
               >
-                <X className="w-4 h-4" /> Cancelar e gerar novo
+                <X className="w-4 h-4" /> Voltar para detalhes da trilha
               </button>
             </motion.div>
           )}

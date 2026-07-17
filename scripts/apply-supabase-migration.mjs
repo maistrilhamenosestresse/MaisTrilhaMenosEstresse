@@ -6,12 +6,10 @@ const { Client } = pg;
 await loadEnv(path.join(process.cwd(), '.env.local'));
 
 const connectionString = required('DATABASE_URL');
-const migrationPath = path.join(
-  process.cwd(),
-  'supabase',
-  'migrations',
-  '202607160001_security_and_finance_foundation.sql',
-);
+const requestedMigration = process.argv[2] || 'supabase/migrations/202607160001_security_and_finance_foundation.sql';
+const migrationPath = path.isAbsolute(requestedMigration)
+  ? requestedMigration
+  : path.join(process.cwd(), requestedMigration);
 const migration = await readFile(migrationPath, 'utf8');
 const client = new Client({
   connectionString,
@@ -31,7 +29,7 @@ try {
   } finally {
     await client.query("select pg_advisory_unlock(hashtext('maistrilha-security-finance-migration'))").catch(() => undefined);
   }
-  process.stdout.write('Migration de segurança e financeiro aplicada com sucesso.\n');
+  process.stdout.write(`Migration aplicada com sucesso: ${path.relative(process.cwd(), migrationPath)}\n`);
 } catch (error) {
   const code = error?.code ? ` (${error.code})` : '';
   const detail = error?.code === '28P01'

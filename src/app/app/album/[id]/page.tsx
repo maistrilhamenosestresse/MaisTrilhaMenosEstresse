@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { use } from "react";
@@ -16,6 +15,8 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true);
   const [isAiMode, setIsAiMode] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [downloadingAlbum, setDownloadingAlbum] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           alert("Nenhuma foto sua foi encontrada nesta trilha! :(");
           setFilteredPhotos(null);
         }
-      } catch (err) {
+      } catch {
         alert("Erro ao analisar a foto.");
       } finally {
         setAiLoading(false);
@@ -71,6 +72,56 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const displayPhotos = filteredPhotos !== null ? Array.from(new Set([...filteredPhotos, ...photos])) : photos;
+
+  const downloadPhoto = async (url: string, index: number) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Falha ao baixar foto");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `mais-trilha-foto-${String(index + 1).padStart(3, "0")}.${extensionFromType(blob.type)}`;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const downloadAlbum = async () => {
+    if (!displayPhotos.length) return;
+    setDownloadingAlbum(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const results = await Promise.allSettled(
+        displayPhotos.map(async (url, index) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error("Falha ao baixar foto");
+          const blob = await response.blob();
+          zip.file(
+            `foto-${String(index + 1).padStart(3, "0")}.${extensionFromType(blob.type)}`,
+            await blob.arrayBuffer(),
+          );
+        }),
+      );
+      if (results.every((result) => result.status === "rejected")) {
+        throw new Error("Nenhuma foto pôde ser baixada");
+      }
+      const archive = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      const objectUrl = URL.createObjectURL(archive);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `album-mais-trilha-${unwrappedParams.id.slice(0, 8)}.zip`;
+      anchor.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (downloadError: any) {
+      alert(downloadError.message || "Não foi possível baixar o álbum.");
+    } finally {
+      setDownloadingAlbum(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
@@ -92,6 +143,17 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             Ver Todas
           </button>
         )}
+        {displayPhotos.length > 0 && (
+          <button
+            type="button"
+            onClick={downloadAlbum}
+            disabled={downloadingAlbum}
+            className="w-10 h-10 rounded-full bg-purple-50 text-purple-700 flex items-center justify-center disabled:opacity-50"
+            aria-label="Baixar álbum completo"
+          >
+            {downloadingAlbum ? <Loader2 className="w-5 h-5 animate-spin" /> : <Images className="w-5 h-5" />}
+          </button>
+        )}
       </div>
 
       {/* Galeria */}
@@ -110,16 +172,21 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         ) : (
           <div className="grid grid-cols-3 gap-1">
             {displayPhotos.map((url, i) => (
-              <motion.div 
+              <motion.button
+                type="button"
+                onClick={() => setSelectedPhoto(url)}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
                 key={i} 
-                className="aspect-square bg-gray-200 relative overflow-hidden"
+                className="aspect-square bg-gray-200 relative overflow-hidden group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt={`Foto ${i}`} className="object-cover w-full h-full" loading="lazy" />
-              </motion.div>
+                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                  <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
+                </span>
+              </motion.button>
             ))}
           </div>
         )}
@@ -197,6 +264,42 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {selectedPhoto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-black/95 flex flex-col"
+          >
+            <header className="p-4 flex items-center justify-between text-white">
+              <button type="button" onClick={() => setSelectedPhoto(null)} className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center">
+                <X className="w-6 h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadPhoto(selectedPhoto, displayPhotos.indexOf(selectedPhoto))}
+                className="rounded-full bg-white text-gray-900 px-4 py-2.5 font-black text-sm flex items-center gap-2"
+              >
+                <Download className="w-5 h-5" />
+                Baixar foto
+              </button>
+            </header>
+            <div className="flex-1 min-h-0 p-3 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={selectedPhoto} alt="Foto ampliada" className="max-w-full max-h-full object-contain rounded-xl" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
+}
+
+function extensionFromType(contentType: string) {
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("webp")) return "webp";
+  if (contentType.includes("heic")) return "heic";
+  return "jpg";
 }
