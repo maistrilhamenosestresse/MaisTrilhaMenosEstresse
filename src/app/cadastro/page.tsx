@@ -158,24 +158,18 @@ function CadastroContent() {
         
         const compressedFile = await imageCompression(formData.photo, compressOptions);
         const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.webp`;
-        
-        const res = await fetch('/api/upload/presigned-url', {
+
+        const photoFormData = new FormData();
+        photoFormData.append('folder', 'cadastro-docs');
+        photoFormData.append('file', new File([compressedFile], fileName, { type: 'image/webp' }));
+
+        const res = await fetch('/api/upload/image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: fileName, contentType: 'image/webp', folder: 'cadastro-docs', size: compressedFile.size })
+          body: photoFormData,
         });
         const dataRes = await res.json();
         
-        if (!res.ok) throw new Error(dataRes.error || "Falha ao gerar link de upload (Foto).");
-        
-        const uploadRes = await fetch(dataRes.signedUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'image/webp' },
-          body: compressedFile,
-        });
-
-        if (!uploadRes.ok) throw new Error("Falha no upload da foto para AWS S3.");
-        
+        if (!res.ok) throw new Error(dataRes.error || "Falha no upload da foto para AWS S3.");
         photoUrl = dataRes.publicUrl;
       }
 
@@ -185,24 +179,18 @@ function CadastroContent() {
         const blob = await resSigBlob.blob();
         
         const signatureName = `signature_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
-        
-        const res = await fetch('/api/upload/presigned-url', {
+
+        const signatureFormData = new FormData();
+        signatureFormData.append('folder', 'signatures');
+        signatureFormData.append('file', new File([blob], signatureName, { type: 'image/png' }));
+
+        const res = await fetch('/api/upload/image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: signatureName, contentType: 'image/png', folder: 'signatures', size: blob.size })
+          body: signatureFormData,
         });
         const dataRes = await res.json();
         
-        if (!res.ok) throw new Error(dataRes.error || "Falha ao gerar link de upload (Assinatura).");
-        
-        const uploadRes = await fetch(dataRes.signedUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'image/png' },
-          body: blob,
-        });
-
-        if (!uploadRes.ok) throw new Error("Falha no upload da assinatura para AWS S3.");
-        
+        if (!res.ok) throw new Error(dataRes.error || "Falha no upload da assinatura para AWS S3.");
         signatureUrl = dataRes.publicUrl;
       }
 

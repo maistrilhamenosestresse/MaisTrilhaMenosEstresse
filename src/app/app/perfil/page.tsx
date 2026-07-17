@@ -60,37 +60,24 @@ export default function PwaPerfil() {
     setUploading(true);
     try {
       // 1. Pedir URL pré-assinada para a AWS
-      const res = await fetch('/api/upload/presigned-url', {
+      const formData = new FormData();
+      formData.append('folder', 'app-profiles');
+      formData.append('file', new File([photo], 'perfil-recortado.jpg', { type: 'image/jpeg' }));
+
+      const uploadResponse = await fetch('/api/upload/image', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          filename: 'perfil-recortado.jpg',
-          contentType: 'image/jpeg',
-          folder: 'app-profiles',
-          size: photo.size
-        })
+        body: formData,
       });
-      const dataRes = await res.json();
+      const uploadResult = await uploadResponse.json();
       
-      if (!res.ok) throw new Error(dataRes.error || "Falha ao gerar link de upload na API.");
-      if (!dataRes.signedUrl) throw new Error("A API não retornou a URL assinada da AWS.");
-
-      // 2. Fazer upload direto para o bucket S3
-      const uploadRes = await fetch(dataRes.signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'image/jpeg' },
-        body: photo,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error("O upload para a AWS falhou. Verifique se o bucket S3 tem permissões de CORS ativadas para PUT de qualquer origem (*).");
-      }
+      if (!uploadResponse.ok) throw new Error(uploadResult.error || "Falha ao enviar foto para AWS.");
+      const uploadedPhotoUrl = uploadResult.publicUrl;
 
       // 3. Atualizar pela API autenticada; a RLS não permite escrita direta em clients.
       const profileResponse = await fetch('/api/clients/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photo_url: dataRes.publicUrl }),
+        body: JSON.stringify({ photo_url: uploadedPhotoUrl }),
       });
       const profileResult = await profileResponse.json();
       if (!profileResponse.ok) throw new Error(profileResult.error || 'Falha ao atualizar o perfil.');

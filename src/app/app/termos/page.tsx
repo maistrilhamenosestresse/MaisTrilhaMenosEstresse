@@ -82,32 +82,23 @@ export default function AppTermsPage() {
     try {
       const dataUrl = signatureRef.current.getTrimmedCanvas().toDataURL("image/png");
       const signatureBlob = await fetch(dataUrl).then((response) => response.blob());
-      const presignedResponse = await fetch("/api/upload/presigned-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: `${activeContract.type}-${activeContract.version}.png`,
-          contentType: "image/png",
-          folder: "signatures",
-          size: signatureBlob.size,
-        }),
-      });
-      const presigned = await presignedResponse.json();
-      if (!presignedResponse.ok) throw new Error(presigned.error || "Falha ao preparar assinatura");
+      const formData = new FormData();
+      formData.append("folder", "signatures");
+      formData.append("file", new File([signatureBlob], `${activeContract.type}-${activeContract.version}.png`, { type: "image/png" }));
 
-      const uploadResponse = await fetch(presigned.signedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "image/png" },
-        body: signatureBlob,
+      const uploadResponse = await fetch("/api/upload/image", {
+        method: "POST",
+        body: formData,
       });
-      if (!uploadResponse.ok) throw new Error("Não foi possível enviar a assinatura.");
+      const uploadResult = await uploadResponse.json();
+      if (!uploadResponse.ok) throw new Error(uploadResult.error || "Não foi possível enviar a assinatura.");
 
       const contractResponse = await fetch("/api/contracts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contract_type: activeContract.type,
-          signature_url: presigned.publicUrl,
+          signature_url: uploadResult.publicUrl,
         }),
       });
       const result = await contractResponse.json();

@@ -1,5 +1,19 @@
 export async function uploadMediaToAws(file: File | Blob, originalName: string) {
   const contentType = file.type || inferContentType(originalName);
+  if (contentType.startsWith('image/')) {
+    const formData = new FormData();
+    formData.append('folder', 'media-images');
+    formData.append('file', file instanceof File ? file : new File([file], originalName, { type: contentType }));
+
+    const response = await fetch('/api/upload/image', {
+      method: 'POST',
+      body: formData,
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Falha ao enviar imagem para AWS');
+    return result as { url: string; key: string; type: 'image'; size: number };
+  }
+
   const response = await fetch('/api/admin/upload-media', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
