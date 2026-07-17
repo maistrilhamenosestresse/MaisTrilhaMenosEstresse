@@ -1,6 +1,6 @@
 /**
  * @file Navigation.tsx
- * @description Componente global de barra de navegação (Navbar). 
+ * @description Componente global de barra de navegação (Navbar).
  *              Inclui responsividade, controle do carrinho via Zustand e links âncora.
  * @module Navigation
  */
@@ -49,7 +49,7 @@ export function Navigation() {
   const cartQuantity = mounted ? getTotalQuantity() : 0;
 
   // Hide the navigation on admin or specific pages if needed.
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/cadastro') || pathname?.startsWith('/gerenciador') || pathname?.startsWith('/cupom')) return null;
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app') || pathname?.startsWith('/cadastro') || pathname?.startsWith('/gerenciador') || pathname?.startsWith('/cupom') || pathname?.startsWith('/termo')) return null;
 
   return (
     <>
@@ -57,11 +57,12 @@ export function Navigation() {
         <div className="flex items-center gap-3 shrink-0">
           <Link href="/">
             <Image
-              src="/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG" 
+              src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG"
               alt="Mais Trilha Logo"
               width={80}
               height={80}
-              className="h-12 w-12 md:h-20 md:w-20 rounded-full aspect-square object-cover object-center shadow-[0_0_15px_rgba(241,123,55,0.4)] border-2 md:border-4 border-[#F17B37]/30 transition-transform hover:scale-105 cursor-pointer" 
+              loading="eager"
+              className="h-12 w-12 md:h-20 md:w-20 rounded-full aspect-square object-cover object-center shadow-[0_0_15px_rgba(241,123,55,0.4)] border-2 md:border-4 border-[#F17B37]/30 transition-transform hover:scale-105 cursor-pointer"
             />
           </Link>
         </div>
@@ -69,29 +70,35 @@ export function Navigation() {
         <div className="flex items-center gap-3 md:gap-8">
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-6">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className={`text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname === '/' ? 'text-[#F17B37]' : 'text-gray-300'}`}
             >
               Início
             </Link>
-            <Link 
-              href="/sobre" 
+            <Link
+              href="/sobre"
               className={`text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname === '/sobre' ? 'text-[#F17B37]' : 'text-gray-300'}`}
             >
               Sobre Nós
             </Link>
-            <Link 
-              href="/avaliacoes" 
+            <Link
+              href="/avaliacoes"
               className={`text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname === '/avaliacoes' ? 'text-[#F17B37]' : 'text-gray-300'}`}
             >
               Avaliações
             </Link>
-            <Link 
-              href="/contato" 
+            <Link
+              href="/contato"
               className={`text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname === '/contato' ? 'text-[#F17B37]' : 'text-gray-300'}`}
             >
               Fale Conosco
+            </Link>
+            <Link
+              href="/app"
+              className={`text-sm font-bold px-4 py-1.5 rounded-full border border-[#F17B37] transition-all hover:bg-[#F17B37] hover:text-white ${pathname === '/app' ? 'bg-[#F17B37] text-white' : 'text-[#F17B37]'}`}
+            >
+              Área de Membros
             </Link>
           </div>
 
@@ -99,7 +106,7 @@ export function Navigation() {
           {/* Cart Icon & Comprar Button */}
           {!pathname?.startsWith('/carrinho') && !pathname?.startsWith('/checkout') && !pathname?.startsWith('/bolao') && (
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => router.push('/carrinho')}
                 className="relative p-2 text-white hover:text-[#F17B37] transition-colors bg-white/5 md:bg-transparent rounded-xl md:rounded-none border border-white/10 md:border-transparent"
                 aria-label="Carrinho de Compras"
@@ -124,7 +131,7 @@ export function Navigation() {
           )}
 
           {/* Mobile Menu Toggle */}
-          <button 
+          <button
             className="md:hidden flex items-center justify-center text-white bg-[#F17B37] hover:bg-[#e06925] p-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(241,123,55,0.4)]"
             onClick={() => setIsMobileMenuOpen(true)}
             aria-label="Abrir Menu"
@@ -137,13 +144,13 @@ export function Navigation() {
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[110] bg-[#0F1722]/95 backdrop-blur-xl flex flex-col items-center justify-center"
           >
-            <button 
+            <button
               className="absolute top-6 right-6 text-white p-2 hover:bg-white/10 rounded-full transition-colors"
               onClick={() => setIsMobileMenuOpen(false)}
             >
@@ -151,35 +158,43 @@ export function Navigation() {
             </button>
 
             <div className="flex flex-col items-center gap-8 text-2xl font-black">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`transition-colors hover:text-[#F17B37] ${pathname === '/' ? 'text-[#F17B37]' : 'text-white'}`}
               >
                 Início
               </Link>
-              <Link 
-                href="/sobre" 
+              <Link
+                href="/sobre"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`transition-colors hover:text-[#F17B37] ${pathname === '/sobre' ? 'text-[#F17B37]' : 'text-white'}`}
               >
                 Sobre Nós
               </Link>
-              <Link 
-                href="/avaliacoes" 
+              <Link
+                href="/avaliacoes"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`transition-colors hover:text-[#F17B37] ${pathname === '/avaliacoes' ? 'text-[#F17B37]' : 'text-white'}`}
               >
                 Avaliações
               </Link>
-              <Link 
-                href="/contato" 
+              <Link
+                href="/contato"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`transition-colors hover:text-[#F17B37] ${pathname === '/contato' ? 'text-[#F17B37]' : 'text-white'}`}
               >
                 Fale Conosco
               </Link>
-              
+
+              <Link
+                href="/app"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="mt-2 text-[#F17B37] border-2 border-[#F17B37] px-6 py-2 rounded-full font-bold text-xl hover:bg-[#F17B37] hover:text-white transition-all"
+              >
+                Área de Membros
+              </Link>
+
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);

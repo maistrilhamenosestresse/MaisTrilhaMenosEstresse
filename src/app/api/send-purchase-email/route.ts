@@ -1,27 +1,33 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { requireAdminUser } from '@/lib/server/auth';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 export async function POST(request: Request) {
+  const originError = assertSameOrigin(request);
+  if (originError) return originError;
+  const auth = await requireAdminUser();
+  if (auth.response) return auth.response;
+
   try {
-    const data = await request.json();
+    const parsed = await readJsonBody<any>(request, 100_000);
+    if (parsed.response) return parsed.response;
+    const data = parsed.data;
     const { client, agenda } = data;
 
     if (!client || !client.email || !agenda) {
       return NextResponse.json({ success: false, error: 'Dados insuficientes para enviar email.' }, { status: 400 });
     }
 
-    const gmailUser = process.env.GMAIL_USER || 'maistrilhamenosestresse@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD || 'gutowhvztxakiilf';
-
-    if (!gmailUser || !gmailPass) {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
       return NextResponse.json({ success: false, error: 'Credenciais de email não configuradas.' }, { status: 500 });
     }
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: gmailUser,
-        pass: gmailPass,
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 

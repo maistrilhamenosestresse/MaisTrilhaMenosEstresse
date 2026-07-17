@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, MapPin, DollarSign, CheckCircle2, ChevronLeft, ChevronRight, Video as VideoIcon, Send, FileText, Image as ImageIcon, Info, X, Clock, Navigation, Mountain } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getLowestGrossPrice } from "@/lib/fees";
 import { useCartStore } from "@/store/cartStore";
 
 export default function AgendaDetailsPage() {
@@ -36,14 +37,11 @@ export default function AgendaDetailsPage() {
       if (!error && data) {
         setAgenda(data);
         
-        // Busca reservas pagas para calcular lotação
-        const { count } = await supabase
-          .from('reservas')
-          .select('*', { count: 'exact', head: true })
-          .eq('agenda_id', params.id as string)
-          .in('status_pagamento', ['pago', 'pendente']);
-          
-        setPaidCount(count || 0);
+        const availability = await fetch(`/api/agendas/${data.id}/availability`, { cache: 'no-store' });
+        if (availability.ok) {
+          const result = await availability.json();
+          setPaidCount(result.reserved || 0);
+        }
 
         // Incrementa visualização apenas uma vez por carregamento de página e por dispositivo
         try {
@@ -52,10 +50,7 @@ export default function AgendaDetailsPage() {
             const hasViewed = localStorage.getItem(viewedKey);
             
             if (!hasViewed) {
-              await supabase
-                .from('agendas')
-                .update({ views: (data.views || 0) + 1 })
-                .eq('id', data.id);
+              await fetch(`/api/agendas/${data.id}/availability`, { method: 'POST' });
                 
               localStorage.setItem(viewedKey, 'true');
             }
@@ -69,22 +64,17 @@ export default function AgendaDetailsPage() {
     fetchAgenda();
   }, [params.id]);
 
-  if (isMaintenance) {
-    return (
-      <div className="min-h-screen bg-[#0F1722] text-white font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden text-center">
-        <h1 className="text-4xl md:text-6xl font-black text-[#F17B37] mb-6">Em Manutenção 🚧</h1>
-        <p className="text-gray-300 max-w-lg mb-8 text-lg md:text-xl">
-          Estamos atualizando esta trilha! Por favor, volte em alguns instantes.
-        </p>
-        <button onClick={() => router.push('/agenda')} className="bg-[#F17B37] px-8 py-4 rounded-2xl font-bold transition">
-          Voltar para a Agenda
-        </button>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return <div className="min-h-screen bg-[#0F1722] flex items-center justify-center text-[#F17B37]">Carregando trilha...</div>;
+  }
+
+  if (isMaintenance) {
+    return (
+      <div className="min-h-screen bg-[#0F1722] flex flex-col items-center justify-center text-center p-6 space-y-4">
+        <h1 className="text-4xl font-black text-[#F17B37]">⚠️ Em Manutenção</h1>
+        <p className="text-gray-400 text-lg max-w-md">Nosso sistema está passando por uma atualização rápida. Voltamos em instantes!</p>
+      </div>
+    );
   }
 
   if (!agenda) {
@@ -105,7 +95,7 @@ export default function AgendaDetailsPage() {
 
   const coverImage = agenda.images && agenda.images.length > 0 
     ? agenda.images[currentImageIndex] 
-    : "https://images.unsplash.com/photo-1522163182402-834f871fd851?q=80&w=2000&auto=format&fit=crop";
+    : "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/paisagem/IMG_0220.JPG";
 
   const eventDateObj = new Date(agenda.date + 'T12:00:00Z');
   const eventDate = eventDateObj.toLocaleDateString('pt-BR');
@@ -121,7 +111,9 @@ export default function AgendaDetailsPage() {
       date: eventDate,
       quantity: 1,
       dependents: [],
-      availableSpots: remaining
+      availableSpots: remaining,
+      acceptedPaymentMethods: agenda.accepted_payment_methods || ['PIX', 'CREDIT_CARD', 'BOLETO'],
+      taxa_gratis: agenda.taxa_gratis
     });
     router.push('/carrinho');
   };
@@ -253,7 +245,10 @@ export default function AgendaDetailsPage() {
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Valor da Trilha</p>
-              <p className="font-bold text-2xl text-[#25D366]">R$ {agenda.price}</p>
+              <p className="font-bold text-2xl text-[#25D366]">
+                <span className="text-xs font-medium text-gray-500 block mb-0.5">a partir de</span>
+                R$ {getLowestGrossPrice(agenda.price, agenda.taxa_gratis).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
             <DollarSign className="text-[#25D366] h-10 w-10 opacity-50" />
           </div>

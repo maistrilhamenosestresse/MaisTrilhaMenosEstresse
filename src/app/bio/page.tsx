@@ -74,9 +74,9 @@ export default function BioPage() {
         >
           <div className="w-28 h-28 rounded-full p-[3px] bg-gradient-to-tr from-[#F17B37] to-[#FFB347] animate-[spin_4s_linear_infinite]" style={{ animationDirection: 'reverse' }}>
             <div className="w-full h-full bg-[#0F1722] rounded-full flex items-center justify-center p-1 relative overflow-hidden animate-[spin_4s_linear_infinite]">
-              <Image 
-                src="/bio/Gemini_Generated_Image_gzfrdngzfrdngzfr.png" 
-                alt="Mais Trilha Menos Estresse" 
+              <Image
+                src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/bio/Gemini_Generated_Image_gzfrdngzfrdngzfr.png"
+                alt="Mais Trilha Menos Estresse"
                 fill
                 className="rounded-full object-cover"
               />

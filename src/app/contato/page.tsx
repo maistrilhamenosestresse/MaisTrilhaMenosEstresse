@@ -12,8 +12,8 @@ export default function ContatoPage() {
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 px-6 flex flex-col items-center justify-center min-h-[60vh] text-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#F17B37]/10 via-[#0F1722]/80 to-[#0F1722] z-0" />
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative z-10 max-w-4xl mx-auto"
@@ -23,7 +23,7 @@ export default function ContatoPage() {
             Pronto para sua <br/> próxima <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-amber-500">aventura?</span>
           </h1>
           <p className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto">
-            Tem dúvidas sobre roteiros, quer sugerir um destino ou precisa de ajuda com sua reserva? 
+            Tem dúvidas sobre roteiros, quer sugerir um destino ou precisa de ajuda com sua reserva?
             Nossa equipe está pronta para te atender.
           </p>
         </motion.div>
@@ -32,11 +32,11 @@ export default function ContatoPage() {
       {/* Contact Cards */}
       <section className="py-10 px-6 relative z-10">
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
           {/* WhatsApp Card */}
-          <motion.a 
-            href="https://wa.me/5531998793939?text=Oi Nívea! Quero saber mais sobre o Mais Trilha!" 
-            target="_blank" 
+          <motion.a
+            href="https://wa.me/5531998793939?text=Oi Nívea! Quero saber mais sobre o Mais Trilha!"
+            target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -56,9 +56,9 @@ export default function ContatoPage() {
           </motion.a>
 
           {/* Instagram Card */}
-          <motion.a 
-            href="https://www.instagram.com/maistrilhamenosestresse/" 
-            target="_blank" 
+          <motion.a
+            href="https://www.instagram.com/maistrilhamenosestresse/"
+            target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -83,11 +83,11 @@ export default function ContatoPage() {
 
       {/* Footer simplificado */}
       <footer className="mt-32 border-t border-white/10 pt-10 text-center text-gray-500 text-sm flex flex-col items-center gap-4">
-        <img 
-          src="/FotosEvideos/logo/rodape.JPG" 
-          alt="Montanhas Mais Trilha" 
+        <img
+          src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/rodape.JPG"
+          alt="Montanhas Mais Trilha"
           className="h-12 w-auto mix-blend-screen opacity-50"
-          style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
+          style={{ filter: 'contrast(1.8) brightness(0.8)' }}
         />
         <p>© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
       </footer>

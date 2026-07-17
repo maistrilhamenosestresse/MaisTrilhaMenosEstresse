@@ -1,20 +1,41 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { requireAdminUser } from '@/lib/server/auth';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
+import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
+import { verifyRegistrationNotification } from '@/lib/server/registration-notification';
+import { getAdminEmails } from '@/lib/server/env';
 
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
-    const gmailUser = process.env.GMAIL_USER || 'maistrilhamenosestresse@gmail.com';
-    const gmailPass = process.env.GMAIL_APP_PASSWORD || 'gutowhvztxakiilf';
+    const parsed = await readJsonBody<any>(request);
+    if (parsed.response) return parsed.response;
+    const data = parsed.data;
 
+    const internalSecret = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+    const isInternal = !!process.env.CRON_SECRET && internalSecret === process.env.CRON_SECRET;
+    if (data.type === 'new_registration') {
+      const originError = assertSameOrigin(request);
+      if (originError) return originError;
+      const clientId = String(data.clientId || '');
+      const notificationToken = String(data.notificationToken || '');
+      if (!/^[0-9a-f-]{36}$/i.test(clientId) || !verifyRegistrationNotification(clientId, notificationToken)) {
+        return NextResponse.json({ error: 'Comprovante de cadastro inválido' }, { status: 403 });
+      }
+      const { data: client } = await createSupabaseAdmin().from('clients').select('*').eq('id', clientId).single();
+      if (!client) return NextResponse.json({ error: 'Cadastro não encontrado' }, { status: 404 });
+      data.client = client;
+    } else if (!isInternal) {
+      const auth = await requireAdminUser();
+      if (auth.response) return auth.response;
+    }
+    
     // Configuração do transporter (usa variáveis de ambiente)
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: gmailUser,
-        pass: gmailPass,
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD,
       },
     });
 
@@ -25,11 +46,14 @@ export async function POST(request: Request) {
 
     if (data.type === 'new_registration') {
       const { client } = data;
+      const host = request.headers.get('host') || 'www.maistrilhasmenosestresse.com';
+      const protocol = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+      const origin = `${protocol}://${host}`;
       
       // Email para Admin
       const adminMailOptions = {
         from: `Mais Trilha Menos Estresse <${process.env.GMAIL_USER}>`,
-        to: "wellingtonf.social@gmail.com, niveamariamagalhaes28@gmail.com",
+        to: getAdminEmails().join(', '),
         subject: `Novo Cadastro Realizado: ${client.full_name}`,
         html: `
           <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
@@ -49,7 +73,7 @@ export async function POST(request: Request) {
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contato Emergência:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.emergency_contact_name} (${client.emergency_contact_phone})</td></tr>
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Notas de Saúde:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; color: #d93025; font-weight: bold;">${client.health_notes}</td></tr>
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Uso de Imagem:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.image_authorization ? 'AUTORIZADO' : 'NÃO AUTORIZADO'}</td></tr>
-                ${client.id ? `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Termo Assinado:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="https://www.maistrilhasmenosestresse.com/termo/${client.id}" style="color: #113a5d; font-weight: bold;">Acessar e Imprimir PDF</a></td></tr>` : ''}
+                ${client.id ? `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Termo Assinado:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="${origin}/termo/${client.id}" style="color: #113a5d; font-weight: bold;">Acessar e Imprimir PDF</a></td></tr>` : ''}
               </table>
             </div>
           </div>
@@ -60,12 +84,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, warning: 'E-mail não configurado' });
       }
 
-      await transporter.sendMail(adminMailOptions);
+      if (adminMailOptions.to) await transporter.sendMail(adminMailOptions);
 
       // Email para Cliente (cópia do contrato)
       if (client.email) {
         const firstName = client.full_name.split(' ')[0];
-        const termoUrl = `https://www.maistrilhasmenosestresse.com/termo/${client.id}`;
+        const termoUrl = `${origin}/termo/${client.id}`;
 
         const clientMailOptions = {
           from: `Mais Trilha Menos Estresse <${process.env.GMAIL_USER}>`,
@@ -129,7 +153,7 @@ export async function POST(request: Request) {
     else if (data.type === 'birthday_reminder') {
       const { clients } = data;
       
-      let clientsHtml = clients.map((c: any) => {
+      const clientsHtml = clients.map((c: any) => {
         const whatsappMsg = encodeURIComponent(`Oii ${c.full_name.split(' ')[0]}!! Passando aqui pra te desejar um Feliz Aniversário! 🎉🥳 Que você tenha um dia incrível, cheio de alegrias e que a gente possa comemorar em muitas trilhas juntos! Um abraço da equipe Mais Trilha Menos Estresse! 🥾⛰️`);
         const whatsappLink = `https://wa.me/55${c.phone.replace(/\D/g, '')}?text=${whatsappMsg}`;
         

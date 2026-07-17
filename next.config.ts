@@ -28,6 +28,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['192.168.1.25'],
+  images: {
+    remotePatterns: [{
+      protocol: 'https',
+      hostname: `${process.env.AWS_S3_BUCKET_NAME || 'maistrilha-menosestresse'}.s3.${process.env.AWS_REGION || 'us-east-2'}.amazonaws.com`,
+      pathname: '/**',
+    }],
+  },
   async headers() {
     return [
       {

@@ -104,13 +104,14 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           {step === 1 ? (
-            <form className="space-y-6" onSubmit={handleRequestOTP}>
+            <form suppressHydrationWarning className="space-y-6" onSubmit={handleRequestOTP}>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   E-mail Institucional
                 </label>
                 <div className="mt-1">
                   <input
+                    suppressHydrationWarning
                     id="email"
                     name="email"
                     type="email"
@@ -141,13 +142,14 @@ export default function LoginPage() {
               </div>
             </form>
           ) : (
-            <form className="space-y-6" onSubmit={handleVerifyOTP}>
+            <form suppressHydrationWarning className="space-y-6" onSubmit={handleVerifyOTP}>
               <div>
                 <label htmlFor="token" className="block text-sm font-medium text-gray-700">
                   Chave de Autenticação
                 </label>
                 <div className="mt-1">
                   <input
+                    suppressHydrationWarning
                     id="token"
                     name="token"
                     type="text"

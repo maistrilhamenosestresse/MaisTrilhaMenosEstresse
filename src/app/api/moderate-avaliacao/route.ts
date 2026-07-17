@@ -1,21 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
-
-const supabaseAdmin = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yslikzkgiaxafcgrqvzh.supabase.co'),
-  (process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_ENlwK2X7Uo2CfRLh_9RBwg_KbtgUUbO')
-);
+import { requireAdminUser } from '@/lib/server/auth';
+import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 export async function POST(request: Request) {
   try {
+    const originError = assertSameOrigin(request);
+    if (originError) return originError;
+    const auth = await requireAdminUser();
+    if (auth.response) return auth.response;
+
     // SECURITY: O painel admin agora usa validação de PIN no frontend em vez de NextAuth.
     // Sessão removida temporariamente para permitir ações do painel admin.
 
-    const body = await request.json();
+    const parsed = await readJsonBody<any>(request, 10_000);
+    if (parsed.response) return parsed.response;
+    const body = parsed.data;
     const { id, action, approved } = body;
 
     if (!id) {
@@ -23,13 +25,13 @@ export async function POST(request: Request) {
     }
 
     if (action === 'delete') {
-      const { error } = await supabaseAdmin.from('avaliacoes').delete().eq('id', id);
+      const { error } = await createSupabaseAdmin().from('avaliacoes').delete().eq('id', id);
       if (error) throw error;
       return NextResponse.json({ success: true, message: 'Avaliação excluída' });
     } 
     
     if (action === 'update') {
-      const { error } = await supabaseAdmin.from('avaliacoes').update({ approved }).eq('id', id);
+      const { error } = await createSupabaseAdmin().from('avaliacoes').update({ approved: approved === true }).eq('id', id);
       if (error) throw error;
       return NextResponse.json({ success: true, message: 'Status da avaliação atualizado' });
     }

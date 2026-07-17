@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { requireAdminUser } from '@/lib/server/auth';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 export async function POST(request: Request) {
-  try {
-    // SECURITY: Verifica autenticação
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
-    }
+  const originError = assertSameOrigin(request);
+  if (originError) return originError;
+  const auth = await requireAdminUser();
+  if (auth.response) return auth.response;
 
-    const data = await request.json();
+  try {
+    const parsed = await readJsonBody<any>(request, 100_000);
+    if (parsed.response) return parsed.response;
+    const data = parsed.data;
     const { client } = data;
 
     if (!client || !client.email) {

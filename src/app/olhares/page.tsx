@@ -21,26 +21,26 @@ export default function OlharesPage() {
 
   const olhares = [
     {
-      src: "/FotosEvideos/OLHARES/IMG_8892.JPG",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8892.JPG",
       text: "A força que nos faz dar o próximo passo, mesmo quando o cansaço bate."
     },
     {
-      src: "/FotosEvideos/OLHARES/IMG_8889.JPG",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8889.JPG",
       text: "A alegria de chegar ao topo e saber que não estamos sozinhos."
     },
     {
-      src: "/FotosEvideos/OLHARES/SCRL_0007.jpg",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/SCRL_0007.jpg",
       text: "A paz que só se encontra depois de vencer uma montanha."
     },
     {
-      src: "/FotosEvideos/OLHARES/IMG_8892 - Copia.JPG",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8892%20-%20Copia.JPG",
       text: "Os encontros reais que a natureza nos proporciona."
     }
   ];
 
   return (
     <div className="bg-[#05080c] text-white min-h-screen overflow-x-hidden font-sans selection:bg-[#F17B37] selection:text-white">
-      
+
       {/* PARTÍCULAS DE POEIRA CINEMATOGRÁFICAS (FAGULHAS E NÉVOA DE FUNDO) */}
 
       {/* PARTÍCULAS DE POEIRA CINEMATOGRÁFICAS (FAGULHAS E NÉVOA DE FUNDO) */}
@@ -83,7 +83,7 @@ export default function OlharesPage() {
 
       {/* NAVEGAÇÃO MINIMALISTA */}
       <nav className="fixed top-0 left-0 right-0 z-50 p-6">
-        <button 
+        <button
           onClick={() => router.push('/')}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/10"
         >
@@ -95,21 +95,21 @@ export default function OlharesPage() {
       {/* HERO DRAMÁTICO COM FUNDO FOTOGRÁFICO */}
       <section className="relative min-h-[70vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
         {/* A imagem de fundo (os olhares específicos pedidos) com máscara de transparência */}
-        <div 
+        <div
           className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center"
           style={{
             WebkitMaskImage: 'radial-gradient(ellipse at center, black 10%, transparent 100%)',
             maskImage: 'radial-gradient(ellipse at center, black 10%, transparent 65%)'
           }}
         >
-          <img 
-            src="/FotosEvideos/OLHARES/IMG_8893%20-%20Copia%20(2).JPG" 
-            alt="Olhares Especiais" 
+          <img
+            src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8893%20-%20Copia%20(2).JPG"
+            alt="Olhares Especiais"
             className="w-full h-[50vh] md:h-full object-contain md:object-cover opacity-20 grayscale"
           />
         </div>
-        
-        <motion.div 
+
+        <motion.div
           style={{ y: yHero, opacity: opacityHero }}
           initial={{ opacity: 0, filter: "blur(20px)", scale: 1.1 }}
           animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
@@ -129,7 +129,7 @@ export default function OlharesPage() {
       {/* GALERIA CINEMATOGRÁFICA DE OLHARES */}
       <section className="py-20 px-6 max-w-7xl mx-auto space-y-40 relative z-10">
         {olhares.map((item, index) => (
-          <motion.div 
+          <motion.div
             key={item.src}
             initial={{ opacity: 0, y: 150, filter: "blur(15px)" }}
             whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -139,21 +139,21 @@ export default function OlharesPage() {
           >
             <div className="flex-1 w-full relative group">
               {/* Máscara de transparência real, agora com degradê extremamente suave para não ficar chapado */}
-              <div 
+              <div
                 className="relative aspect-[4/5] md:aspect-[4/4]"
                 style={{
                   WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
                   maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)'
                 }}
               >
-                <img 
-                  src={item.src} 
-                  alt="Um olhar nas trilhas" 
+                <img
+                  src={item.src}
+                  alt="Um olhar nas trilhas"
                   className="w-full h-full object-cover object-center grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[2000ms] ease-out"
                 />
               </div>
             </div>
-            
+
             <div className="flex-1 text-center md:text-left">
               <div className="w-12 h-[2px] bg-[#F17B37] mb-8 mx-auto md:mx-0 opacity-50" />
               <p className="text-3xl md:text-5xl font-black text-gray-200 leading-tight drop-shadow-xl">
@@ -167,7 +167,7 @@ export default function OlharesPage() {
       {/* FOOTER DRAMÁTICO */}
       <section className="py-32 text-center relative overflow-hidden mt-20">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-[#05080c] to-[#05080c]" />
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -177,8 +177,8 @@ export default function OlharesPage() {
           <Heart className="h-12 w-12 text-[#F17B37] mx-auto mb-8 opacity-80 animate-pulse" />
           <h2 className="text-4xl font-bold mb-6 text-white">Nosso mais profundo obrigado.</h2>
           <p className="text-gray-400 text-lg mb-12">Cada trilha é escrita pelos seus passos.</p>
-          
-          <button 
+
+          <button
             onClick={() => router.push('/')}
             className="text-sm font-bold tracking-[0.3em] uppercase text-[#F17B37] hover:text-white transition-colors border-b border-[#F17B37]/30 pb-2 hover:border-white"
           >

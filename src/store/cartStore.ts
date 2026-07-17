@@ -15,6 +15,8 @@ export interface CartItem {
   quantity: number;
   dependents: Dependent[];
   availableSpots: number;
+  acceptedPaymentMethods?: string[];
+  taxa_gratis?: boolean;
 }
 
 interface CartState {

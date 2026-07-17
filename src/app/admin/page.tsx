@@ -6,30 +6,68 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Calendar, DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2, 
   CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation, 
-  Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature
+  Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, UploadCloud, Award
 } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
+import CobrancasDashboard from "@/components/admin/CobrancasDashboard";
+import LojaDashboard from "@/components/admin/LojaDashboard";
+import GamificacaoDashboard from "@/components/admin/GamificacaoDashboard";
+import AssistenteFinanceiroView from "@/components/admin/AssistenteFinanceiroView";
+import { MediaUploadSection } from "@/components/admin/MediaUploadSection";
+import { PhotosUploadModal } from "@/components/admin/PhotosUploadModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from 'recharts';
+import { calculateGrossPrice, calculateNetProfit } from "@/lib/fees";
+import imageCompression from 'browser-image-compression';
+import { uploadMediaToAws } from '@/lib/upload-media-client';
 
 type AgendaForm = {
   title: string; location: string; date: string; price: string;
   meeting_point: string; description: string; requirements: string; max_capacity: string;
   duration_hours: string; distance_km: string; difficulty: string;
   flyer: FileList; images: FileList; video: FileList;
+  taxa_gratis: string; // boolean handled via string value 'true' or 'false'
 };
 
 type ChatMessage = { sender: 'user' | 'bot'; text: string; };
 
 const formatCurrency = (val: number | string) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+const formatPaymentMethod = (method?: string) => {
+  if (method === 'CREDIT_CARD') return 'Cartão';
+  if (method === 'BOLETO') return 'Boleto';
+  if (method === 'PIX') return 'Pix';
+  if (method === 'ASAAS') return 'Asaas';
+  return method || 'Não informado';
+};
 
 export default function AdminPage() {
-  const { register, handleSubmit, reset, watch, setValue, getValues } = useForm<AgendaForm>();
+  const { register, handleSubmit, reset, watch, setValue, getValues } = useForm<AgendaForm>({
+    shouldUnregister: false
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [agendas, setAgendas] = useState<any[]>([]);
   const [globalViews, setGlobalViews] = useState<number>(0);
   const [clients, setClients] = useState<any[]>([]);
+  const [acceptedPaymentMethods, setAcceptedPaymentMethods] = useState<string[]>(['PIX', 'CREDIT_CARD', 'BOLETO']);
+  const [hideFeePreview, setHideFeePreview] = useState<boolean>(false);
+  
+  const getReservaNetProfit = (reserva: any, agenda: any) => {
+    if (!agenda || !agenda.price) return 0;
+    if (!agenda.taxa_gratis) {
+      return Number(agenda.price);
+    } else {
+      const method = reserva.metodo_pagamento || 'PIX';
+      return calculateNetProfit(Number(agenda.price), method, 1);
+    }
+  };
+
+  const watchPrice = watch("price");
+  const watchTaxaGratis = watch("taxa_gratis");
+
+  const [selectedPhotosAgendaId, setSelectedPhotosAgendaId] = useState<string | null>(null);
 
   const [expandedTrilhas, setExpandedTrilhas] = useState<string | null>(null);
   const [clientTrails, setClientTrails] = useState<{ [clientId: string]: any[] }>({});
@@ -51,7 +89,8 @@ export default function AdminPage() {
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   
   // Novos estados para a UI tipo App
-  const [mainTab, setMainTab] = useState<'trilhas' | 'clientes' | 'reservas' | 'financas'>('trilhas');
+  const [mainTab, setMainTab] = useState<'trilhas' | 'clientes' | 'reservas' | 'financas' | 'cobrancas' | 'loja' | 'gamificacao' | 'assistente'>('trilhas');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [clientesTab, setClientesTab] = useState<'todos' | 'listas' | 'avaliacoes'>('todos');
   const [clientSortMode, setClientSortMode] = useState<'recentes' | 'antigos' | 'az' | 'za'>('recentes');
   const [avaliacoesAdmin, setAvaliacoesAdmin] = useState<any[]>([]);
@@ -92,10 +131,11 @@ export default function AdminPage() {
   // --- Estados de Reservas e Finanças ---
   const [selectedAgendaId, setSelectedAgendaId] = useState<string>('');
   const [reservas, setReservas] = useState<any[]>([]);
+  const [reservaFilter, setReservaFilter] = useState<'ALL' | 'pago' | 'pendente' | 'atrasado'>('ALL');
   const [custos, setCustos] = useState<any[]>([]);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
-  
-  const [financasTab, setFinancasTab] = useState<'receitas' | 'despesas' | 'relatorios'>('despesas');
+  const [detailsError, setDetailsError] = useState('');
+  const [financasTab, setFinancasTab] = useState<'asaas' | 'receitas' | 'despesas' | 'relatorios'>('asaas');
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [allReservas, setAllReservas] = useState<any[]>([]);
   const [allCustos, setAllCustos] = useState<any[]>([]);
@@ -114,6 +154,7 @@ export default function AdminPage() {
   const [novoCustoValor, setNovoCustoValor] = useState('');
   const [novaReservaClientId, setNovaReservaClientId] = useState('');
   const [novaReservaStatus, setNovaReservaStatus] = useState('pago');
+  const [novaReservaValorPago, setNovaReservaValorPago] = useState('');
 
   // Estados de IA e Gravação (Mantidos intactos)
   const [isFormattingMeetingPoint, setIsFormattingMeetingPoint] = useState(false);
@@ -145,15 +186,24 @@ export default function AdminPage() {
     let csvContent = "data:text/csv;charset=utf-8,";
     
     if (type === 'reservas') {
-      csvContent += "Nome,CPF,Telefone,Status de Pagamento,Valor Pago\n";
+      csvContent += "Nome,CPF,Telefone,Status de Pagamento,Valor Pago,Forma de Pagamento,Data da Compra,Referência\n";
       reservas.forEach(r => {
-        const row = `${r.clients?.full_name},${r.clients?.cpf},${r.clients?.phone},${r.status_pagamento.toUpperCase()},${r.valor_pago || 0}`;
+        const row = [
+          r.clients?.full_name,
+          r.clients?.cpf,
+          r.clients?.phone,
+          r.status_pagamento?.toUpperCase(),
+          Number(r.valor_pago || 0).toFixed(2),
+          formatPaymentMethod(r.metodo_pagamento),
+          r.created_at ? new Date(r.created_at).toLocaleString('pt-BR') : '',
+          r.nsu_transacao || '',
+        ].map(csvCell).join(',');
         csvContent += row + "\n";
       });
     } else if (type === 'relatorios') {
-      csvContent += "Nome da Trilha,Data,Passageiros Pagos,Faturamento (R$),Custos Totais (R$),Lucro Liquido (R$)\n";
+      csvContent += "Nome da Trilha,Data,Passageiros Pagos,Faturamento Liquido (R$),Custos Totais (R$),Lucro Liquido (R$)\n";
       agendas.forEach(agenda => {
-        const rev = allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').length * agenda.price;
+        const rev = allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').reduce((acc, r) => acc + getReservaNetProfit(r, agenda), 0);
         const cst = allCustos.filter(c => c.agenda_id === agenda.id).reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
         const row = `${agenda.title},${agenda.date},${allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').length},${rev},${cst},${rev - cst}`;
         csvContent += row + "\n";
@@ -303,9 +353,31 @@ export default function AdminPage() {
       })
       .subscribe();
 
+    // ★ REALTIME: Atualiza reservas em tempo real quando o webhook altera o status
+    const reservasChannel = supabase
+      .channel('reservas-status-changes')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'reservas' }, (payload) => {
+        const updated = payload.new;
+        // Atualiza apenas os campos de status na lista local de reservas (sem recarregar tudo)
+        setReservas(prev => prev.map(r => r.id === updated.id 
+          ? { ...r, status_pagamento: updated.status_pagamento, status: updated.status, valor_pago: updated.valor_pago } 
+          : r
+        ));
+        // Também atualiza os counts de vagas na listagem de agendas
+        setAgendas(prev => prev.map(agenda => {
+          if (agenda.id !== updated.agenda_id) return agenda;
+          const updatedReservas = (agenda.reservas || []).map((r: any) => 
+            r.id === updated.id ? { ...r, status_pagamento: updated.status_pagamento } : r
+          );
+          return { ...agenda, reservas: updatedReservas };
+        }));
+      })
+      .subscribe();
+
     return () => { 
       if (timerRef.current) clearInterval(timerRef.current); 
       supabase.removeChannel(channel);
+      supabase.removeChannel(reservasChannel);
     };
   }, []);
 
@@ -331,7 +403,7 @@ export default function AdminPage() {
     try {
       const { data, error } = await supabase
         .from('reservas')
-        .select('*, clients(*), agendas(*)')
+        .select('*, clients!reservas_client_id_fkey(*), agendas(*)')
         .eq('id', notif.reserva_id)
         .single();
         
@@ -394,7 +466,7 @@ export default function AdminPage() {
       if (clientSortMode === 'az') return normalizeString(a.full_name).localeCompare(normalizeString(b.full_name));
       if (clientSortMode === 'za') return normalizeString(b.full_name).localeCompare(normalizeString(a.full_name));
       if (clientSortMode === 'antigos') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return new Date(b.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
   const toggleClientExpand = (id: string) => {
@@ -461,7 +533,10 @@ export default function AdminPage() {
         body: JSON.stringify({ client }),
       });
       if (res.ok) alert("Contrato reenviado com sucesso para " + client.email);
-      else alert("Falha ao reenviar o contrato.");
+      else {
+        const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
+        alert("Falha ao reenviar o contrato: " + errorData.error);
+      }
     } catch (e) {
       alert("Erro ao reenviar contrato.");
     }
@@ -478,15 +553,21 @@ export default function AdminPage() {
     if (!selectedAgendaId) return;
     const fetchDetails = async () => {
       setIsFetchingDetails(true);
+      setDetailsError('');
+      setReservas([]);
+      setCustos([]);
       try {
         const [resReservas, resCustos] = await Promise.all([
-          supabase.from('reservas').select('*, clients(*)').eq('agenda_id', selectedAgendaId),
+          supabase.from('reservas').select('*, clients!reservas_client_id_fkey(*)').eq('agenda_id', selectedAgendaId).order('created_at', { ascending: false }),
           supabase.from('trilha_custos').select('*').eq('agenda_id', selectedAgendaId).order('created_at', { ascending: true })
         ]);
+        if (resReservas.error) throw resReservas.error;
+        if (resCustos.error) throw resCustos.error;
         setReservas(resReservas.data || []);
         setCustos(resCustos.data || []);
       } catch (e) {
         console.error("Erro ao buscar detalhes financeiros/reservas:", e);
+        setDetailsError('Não foi possível carregar as compras e os dados financeiros desta trilha. Tente novamente.');
       } finally {
         setIsFetchingDetails(false);
       }
@@ -495,12 +576,12 @@ export default function AdminPage() {
   }, [selectedAgendaId]);
 
   useEffect(() => {
-    if (mainTab === 'financas' && financasTab === 'relatorios') {
+    if ((mainTab === 'financas' && financasTab === 'relatorios') || mainTab === 'assistente') {
       const fetchGlobalFinances = async () => {
         setIsFetchingGlobalFinances(true);
         try {
           const [resReservas, resCustos] = await Promise.all([
-            supabase.from('reservas').select('id, agenda_id, status_pagamento, valor_pago, metodo_pagamento, client_id, clients(full_name, phone, photo_url, birth_date), agendas(date)'),
+            supabase.from('reservas').select('id, agenda_id, status_pagamento, valor_pago, metodo_pagamento, client_id, clients!reservas_client_id_fkey(full_name, phone, photo_url, birth_date), agendas(date)'),
             supabase.from('trilha_custos').select('agenda_id, valor_custo')
           ]);
           setAllReservas(resReservas.data || []);
@@ -548,12 +629,13 @@ export default function AdminPage() {
 
     try {
       const { data, error } = await supabase.from('reservas').insert([
-        { agenda_id: selectedAgendaId, client_id: novaReservaClientId, status_pagamento: novaReservaStatus, valor_pago: selectedAgendaData?.price || 0 }
-      ]).select('*, clients(*)').single();
+        { agenda_id: selectedAgendaId, client_id: novaReservaClientId, status_pagamento: novaReservaStatus, valor_pago: Number(novaReservaValorPago.replace(',', '.')) || 0 }
+      ]).select('*, clients!reservas_client_id_fkey(*)').single();
       
       if (error) throw error;
       setReservas([...reservas, data]);
       setNovaReservaClientId('');
+      setNovaReservaValorPago('');
     } catch (err: any) { alert("Erro ao adicionar passageiro: " + err.message); }
   };
 
@@ -567,7 +649,11 @@ export default function AdminPage() {
   };
 
   const handleToggleStatusPagamento = async (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'pago' ? 'pendente' : 'pago';
+    let nextStatus = 'pendente';
+    if (currentStatus === 'pendente') nextStatus = 'pago';
+    else if (currentStatus === 'pago') nextStatus = 'atrasado';
+    else nextStatus = 'pendente';
+
     if (!(await requirePin(`Alterar status para ${nextStatus.toUpperCase()}`))) return;
     try {
       const { error } = await supabase.from('reservas').update({ status_pagamento: nextStatus }).eq('id', id);
@@ -577,7 +663,9 @@ export default function AdminPage() {
   };
 
   const selectedAgendaData = agendas.find(a => a.id === selectedAgendaId);
-  const totalRevenue = reservas.filter(r => r.status_pagamento === 'pago').length * (selectedAgendaData?.price || 0);
+  const totalRevenue = reservas.filter(r => r.status_pagamento === 'pago').reduce((acc, curr) => acc + Number(curr.valor_pago || 0), 0);
+  const paidReservations = reservas.filter(r => r.status_pagamento === 'pago');
+  const paidReservationsWithoutValue = paidReservations.filter(r => Number(r.valor_pago || 0) <= 0);
   const totalCosts = custos.reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
   const netProfit = totalRevenue - totalCosts;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0.0";
@@ -594,20 +682,64 @@ export default function AdminPage() {
 
   const handleEdit = (agenda: any) => {
     setEditingAgenda(agenda);
-    setValue("title", agenda.title); setValue("date", agenda.date);
+    
+    setValue("title", agenda.title);
+    setValue("date", agenda.date);
     setValue("price", agenda.price.toString().replace('.', ','));
-    setValue("meeting_point", agenda.meeting_point); setValue("description", agenda.description);
-    setValue("requirements", agenda.requirements || "");
-    setValue("max_capacity", (agenda.max_capacity || "15").toString());
-    setValue("duration_hours", (agenda.duration_hours || "").toString());
-    setValue("distance_km", (agenda.distance_km || "").toString());
-    setValue("difficulty", agenda.difficulty || "medium");
+    setValue("description", agenda.description);
+    setValue("meeting_point", agenda.meeting_point);
+    setValue("requirements", agenda.requirements);
+    setValue("max_capacity", agenda.max_capacity?.toString() || '');
+    setValue("duration_hours", agenda.duration_hours?.toString() || '');
+    setValue("distance_km", agenda.distance_km?.toString().replace('.', ',') || '');
+    setValue("difficulty", agenda.difficulty || 'easy');
+    setValue("taxa_gratis", agenda.taxa_gratis ? 'true' : 'false');
+    
+    // Configura os checks do payment methods baseados na agenda editada
+    if (agenda.accepted_payment_methods) {
+      setAcceptedPaymentMethods(agenda.accepted_payment_methods);
+    }
+    
     setActiveTab('geral');
     setIsFormModalOpen(true);
   };
 
+  const handleDeleteAgendaImage = async (url: string, type: 'flyer' | 'gallery') => {
+    if (!editingAgenda) return;
+    if (!window.confirm(`Tem certeza que deseja excluir esta foto do ${type === 'flyer' ? 'flyer principal' : 'álbum da trilha'}?`)) return;
+
+    try {
+      // Para S3: remover da lista no banco de dados (não deletamos o arquivo do S3 aqui)
+      // O arquivo permanece no S3 mas é removido da agenda no BD
+
+      // Atualizar no Banco de Dados
+      let updatedPayload: any = {};
+      if (type === 'flyer') {
+        updatedPayload = { flyer_url: null };
+      } else {
+        const newImages = (editingAgenda.images || []).filter((img: string) => img !== url);
+        updatedPayload = { images: newImages };
+      }
+
+      const { error } = await supabase.from('agendas').update(updatedPayload).eq('id', editingAgenda.id);
+      if (error) throw error;
+
+      // Atualiza o estado local para a UI refletir a exclusão na hora
+      setEditingAgenda({
+        ...editingAgenda,
+        ...updatedPayload
+      });
+      fetchAgendasAndCleanup();
+
+      alert("Foto excluída com sucesso!");
+    } catch (e: any) {
+      alert("Erro ao excluir foto: " + e.message);
+    }
+  };
+
   const cancelEdit = () => {
     setEditingAgenda(null); reset(); setIsFormModalOpen(false);
+    setAcceptedPaymentMethods(['PIX', 'CREDIT_CARD', 'BOLETO']);
   };
 
   const startRecording = async (type: 'meeting_point' | 'description' | 'assistant') => {
@@ -703,7 +835,7 @@ export default function AdminPage() {
 
     try {
       const res = await fetch("/api/generate-message", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, type })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, type })
       });
       
       if (!res.ok) throw new Error(`Erro na API: ${res.status}`);
@@ -729,41 +861,59 @@ export default function AdminPage() {
       let imageUrls: string[] = editingAgenda ? editingAgenda.images || [] : [];
       let videoUrl: string | null = editingAgenda ? editingAgenda.video_url : null;
       let flyerUrl: string | null = editingAgenda ? editingAgenda.flyer_url : null;
+
+      const compressOptions = {
+        maxSizeMB: 0.15,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+        fileType: "image/webp"
+      };
       
+      // Helper para upload via API (S3)
+      const uploadToS3 = async (file: File | Blob, originalName: string): Promise<string> => {
+        const result = await uploadMediaToAws(file, originalName);
+        return result.url;
+      };
+
       // Upload Flyer
       if (data.flyer && data.flyer.length > 0) {
-        const file = data.flyer[0];
-        const fileName = `flyer_${Date.now()}.${file.name.split('.').pop()}`;
-        await supabase.storage.from('fotos_agendas').upload(fileName, file);
-        flyerUrl = supabase.storage.from('fotos_agendas').getPublicUrl(fileName).data.publicUrl;
+        let file: File | Blob = data.flyer[0];
+        if (file.type.startsWith('image/')) {
+          file = await imageCompression(file as File, compressOptions);
+        }
+        const ext = file.type === 'image/webp' ? 'webp' : (data.flyer[0].name.split('.').pop() || 'jpg');
+        flyerUrl = await uploadToS3(file, `flyer_${Date.now()}.${ext}`);
       }
       // Upload Images
       if (data.images && data.images.length > 0) {
         if (!editingAgenda) imageUrls = [];
         for (let i = 0; i < data.images.length; i++) {
-          const file = data.images[i];
-          const fileName = `img_${Date.now()}_${i}.${file.name.split('.').pop()}`;
-          await supabase.storage.from('fotos_agendas').upload(fileName, file);
-          imageUrls.push(supabase.storage.from('fotos_agendas').getPublicUrl(fileName).data.publicUrl);
+          let file: File | Blob = data.images[i];
+          if (file.type.startsWith('image/')) {
+            file = await imageCompression(file as File, compressOptions);
+          }
+          const ext = file.type === 'image/webp' ? 'webp' : (data.images[i].name.split('.').pop() || 'jpg');
+          const url = await uploadToS3(file, `img_${Date.now()}_${i}.${ext}`);
+          imageUrls.push(url);
         }
       }
 
-      
       if (data.video && data.video.length > 0) {
         const file = data.video[0];
-        const fileName = `vid_${Date.now()}.${file.name.split('.').pop()}`;
-        await supabase.storage.from('fotos_agendas').upload(fileName, file);
-        videoUrl = supabase.storage.from('fotos_agendas').getPublicUrl(fileName).data.publicUrl;
+        videoUrl = await uploadToS3(file, `vid_${Date.now()}.${file.name.split('.').pop()}`);
       }
 
       const payload = {
-        title: data.title, date: data.date, price: parseFloat(data.price.replace(',', '.')),
+        title: data.title, date: data.date, 
+        price: data.price ? parseFloat(String(data.price).replace(',', '.')) : 0,
         description: data.description, meeting_point: data.meeting_point,
-        requirements: data.requirements, max_capacity: parseInt(data.max_capacity),
-        duration_hours: data.duration_hours ? parseFloat(data.duration_hours.replace(',', '.')) : null,
-        distance_km: data.distance_km ? parseFloat(data.distance_km.replace(',', '.')) : null,
+        requirements: data.requirements, max_capacity: parseInt(String(data.max_capacity)) || 0,
+        duration_hours: data.duration_hours ? parseFloat(String(data.duration_hours).replace(',', '.')) : null,
+        distance_km: data.distance_km ? parseFloat(String(data.distance_km).replace(',', '.')) : null,
         difficulty: data.difficulty,
-        images: imageUrls, video_url: videoUrl, flyer_url: flyerUrl
+        images: imageUrls, video_url: videoUrl, flyer_url: flyerUrl,
+        accepted_payment_methods: acceptedPaymentMethods,
+        taxa_gratis: data.taxa_gratis === 'true'
       };
 
       if (editingAgenda) {
@@ -862,13 +1012,38 @@ export default function AdminPage() {
             Reservas
           </button>
 
-          <button 
-            onClick={() => setMainTab('financas')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
-          >
-            <DollarSign className="h-5 w-5" />
-            Finanças
-          </button>
+            <button 
+              onClick={() => setMainTab('financas')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <DollarSign className="h-5 w-5" />
+              Finanças & Asaas
+            </button>
+
+            <button 
+              onClick={() => setMainTab('loja')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'loja' ? 'bg-blue-50 text-blue-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <Gift className="h-5 w-5" />
+              Loja
+            </button>
+
+            <button 
+              onClick={() => setMainTab('gamificacao')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'gamificacao' ? 'bg-purple-50 text-purple-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <Trophy className="h-5 w-5" />
+              Gamificação
+            </button>
+
+            <button 
+              onClick={() => setMainTab('assistente')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'assistente' ? 'bg-amber-50 text-amber-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            >
+              <TrendingUp className="h-5 w-5" />
+              CFO Assistente
+            </button>
+
 
           <div className="pt-4 mt-4 border-t border-gray-100 hidden md:block">
             <button 
@@ -1111,7 +1286,8 @@ export default function AdminPage() {
                                   exit={{ height: 0, opacity: 0 }}
                                   className="border-t border-gray-100 bg-gray-50/50"
                                 >
-                                  <div className="p-4 flex flex-col sm:flex-row items-center justify-end gap-3">
+                                  <div className="p-4 flex flex-col sm:flex-row items-center justify-end gap-3 flex-wrap">
+                                    <button onClick={() => setSelectedPhotosAgendaId(agenda.id)} className="w-full sm:w-auto py-2.5 px-6 bg-purple-50 text-purple-600 font-bold rounded-xl hover:bg-purple-100 transition flex items-center justify-center gap-2"><ImageIcon className="h-4 w-4" /> Fotos da Trilha</button>
                                     <button onClick={() => handleEdit(agenda)} className="w-full sm:w-auto py-2.5 px-6 bg-blue-50 text-blue-600 font-bold rounded-xl hover:bg-blue-100 transition flex items-center justify-center gap-2"><Edit2 className="h-4 w-4" /> Editar Trilha</button>
                                     <button onClick={() => deleteAgenda(agenda.id)} className="w-full sm:w-auto py-2.5 px-6 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2"><Trash2 className="h-4 w-4" /> Excluir</button>
                                   </div>
@@ -1277,8 +1453,42 @@ export default function AdminPage() {
                                   </div>
                                   
                                   <div className="bg-red-50 p-3 rounded-xl border border-red-100">
-                                    <p className="text-red-800 text-xs font-bold uppercase mb-1">Saúde & Observações</p>
+                                    <p className="text-red-800 text-xs font-bold uppercase mb-1">Saúde &amp; Observações</p>
                                     <p className="text-sm font-medium text-red-900 whitespace-pre-wrap">{client.health_notes || "Nenhuma anotação."}</p>
+                                  </div>
+
+                                  {/* Área de Membros VIP */}
+                                  <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${client.membro_vip ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+                                    <div className="flex items-center gap-2">
+                                      <Award className={`h-5 w-5 ${client.membro_vip ? 'text-amber-500' : 'text-gray-400'}`} />
+                                      <div>
+                                        <p className={`text-sm font-black ${client.membro_vip ? 'text-amber-800' : 'text-gray-600'}`}>
+                                          Área de Membros VIP
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {client.membro_vip ? '✅ Acesso autorizado manualmente' : 'Sem acesso (requer 3+ trilhas ou autorização)'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const novoStatus = !client.membro_vip;
+                                        const res = await fetch('/api/admin/membros', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ clientId: client.id, membro_vip: novoStatus })
+                                        });
+                                        if (res.ok) {
+                                          setClients(prev => prev.map(c => c.id === client.id ? { ...c, membro_vip: novoStatus } : c));
+                                        } else {
+                                          alert('Erro ao atualizar status de membro. A coluna membro_vip precisa ser criada no banco.\n\nExecute no Supabase SQL Editor:\nALTER TABLE clients ADD COLUMN IF NOT EXISTS membro_vip BOOLEAN DEFAULT FALSE;');
+                                        }
+                                      }}
+                                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${client.membro_vip ? 'bg-amber-500' : 'bg-gray-300'}`}
+                                    >
+                                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${client.membro_vip ? 'translate-x-6' : 'translate-x-0'}`} />
+                                    </button>
                                   </div>
 
                                   <div className="flex items-center gap-2 pt-2 flex-wrap">
@@ -1492,35 +1702,114 @@ export default function AdminPage() {
 
                 {isFetchingDetails ? (
                   <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#F17B37]" /></div>
+                ) : detailsError ? (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-red-700 flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Falha ao carregar compras</p>
+                      <p className="text-sm mt-1">{detailsError}</p>
+                    </div>
+                  </div>
                 ) : (
                   <>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="bg-green-50 border border-green-100 rounded-2xl p-4">
+                        <p className="text-[10px] font-black text-green-700 uppercase tracking-wider">Faturamento registrado</p>
+                        <p className="text-2xl font-black text-green-800 mt-1">{formatCurrency(totalRevenue)}</p>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                        <p className="text-[10px] font-black text-blue-700 uppercase tracking-wider">Compras pagas</p>
+                        <p className="text-2xl font-black text-blue-800 mt-1">{paidReservations.length}</p>
+                      </div>
+                      <div className={`${paidReservationsWithoutValue.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-100'} border rounded-2xl p-4`}>
+                        <p className={`text-[10px] font-black uppercase tracking-wider ${paidReservationsWithoutValue.length > 0 ? 'text-amber-700' : 'text-gray-500'}`}>Pagas sem valor</p>
+                        <p className={`text-2xl font-black mt-1 ${paidReservationsWithoutValue.length > 0 ? 'text-amber-800' : 'text-gray-700'}`}>{paidReservationsWithoutValue.length}</p>
+                      </div>
+                    </div>
+
+                    {paidReservationsWithoutValue.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                        <p className="text-sm">
+                          Existem {paidReservationsWithoutValue.length} compras antigas marcadas como pagas sem valor registrado.
+                          Elas não entram no faturamento para evitar apresentar receita incorreta.
+                        </p>
+                      </div>
+                    )}
+
                     {/* Lista de Passageiros */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-[#1D2A3A] p-4 flex justify-between items-center text-white">
-                        <h3 className="font-bold flex items-center gap-2"><User className="h-5 w-5"/> Lista de Passageiros</h3>
-                        <div className="flex gap-2">
+                    <div className="bg-[#1D2A3A] p-4 flex flex-col md:flex-row justify-between items-start md:items-center text-white gap-4">
+                        <h3 className="font-bold flex items-center gap-2 text-lg"><User className="h-5 w-5"/> Passageiros</h3>
+                        
+                        <div className="flex bg-white/10 p-1 rounded-xl w-full md:w-auto">
+                          {(['ALL', 'pago', 'pendente', 'atrasado'] as const).map(filter => {
+                            const count = filter === 'ALL' ? reservas.length : reservas.filter(r => r.status_pagamento === filter).length;
+                            const label = filter === 'ALL' ? 'Todos' : filter === 'pago' ? 'Pagos' : filter === 'pendente' ? 'Pendentes' : 'Atrasados';
+                            return (
+                              <button
+                                key={filter}
+                                onClick={() => setReservaFilter(filter)}
+                                className={`flex-1 md:flex-none px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${reservaFilter === filter ? 'bg-white text-[#1D2A3A] shadow-sm' : 'text-gray-300 hover:bg-white/20 hover:text-white'}`}
+                              >
+                                {label}
+                                <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${reservaFilter === filter ? 'bg-[#1D2A3A] text-white' : 'bg-white/20'}`}>{count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <div className="flex gap-2 w-full md:w-auto justify-end">
                           <button onClick={() => handleExportCSV('reservas')} className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition text-xs font-bold flex items-center gap-1">
-                            <FileUp className="h-4 w-4" /> Baixar Excel
+                            <FileUp className="h-4 w-4" /> Excel
                           </button>
                           <span className="bg-white/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center">{reservas.length} / {selectedAgendaData?.max_capacity || 15} Vagas</span>
                         </div>
                       </div>
                       
                       <div className="p-4 space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar">
-                        {reservas.length === 0 ? (
-                          <p className="text-center text-gray-400 py-6 text-sm font-medium">Nenhum passageiro nesta trilha ainda.</p>
+                        {reservas.filter(r => reservaFilter === 'ALL' || r.status_pagamento === reservaFilter).length === 0 ? (
+                          <p className="text-center text-gray-400 py-6 text-sm font-medium">Nenhum passageiro {reservaFilter !== 'ALL' ? 'neste status' : 'nesta trilha ainda'}.</p>
                         ) : (
-                          reservas.map(reserva => (
-                            <div key={reserva.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
-                              <div>
+                          reservas.filter(r => reservaFilter === 'ALL' || r.status_pagamento === reservaFilter).map(reserva => (
+                            <div key={reserva.id} className="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
+                              <div className="min-w-0 flex-1">
                                 <p className="font-bold text-gray-800 text-sm">{reserva.clients?.full_name}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${reserva.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${reserva.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' : reserva.status_pagamento === 'atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                     {reserva.status_pagamento.toUpperCase()}
                                   </span>
+                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                                    {formatPaymentMethod(reserva.metodo_pagamento)}
+                                  </span>
+                                  {reserva.created_at && (
+                                    <span className="text-[10px] font-medium text-gray-500">
+                                      {new Date(reserva.created_at).toLocaleString('pt-BR')}
+                                    </span>
+                                  )}
                                 </div>
+                                {reserva.nsu_transacao && !String(reserva.nsu_transacao).startsWith('CREATING:') && (
+                                  <p className="text-[10px] text-gray-400 mt-1 truncate" title={reserva.nsu_transacao}>
+                                    Referência: {reserva.nsu_transacao}
+                                  </p>
+                                )}
                               </div>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div className="text-right">
+                                  {Number(reserva.valor_pago || 0) > 0 ? (
+                                    <>
+                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Valor pago</p>
+                                      <p className="text-sm font-black text-green-700">{formatCurrency(reserva.valor_pago)}</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="text-[10px] font-black text-amber-700">Valor não registrado</p>
+                                      {selectedAgendaData?.price && (
+                                        <p className="text-[10px] text-gray-500">Preço previsto: {formatCurrency(selectedAgendaData.price)}</p>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                                 <button 
                                   title="Alternar Status de Pagamento"
                                   onClick={() => handleToggleStatusPagamento(reserva.id, reserva.status_pagamento)} 
@@ -1557,15 +1846,25 @@ export default function AdminPage() {
                             value={novaReservaStatus} 
                             onChange={(e) => setNovaReservaStatus(e.target.value)}
                             disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                            className="w-1/2 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                            className="w-1/3 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
                           >
-                            <option value="pago">PAGO</option>
-                            <option value="pendente">PENDENTE</option>
+                            <option value="pago">Pago</option>
+                            <option value="pendente">Pendente</option>
+                            <option value="atrasado">Atrasado</option>
                           </select>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            placeholder="Valor Pago (ex: 150.00)"
+                            value={novaReservaValorPago}
+                            onChange={(e) => setNovaReservaValorPago(e.target.value)}
+                            disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
+                            className="w-1/3 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                          />
                           <button 
                             type="submit" 
                             disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                            className={`w-1/2 font-bold rounded-xl shadow-sm transition ${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                            className="flex-1 bg-[#1D2A3A] hover:bg-gray-900 text-white p-3 rounded-xl transition font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Adicionar
                           </button>
@@ -1580,14 +1879,22 @@ export default function AdminPage() {
             {mainTab === 'financas' && (
               <motion.div key="financas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
                 
-                {/* Abas Superiores de Finanças */}
-                <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden shrink-0 mt-4">
-                  <button type="button" onClick={() => setFinancasTab('despesas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'despesas' ? 'border-red-500 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Despesas</button>
-                  <button type="button" onClick={() => setFinancasTab('receitas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'receitas' ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Receitas</button>
-                  <button type="button" onClick={() => setFinancasTab('relatorios')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'relatorios' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Relatórios</button>
+                {/* Abas Superiores de Finanças (Scroll Horizontal) */}
+                <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto custom-scrollbar shrink-0 mt-4">
+                  <button type="button" onClick={() => setFinancasTab('asaas')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'asaas' ? 'border-[#32BCAD] text-[#32BCAD] bg-[#32BCAD]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Asaas (Banco)</button>
+                  <button type="button" onClick={() => setFinancasTab('despesas')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'despesas' ? 'border-red-500 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Custos Trilha</button>
+                  <button type="button" onClick={() => setFinancasTab('receitas')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'receitas' ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Receitas Trilha</button>
+                  <button type="button" onClick={() => setFinancasTab('relatorios')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'relatorios' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Relatório Final</button>
                 </div>
 
-                {financasTab !== 'relatorios' && (
+                {/* CONTEÚDO: ASAAS */}
+                {financasTab === 'asaas' && (
+                  <div className="pt-2">
+                    <CobrancasDashboard />
+                  </div>
+                )}
+
+                {financasTab !== 'relatorios' && financasTab !== 'asaas' && (
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
                     <label className="text-sm font-bold text-gray-700">Selecione a Trilha:</label>
                     <select 
@@ -1651,12 +1958,12 @@ export default function AdminPage() {
                       <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-green-500" /></div>
                     ) : (
                       <>
-                        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[60px] opacity-20" />
-                          <p className="text-green-100 text-sm font-bold uppercase tracking-wider mb-1">Faturamento Total</p>
-                          <p className="text-4xl font-black">{formatCurrency(totalRevenue)}</p>
-                          <p className="text-green-100 text-xs mt-2">Baseado em {reservas.filter(r => r.status_pagamento === 'pago').length} passageiros pagos ({formatCurrency(selectedAgendaData?.price || 0)} cada).</p>
-                        </div>
+                        <div className="bg-[#25D366] text-white p-6 rounded-2xl shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[60px] opacity-20" />
+                            <p className="text-green-100 text-sm font-bold uppercase tracking-wider mb-1">Receita Confirmada</p>
+                            <p className="text-4xl font-black">{formatCurrency(totalRevenue)}</p>
+                            <p className="text-green-100 text-xs mt-2">Soma exata do valor pago por todos os clientes.</p>
+                          </div>
                         
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                           <div className="bg-gray-50 border-b border-gray-100 p-4">
@@ -1669,7 +1976,7 @@ export default function AdminPage() {
                               reservas.filter(r => r.status_pagamento === 'pago').map(reserva => (
                                 <div key={reserva.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
                                   <p className="font-bold text-gray-700 text-sm">{reserva.clients?.full_name}</p>
-                                  <span className="text-green-600 font-bold text-sm">+ {formatCurrency(selectedAgendaData?.price || 0)}</span>
+                                  <span className="text-green-600 font-bold text-sm">+ {formatCurrency(getReservaNetProfit(reserva, selectedAgendaData))}</span>
                                 </div>
                               ))
                             )}
@@ -1731,7 +2038,7 @@ export default function AdminPage() {
                             });
                             let rev = 0; let cst = 0;
                             trailsInMonth.forEach(agenda => {
-                              rev += allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').length * agenda.price;
+                              rev += allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').reduce((acc, r) => acc + getReservaNetProfit(r, agenda), 0);
                               cst += allCustos.filter(c => c.agenda_id === agenda.id).reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
                             });
                             return { name: new Date(2000, i).toLocaleString('pt-BR', { month: 'short' }).toUpperCase(), lucro: rev - cst, faturamento: rev, despesas: cst };
@@ -1815,7 +2122,7 @@ export default function AdminPage() {
                                   ) : (
                                     <div className="space-y-3">
                                       {trailsInSelectedMonth.map(agenda => {
-                                        const rev = allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').length * agenda.price;
+                                        const rev = allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').reduce((acc, r) => acc + getReservaNetProfit(r, agenda), 0);
                                         const cst = allCustos.filter(c => c.agenda_id === agenda.id).reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
                                         const profit = rev - cst;
                                         const isPositive = profit >= 0;
@@ -1861,15 +2168,15 @@ export default function AdminPage() {
                                                             <span className="font-bold text-gray-800 truncate pr-2">{reserva.clients?.full_name}</span>
                                                             <div className="flex items-center gap-2 shrink-0">
                                                               {(() => {
-                                                                const isCreditCard = reserva.valor_pago && (Number(reserva.valor_pago) > Number(agenda.price) + 0.1);
-                                                                const methodLabel = reserva.metodo_pagamento ? reserva.metodo_pagamento : (isCreditCard ? 'Cartão' : 'Pix / Dinheiro');
-                                                                const revenueValue = agenda.price;
+                                                                const isCreditCard = reserva.metodo_pagamento === 'CREDIT_CARD' || (reserva.valor_pago && (Number(reserva.valor_pago) > Number(agenda.price) + 0.1));
+                                                                const methodLabel = reserva.metodo_pagamento === 'CREDIT_CARD' ? 'Cartão' : (reserva.metodo_pagamento === 'PIX' ? 'Pix' : (reserva.metodo_pagamento === 'BOLETO' ? 'Boleto' : 'Pix / Dinheiro'));
+                                                                const revenueValue = getReservaNetProfit(reserva, agenda);
                                                                 return (
                                                                   <>
                                                                     <span className={`text-[9px] px-2 py-0.5 rounded border font-bold uppercase ${isCreditCard ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                                                                       {methodLabel}
                                                                     </span>
-                                                                    <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-100" title={`Valor Bruto (Cliente pagou R$ ${reserva.valor_pago || agenda.price})`}>
+                                                                    <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-100" title={`Lucro Líquido desta reserva`}>
                                                                       {formatCurrency(revenueValue)}
                                                                     </span>
                                                                   </>
@@ -1945,9 +2252,57 @@ export default function AdminPage() {
                 )}
               </motion.div>
             )}
-          </AnimatePresence>
-        </div>
-        <PinModal isOpen={isPinModalOpen} onClose={() => { setIsPinModalOpen(false); if(pinAction) pinAction.onCancel(); }} onSuccess={() => { if(pinAction) pinAction.onConfirm(); }} actionName={pinAction?.name} />
+          
+
+              {/* --- VISÃO DE LOJA --- */}
+              {mainTab === 'loja' && (
+                <motion.div key="loja" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
+                  <LojaDashboard />
+                </motion.div>
+              )}
+
+              {/* --- VISÃO DE GAMIFICAÇÃO --- */}
+              {mainTab === 'gamificacao' && (
+                <motion.div key="gamificacao" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
+                  <GamificacaoDashboard />
+                </motion.div>
+              )}
+
+              {mainTab === 'assistente' && (
+                <motion.div key="assistente" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                  <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6">
+                    <h2 className="text-xl font-black text-gray-800 mb-2 flex items-center gap-2"><TrendingUp className="h-6 w-6 text-amber-500" /> Assistente Financeiro (CFO)</h2>
+                    <p className="text-gray-500 mb-6">Selecione uma trilha abaixo para ver a análise de lucros, custos declarados e simulador de desconto máximo.</p>
+                    
+                    <label className="text-sm font-bold text-gray-700 mb-2 block">Selecione a Trilha para análise:</label>
+                    <select
+                      value={selectedAgendaId}
+                      onChange={(e) => setSelectedAgendaId(e.target.value)}
+                      className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-amber-500 font-bold text-gray-700"
+                    >
+                      <option value="">-- Escolha uma trilha --</option>
+                      {agendas.map(a => (
+                        <option key={a.id} value={a.id}>{a.title} ({a.date ? a.date.split('-').reverse().join('/') : ''})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedAgendaId && (() => {
+                    const selectedAgenda = agendas.find(a => a.id === selectedAgendaId);
+                    if (!selectedAgenda) return null;
+                    return (
+                      <AssistenteFinanceiroView 
+                        agenda={selectedAgenda} 
+                        reservas={allReservas} 
+                        custos={allCustos} 
+                      />
+                    );
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <PinModal isOpen={isPinModalOpen} onClose={() => { setIsPinModalOpen(false); if(pinAction) pinAction.onCancel(); }} onSuccess={() => { if(pinAction) pinAction.onConfirm(); }} actionName={pinAction?.name} />
       </main>
 
       {/* 3. BOTÃO FLUTUANTE (FAB) PARA NOVA TRILHA */}
@@ -1960,60 +2315,88 @@ export default function AdminPage() {
         </button>
       )}
 
-      {/* 4. MENU INFERIOR (BOTTOM NAVIGATION) TIPO APP */}
-      <nav className="bg-white border-t border-gray-200 fixed bottom-0 w-full z-30 pb-safe print:hidden md:hidden shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
-        <div className="flex justify-around items-center max-w-lg mx-auto relative px-2">
-          
-          <button 
-            onClick={() => setMainTab('trilhas')}
-            className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'trilhas' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            {mainTab === 'trilhas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#F17B37] rounded-b-full" />}
-            <CalendarDays className="h-5 w-5 mb-1" />
-            <span className="text-[9px] font-bold tracking-wide">Trilhas</span>
-          </button>
+      
+        {/* MOBILE DRAWER MENU */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+              <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 bottom-0 left-0 w-72 bg-white z-50 md:hidden flex flex-col shadow-2xl">
+                <div className="p-6 flex items-center justify-between border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-[#1D2A3A] p-2 rounded-xl shadow-md"><ShieldCheck className="h-6 w-6 text-white" /></div>
+                    <div><h1 className="text-lg font-black text-gray-900 leading-tight">Admin</h1></div>
+                  </div>
+                  <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"><X className="h-5 w-5" /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  <button onClick={() => { setMainTab('trilhas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'trilhas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><CalendarDays className="h-5 w-5" /> Trilhas</button>
+                  <button onClick={() => { setMainTab('clientes'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'clientes' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><FileText className="h-5 w-5" /> Clientes</button>
+                  <button onClick={() => { setMainTab('reservas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'reservas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><CheckCircle2 className="h-5 w-5" /> Reservas</button>
+                  <button onClick={() => { setMainTab('financas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><DollarSign className="h-5 w-5" /> Finanças</button>
+                  <button onClick={() => { setMainTab('loja'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'loja' ? 'bg-blue-50 text-blue-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><Gift className="h-5 w-5" /> Loja Virtual</button>
+                  <button onClick={() => { setMainTab('gamificacao'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'gamificacao' ? 'bg-purple-50 text-purple-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><Trophy className="h-5 w-5" /> Gamificação</button>
+                  <button onClick={() => { setMainTab('assistente'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'assistente' ? 'bg-amber-50 text-amber-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><TrendingUp className="h-5 w-5" /> CFO Assistente</button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
-          <button 
-            onClick={() => setMainTab('clientes')}
-            className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'clientes' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            {mainTab === 'clientes' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#F17B37] rounded-b-full" />}
-            <FileText className="h-5 w-5 mb-1" />
-            <span className="text-[9px] font-bold tracking-wide">Clientes</span>
-          </button>
-          
-          {/* BOTÃO ASSISTENTE IA CENTRALIZADO COM ANIMAÇÕES MODERNAS */}
-          <div className="relative -top-6 flex justify-center w-[70px] shrink-0 mx-1">
-            <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} className="absolute top-0 w-[56px] h-[56px] bg-[#F17B37] rounded-full z-30 pointer-events-none" />
-            <motion.button
-              onClick={() => setIsAssistantOpen(true)}
-              animate={{ y: [0, -4, 0] }} transition={{ y: { duration: 3, repeat: Infinity, ease: "easeInOut" } }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9, rotate: -5 }}
-              className="absolute bg-white rounded-full shadow-[0_0_20px_rgba(241,123,55,0.6)] z-40 border-[3px] border-[#F17B37] overflow-hidden flex items-center justify-center p-0.5" style={{ width: '56px', height: '56px' }}
+        {/* 4. MENU INFERIOR (BOTTOM NAVIGATION) TIPO APP */}
+        <nav className="bg-white border-t border-gray-200 fixed bottom-0 w-full z-30 pb-safe print:hidden md:hidden shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
+          <div className="flex justify-around items-center max-w-lg mx-auto relative px-2">
+            
+            <button 
+              onClick={() => setMainTab('trilhas')}
+              className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'trilhas' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              <img src="/logo.png" alt="IA" className="h-full w-full object-cover scale-110 rounded-full" />
-            </motion.button>
+              {mainTab === 'trilhas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#F17B37] rounded-b-full" />}
+              <CalendarDays className="h-5 w-5 mb-1" />
+              <span className="text-[9px] font-bold tracking-wide">Trilhas</span>
+            </button>
+  
+            <button 
+              onClick={() => setMainTab('financas')}
+              className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'financas' ? 'text-[#25D366]' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              {mainTab === 'financas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#25D366] rounded-b-full" />}
+              <DollarSign className="h-5 w-5 mb-1" />
+              <span className="text-[9px] font-bold tracking-wide">Finanças</span>
+            </button>
+            
+            {/* BOTÃO ASSISTENTE IA CENTRALIZADO */}
+            <div className="relative -top-6 flex justify-center w-[70px] shrink-0 mx-1">
+              <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} className="absolute top-0 w-[56px] h-[56px] bg-[#F17B37] rounded-full z-30 pointer-events-none" />
+              <motion.button
+                onClick={() => setIsAssistantOpen(true)}
+                animate={{ y: [0, -4, 0] }} transition={{ y: { duration: 3, repeat: Infinity, ease: "easeInOut" } }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9, rotate: -5 }}
+                className="absolute bg-white rounded-full shadow-[0_0_20px_rgba(241,123,55,0.6)] z-40 border-[3px] border-[#F17B37] overflow-hidden flex items-center justify-center p-0.5" style={{ width: '56px', height: '56px' }}
+              >
+                <img src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/logo.png" alt="IA" className="h-full w-full object-cover scale-110 rounded-full" />
+              </motion.button>
+            </div>
+  
+            <button 
+              onClick={() => setMainTab('loja')}
+              className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'loja' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              {mainTab === 'loja' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-blue-500 rounded-b-full" />}
+              <Gift className="h-5 w-5 mb-1" />
+              <span className="text-[9px] font-bold tracking-wide">Loja</span>
+            </button>
+  
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="flex flex-col items-center justify-center w-full py-3 transition-colors relative text-gray-400 hover:text-gray-600"
+            >
+              <Navigation className="h-5 w-5 mb-1" />
+              <span className="text-[9px] font-bold tracking-wide">Mais</span>
+            </button>
+  
           </div>
+        </nav>
 
-          <button 
-            onClick={() => setMainTab('reservas')} 
-            className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'reservas' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            {mainTab === 'reservas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#F17B37] rounded-b-full" />}
-            <User className="h-5 w-5 mb-1" />
-            <span className="text-[9px] font-bold tracking-wide">Reservas</span>
-          </button>
-
-          <button 
-            onClick={() => setMainTab('financas')}
-            className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'financas' ? 'text-[#25D366]' : 'text-gray-400 hover:text-gray-600'}`}
-          >
-            {mainTab === 'financas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#25D366] rounded-b-full" />}
-            <DollarSign className="h-5 w-5 mb-1" />
-            <span className="text-[9px] font-bold tracking-wide">Finanças</span>
-          </button>
-
-        </div>
-      </nav>
       </div>
 
       {/* --- MODAL: FORMULÁRIO DE TRILHA (TELA CHEIA) --- */}
@@ -2039,12 +2422,43 @@ export default function AdminPage() {
             
             <form id="admin-form" onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24">
               
-              {activeTab === 'geral' && (
+              <div className={activeTab === 'geral' ? 'block' : 'hidden'}>
                 <div className="space-y-4 max-w-2xl mx-auto">
                   <div><label className="block text-sm font-bold mb-1">Título</label><input {...register("title", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="Ex: Serra do Cipó" /></div>
                   <div className="grid grid-cols-3 gap-4">
                     <div><label className="block text-sm font-bold mb-1">Data</label><input type="date" {...register("date", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" /></div>
-                    <div><label className="block text-sm font-bold mb-1">Valor</label><input {...register("price", { required: true })} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150.00" /></div>
+                    <div className="relative"><label className="block text-sm font-bold mb-1">Valor (Líquido)</label><input {...register("price", { required: true })} onFocus={() => setHideFeePreview(false)} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150.00" />
+{watchPrice && !isNaN(parseFloat(watchPrice.replace(',', '.'))) && !hideFeePreview && watchTaxaGratis !== 'true' && (
+  <div className="absolute top-full mt-2 left-0 w-72 z-50 bg-white shadow-2xl border border-orange-100 rounded-xl p-4 text-sm animate-in fade-in slide-in-from-top-2">
+    <div className="flex justify-between items-center border-b border-orange-100 pb-2 mb-3">
+      <p className="font-bold text-[#F17B37] flex items-center gap-2"><DollarSign className="w-4 h-4"/> Preço Final no Site</p>
+      <button type="button" onClick={() => setHideFeePreview(true)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4"/></button>
+    </div>
+    <p className="text-[10px] text-gray-500 mb-3 leading-tight">O sistema cobrará estes valores automaticamente. Você receberá o valor líquido digitado.</p>
+    <div className="space-y-2">
+      <div className="flex justify-between items-center text-gray-600"><span>PIX</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'PIX'))}</span></div>
+      <div className="flex justify-between items-center text-gray-600"><span>Boleto (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'BOLETO'))}</span></div>
+      <div className="flex justify-between items-center text-gray-600"><span>Boleto Parcelado (12x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'BOLETO', 12))}</span></div>
+      <div className="flex justify-between items-center text-gray-600"><span>Cartão (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'CREDIT_CARD', 1))}</span></div>
+      <div className="flex justify-between items-center text-gray-600"><span>Cartão (12x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'CREDIT_CARD', 12))}</span></div>
+    </div>
+  </div>
+)}
+{watchPrice && !isNaN(parseFloat(watchPrice.replace(',', '.'))) && !hideFeePreview && watchTaxaGratis === 'true' && (
+  <div className="absolute top-full mt-2 left-0 w-72 z-50 bg-white shadow-2xl border border-green-100 rounded-xl p-4 text-sm animate-in fade-in slide-in-from-top-2">
+    <div className="flex justify-between items-center border-b border-green-100 pb-2 mb-3">
+      <p className="font-bold text-green-600 flex items-center gap-2"><DollarSign className="w-4 h-4"/> Seu Lucro Líquido</p>
+      <button type="button" onClick={() => setHideFeePreview(true)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4"/></button>
+    </div>
+    <p className="text-[10px] text-gray-500 mb-3 leading-tight">O cliente paga o valor Fixo acima. Este será o seu lucro real descontando as taxas Asaas.</p>
+    <div className="space-y-2">
+      <div className="flex justify-between items-center text-gray-600"><span>PIX</span><span className="font-bold text-gray-800">{formatCurrency(calculateNetProfit(parseFloat(watchPrice.replace(',', '.')), 'PIX'))}</span></div>
+      <div className="flex justify-between items-center text-gray-600"><span>Boleto (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateNetProfit(parseFloat(watchPrice.replace(',', '.')), 'BOLETO'))}</span></div>
+      <div className="flex justify-between items-center text-gray-600"><span>Cartão (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateNetProfit(parseFloat(watchPrice.replace(',', '.')), 'CREDIT_CARD', 1))}</span></div>
+    </div>
+  </div>
+)}
+</div>
                     <div><label className="block text-sm font-bold mb-1">Vagas</label><input type="number" {...register("max_capacity", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="15" /></div>
                   </div>
                   
@@ -2060,10 +2474,72 @@ export default function AdminPage() {
                       </select>
                     </div>
                   </div>
-                </div>
-              )}
+                  
+                  {/* FORMAS DE PAGAMENTO ACEITAS */}
+                  <div className="mt-4 p-4 border border-gray-200 rounded-2xl bg-gray-50/50">
+                    <label className="block text-sm font-bold mb-3 flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-600"/> Formas de Pagamento Permitidas (Asaas)
+                    </label>
+                    <div className="flex flex-wrap gap-4">
+                      {['PIX', 'CREDIT_CARD', 'BOLETO'].map(method => (
+                        <label key={method} className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 text-[#F17B37] rounded focus:ring-[#F17B37]"
+                            checked={acceptedPaymentMethods.includes(method)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setAcceptedPaymentMethods(prev => [...prev, method]);
+                              } else {
+                                setAcceptedPaymentMethods(prev => prev.filter(m => m !== method));
+                              }
+                            }}
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            {method === 'PIX' ? 'PIX' : method === 'CREDIT_CARD' ? 'Cartão de Crédito' : 'Boleto'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
-              {activeTab === 'textos' && (
+                  {/* REPASSE OU TAXA GRÁTIS */}
+                  <div className="mt-4 p-4 border border-gray-200 rounded-2xl bg-gray-50/50">
+                    <label className="block text-sm font-bold mb-3 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[#F17B37]"/> Repasse de Taxas Asaas
+                    </label>
+                    <div className="flex flex-col gap-3">
+                      <label className="flex items-start gap-3 cursor-pointer bg-white p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
+                        <input 
+                          type="radio" 
+                          value="false"
+                          {...register("taxa_gratis")}
+                          className="w-5 h-5 mt-0.5 text-[#F17B37] focus:ring-[#F17B37]"
+                        />
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">Repassar taxas para o Cliente (Recomendado)</p>
+                          <p className="text-xs text-gray-500 mt-0.5">O cliente pagará um valor maior para cobrir as taxas do Asaas, e você receberá exatamente o valor digitado acima.</p>
+                        </div>
+                      </label>
+
+                      <label className="flex items-start gap-3 cursor-pointer bg-white p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
+                        <input 
+                          type="radio" 
+                          value="true"
+                          {...register("taxa_gratis")}
+                          className="w-5 h-5 mt-0.5 text-green-600 focus:ring-green-600"
+                        />
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">Taxa Grátis para o Cliente</p>
+                          <p className="text-xs text-gray-500 mt-0.5">O cliente pagará exatamente o valor digitado acima. O Asaas descontará as taxas e você receberá um lucro líquido menor.</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={activeTab === 'textos' ? 'block' : 'hidden'}>
                 <div className="space-y-6 max-w-2xl mx-auto">
                   <div className="p-4 rounded-2xl border bg-blue-50/50 border-blue-100">
                     <div className="flex justify-between items-center mb-3">
@@ -2103,30 +2579,90 @@ export default function AdminPage() {
                       </button>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {activeTab === 'midias' && (
-                <div className="space-y-4 max-w-2xl mx-auto">
-                  <div className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-2xl p-6 text-center relative group">
-                    <Video className="mx-auto h-8 w-8 text-blue-400 mb-2" />
-                    <p className="font-bold">Upload de Vídeo Promocional</p>
-                    <p className="text-xs font-bold text-blue-600 mt-2 bg-white inline-block px-3 py-1 rounded-full">
-                      {selectedVideo && selectedVideo.length > 0 ? 'Vídeo pronto' : 'Selecionar (Opcional)'}
-                    </p>
-                    <input type="file" accept="video/*" {...register("video")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+              <div className={activeTab === 'midias' ? 'block' : 'hidden'}>
+                <div className="space-y-6 max-w-2xl mx-auto">
+                  
+                  {/* FLYER PRINCIPAL */}
+                  <div>
+                    <h3 className="font-black text-gray-800 mb-2">Flyer Principal</h3>
+                    {editingAgenda?.flyer_url && (
+                      <div className="relative w-full h-48 rounded-2xl overflow-hidden mb-3 border border-gray-200 group">
+                        <img src={editingAgenda.flyer_url} alt="Flyer" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteAgendaImage(editingAgenda.flyer_url, 'flyer')}
+                            className="bg-red-500 hover:bg-red-600 text-white p-3 rounded-full shadow-lg transform hover:scale-110 transition-transform"
+                            title="Excluir Flyer"
+                          >
+                            <Trash2 className="w-6 h-6" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="border-2 border-dashed border-[#F17B37] bg-[#F17B37]/5 hover:bg-[#F17B37]/10 transition-colors rounded-2xl p-6 text-center relative group">
+                      <FileUp className="mx-auto h-8 w-8 text-[#F17B37] mb-2" />
+                      <p className="font-bold text-gray-700">{editingAgenda?.flyer_url ? 'Substituir Flyer' : 'Adicionar Flyer Principal'}</p>
+                      <input type="file" accept="image/*" {...register("flyer")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
                   </div>
-                  <div className="border-2 border-dashed border-[#F17B37] bg-[#F17B37]/5 rounded-2xl p-6 text-center relative group">
-                    <FileUp className="mx-auto h-8 w-8 text-[#F17B37] mb-2" />
-                    <p className="font-bold">Flyer Principal</p>
-                    <input type="file" accept="image/*" {...register("flyer")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+
+                  <hr className="border-gray-100" />
+
+                  {/* FOTOS DA GALERIA */}
+                  <div>
+                    <h3 className="font-black text-gray-800 mb-2">Álbum da Trilha (Galeria)</h3>
+                    {editingAgenda?.images && editingAgenda.images.length > 0 && (
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {editingAgenda.images.map((img: string, idx: number) => (
+                          <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group shadow-sm">
+                            <img src={img} alt={`Galeria ${idx}`} className="w-full h-full object-cover" />
+                            <div className="absolute top-2 right-2 flex items-center justify-center">
+                              <button 
+                                type="button"
+                                onClick={() => handleDeleteAgendaImage(img, 'gallery')}
+                                className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transform hover:scale-110 transition-transform"
+                                title="Excluir Foto"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="border-2 border-dashed border-orange-200 bg-orange-50/50 hover:bg-orange-50 transition-colors rounded-2xl p-6 text-center relative">
+                      <ImageIcon className="mx-auto h-8 w-8 text-orange-400 mb-2" />
+                      <p className="font-bold text-gray-700">Adicionar mais fotos à galeria</p>
+                      <input type="file" multiple accept="image/*" {...register("images")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
                   </div>
-                  <div className="border-2 border-dashed border-orange-200 bg-orange-50/50 rounded-2xl p-6 text-center relative">
-                    <ImageIcon className="mx-auto h-8 w-8 text-orange-400 mb-2" />
-                    <p className="font-bold">Fotos Galeria (Múltiplas)</p>
-                    <input type="file" multiple accept="image/*" {...register("images")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+
+                  <hr className="border-gray-100" />
+
+                  {/* VIDEO PROMOCIONAL */}
+                  <div>
+                    <h3 className="font-black text-gray-800 mb-2">Vídeo Promocional</h3>
+                    {editingAgenda?.video_url && (
+                       <p className="text-sm text-green-600 font-bold mb-3 flex items-center gap-1"><CheckCircle2 className="w-4 h-4" /> Vídeo já cadastrado na trilha</p>
+                    )}
+                    <div className="border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 transition-colors rounded-2xl p-6 text-center relative group">
+                      <Video className="mx-auto h-8 w-8 text-blue-400 mb-2" />
+                      <p className="font-bold text-gray-700">{editingAgenda?.video_url ? 'Substituir Vídeo Promocional' : 'Upload de Vídeo'}</p>
+                      <p className="text-xs font-bold text-blue-600 mt-2 bg-white inline-block px-3 py-1 rounded-full shadow-sm">
+                        {selectedVideo && selectedVideo.length > 0 ? 'Vídeo selecionado' : 'Opcional (Máx 15MB recomendado)'}
+                      </p>
+                      <input type="file" accept="video/*" {...register("video")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    </div>
                   </div>
+
+                  <MediaUploadSection agendaId={editingAgenda?.id || ''} />
+
                 </div>
-              )}
+              </div>
             </form>
 
             <div className="p-4 bg-white border-t border-gray-100 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] pb-safe">
@@ -2177,7 +2713,7 @@ export default function AdminPage() {
             <div className="bg-gradient-to-r from-gray-900 to-black border-b-2 border-[#F17B37] p-4 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <div className="rounded-full overflow-hidden border border-white/20 shadow-sm w-10 h-10 flex shrink-0">
-                  <img src="/logo.png" alt="Logo" className="w-full h-full object-cover scale-110" />
+                  <img src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/logo.png" alt="Logo" className="w-full h-full object-cover scale-110" />
                 </div>
                 <div>
                   <h3 className="font-bold text-lg leading-tight">Assistente IA</h3>
@@ -2424,7 +2960,12 @@ export default function AdminPage() {
         </div>
       )}
 
-
-</div>
+      {selectedPhotosAgendaId && (
+        <PhotosUploadModal 
+          agendaId={selectedPhotosAgendaId} 
+          onClose={() => setSelectedPhotosAgendaId(null)} 
+        />
+      )}
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useCartStore } from "@/store/cartStore";
 import { Users } from "lucide-react";
+import imageCompression from 'browser-image-compression';
 
 function CadastroContent() {
   const [step, setStep] = useState(1);
@@ -21,7 +22,7 @@ function CadastroContent() {
   
   const searchParams = useSearchParams();
   const agendaId = searchParams.get('agenda_id');
-  const { items, clearCart } = useCartStore();
+  const { items } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
 
@@ -29,7 +30,6 @@ function CadastroContent() {
     setMounted(true);
   }, []);
 
-  const primaryAgendas = items.map(i => i.agendaId);
   const hasExtraPassengers = false;
   
   // Update total steps
@@ -37,6 +37,7 @@ function CadastroContent() {
 
   const initialEmail = searchParams.get('email') || "";
   const initialCpf = searchParams.get('cpf') || "";
+  const inviteToken = searchParams.get('invite') || "";
   const [agenda, setAgenda] = useState<any>(null);
 
   useEffect(() => {
@@ -47,31 +48,6 @@ function CadastroContent() {
     }
   }, [agendaId]);
 
-  useEffect(() => {
-    if (initialCpf) {
-      supabase.from('clients').select('*').eq('cpf', initialCpf).single().then(({data}) => {
-        if (data) {
-          if (data.rg && data.birth_date && data.emergency_contact_phone) {
-             setDuplicateBlockMessage("Identificamos que seu cadastro já está completo em nosso sistema. Você não precisa preencher novamente.");
-             setIsDuplicateBlock(true);
-             return;
-          }
-          setFormData(prev => ({
-            ...prev,
-            full_name: data.full_name || prev.full_name,
-            email: data.email || prev.email,
-            rg: data.rg || prev.rg,
-            birth_date: data.birth_date || prev.birth_date,
-            phone: data.phone || prev.phone,
-            emergency_contact_name: data.emergency_contact_name || prev.emergency_contact_name,
-            emergency_contact_phone: data.emergency_contact_phone || prev.emergency_contact_phone,
-            health_notes: data.health_notes || prev.health_notes
-          }));
-        }
-      });
-    }
-  }, [initialCpf]);
-  
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -94,6 +70,20 @@ function CadastroContent() {
     signature_url: "" // will hold base64 temporarily before upload
   });
 
+  useEffect(() => {
+    if (!inviteToken) return;
+    fetch(`/api/clients/dependent-invite?token=${encodeURIComponent(inviteToken)}`, { cache: 'no-store' })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Convite inválido');
+        setFormData((current) => ({ ...current, ...result.invite }));
+      })
+      .catch((error) => {
+        setDuplicateBlockMessage(error.message);
+        setIsDuplicateBlock(true);
+      });
+  }, [inviteToken]);
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -104,30 +94,7 @@ function CadastroContent() {
 
   if (!mounted) return null;
 
-  const handleNext = async () => {
-    if (step === 2 && !initialCpf) {
-      setIsLoading(true);
-      try {
-        const { data } = await supabase.from('clients').select('rg, birth_date, emergency_contact_phone').eq('cpf', formData.cpf).single();
-        if (data) {
-          if (data.rg && data.birth_date && data.emergency_contact_phone) {
-             setDuplicateBlockMessage("Identificamos que seu cadastro já está completo em nosso sistema. Você não precisa preencher novamente.");
-             setIsDuplicateBlock(true);
-             setIsLoading(false);
-             return;
-          }
-          if (items.length === 0 && !agendaId) {
-             setDuplicateBlockMessage("Seu cadastro está pendente. Por favor, utilize o link de conclusão que foi enviado no seu e-mail.");
-             setIsDuplicateBlock(true);
-             setIsLoading(false);
-             return;
-          }
-        }
-      } catch (e) {
-         // ignorar erro se cpf não encontrado
-      }
-      setIsLoading(false);
-    }
+  const handleNext = () => {
     setStep(prev => prev + 1);
   };
   const handlePrev = () => setStep(prev => prev - 1);
@@ -153,7 +120,7 @@ function CadastroContent() {
 
   const formatRG = (v: string) => {
     v = v.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-    let letters = v.replace(/[^A-Z]/g, "").substring(0, 2);
+    const letters = v.replace(/[^A-Z]/g, "").substring(0, 2);
     let numbers = v.replace(/[^0-9]/g, "").substring(0, 9);
     
     if (numbers.length > 0) {
@@ -180,47 +147,69 @@ function CadastroContent() {
       let photoUrl = "";
       let signatureUrl = "";
 
-      // 1. Upload Photo
+      // 1. Upload Photo to AWS S3
       if (formData.photo) {
-        const fileExt = formData.photo.name.split('.').pop();
-        const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        const compressOptions = {
+          maxSizeMB: 0.15,
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+          fileType: "image/webp"
+        };
         
-        const { error: uploadError } = await supabase.storage
-          .from('fotos_agendas')
-          .upload(fileName, formData.photo);
-          
-        if (uploadError) throw uploadError;
+        const compressedFile = await imageCompression(formData.photo, compressOptions);
+        const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.webp`;
         
-        const { data: publicUrlData } = supabase.storage
-          .from('fotos_agendas')
-          .getPublicUrl(fileName);
-          
-        photoUrl = publicUrlData.publicUrl;
+        const res = await fetch('/api/upload/presigned-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: fileName, contentType: 'image/webp', folder: 'cadastro-docs', size: compressedFile.size })
+        });
+        const dataRes = await res.json();
+        
+        if (!res.ok) throw new Error(dataRes.error || "Falha ao gerar link de upload (Foto).");
+        
+        const uploadRes = await fetch(dataRes.signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/webp' },
+          body: compressedFile,
+        });
+
+        if (!uploadRes.ok) throw new Error("Falha no upload da foto para AWS S3.");
+        
+        photoUrl = dataRes.publicUrl;
       }
 
-      // 1.5 Upload Signature
+      // 1.5 Upload Signature to AWS S3
       if (signatureData) {
-        const res = await fetch(signatureData);
-        const blob = await res.blob();
+        const resSigBlob = await fetch(signatureData);
+        const blob = await resSigBlob.blob();
         
         const signatureName = `signature_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
-        const { error: sigUploadError } = await supabase.storage
-          .from('fotos_agendas')
-          .upload(signatureName, blob, { contentType: 'image/png' });
-          
-        if (sigUploadError) throw sigUploadError;
-
-        const { data: publicSigData } = supabase.storage
-          .from('fotos_agendas')
-          .getPublicUrl(signatureName);
         
-        signatureUrl = publicSigData.publicUrl;
+        const res = await fetch('/api/upload/presigned-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: signatureName, contentType: 'image/png', folder: 'signatures', size: blob.size })
+        });
+        const dataRes = await res.json();
+        
+        if (!res.ok) throw new Error(dataRes.error || "Falha ao gerar link de upload (Assinatura).");
+        
+        const uploadRes = await fetch(dataRes.signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/png' },
+          body: blob,
+        });
+
+        if (!uploadRes.ok) throw new Error("Falha no upload da assinatura para AWS S3.");
+        
+        signatureUrl = dataRes.publicUrl;
       }
 
       // Concatena as observações de saúde
       const formattedHealthNotes = `Alergias a medicação: ${formData.allergies || 'Não tem'}\nDoenças/Condições: ${formData.medical_conditions || 'Não tem'}\nOutras Notas: ${formData.health_notes || 'Nenhuma'}`;
 
-      // 2. Save to Supabase (Clients)
+      // 2. Salva no servidor; dados pessoais não são consultados anonimamente.
       const payload = {
         full_name: formData.full_name,
         email: formData.email,
@@ -233,127 +222,58 @@ function CadastroContent() {
         health_notes: formattedHealthNotes,
         photo_url: photoUrl,
         image_authorization: formData.image_authorization === "sim",
-        signature_url: signatureUrl
+        signature_url: signatureUrl,
+        accepted_terms: acceptedTerms,
       };
 
-      // Tenta atualizar se já existe, senão insere (Upsert simplificado)
-      let savedClient;
-      const { data: existingClient } = await supabase.from('clients').select('*').eq('cpf', formData.cpf).single();
-      if (existingClient) {
-        const { data: updatedData, error: updateError } = await supabase.from('clients').update(payload).eq('id', existingClient.id).select();
-        if (updateError) throw updateError;
-        savedClient = updatedData[0];
-      } else {
-        const { data: insertedData, error: insertError } = await supabase.from('clients').insert([payload]).select();
-        if (insertError) throw insertError;
-        savedClient = insertedData[0];
-      }
-
-        
-        // 3. Criar Reserva se existir agendaId (Substituido por Carrinho)
-        let reservaIds = [];
-        let totalItemsPrice = 0;
-        let checkoutTitle = "Trilhas (Combo)";
-
-        if (items.length > 0 && savedClient) {
-          // Calcula preco total
-          totalItemsPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          if (items.length === 1) checkoutTitle = items[0].title;
-          
-          const allReservationsToCreate = [];
-          
-          // Primary buyer spots
-          primaryAgendas.forEach(aId => {
-             allReservationsToCreate.push({ client_id: savedClient.id, agenda_id: aId });
-          });
-
-          // Extra Passengers spots from Cart Store
-          for (const item of items) {
-             if (item.dependents && item.dependents.length > 0) {
-               for (const dep of item.dependents) {
-                 if (dep.name && dep.cpf) {
-                   let epId;
-                   const { data: existingEp } = await supabase.from('clients').select('*').eq('cpf', dep.cpf).single();
-                   if (existingEp) {
-                      const { data: updatedEp } = await supabase.from('clients').update({ full_name: dep.name }).eq('id', existingEp.id).select();
-                      epId = updatedEp![0].id;
-                   } else {
-                      const { data: insertedEp } = await supabase.from('clients').insert([{ full_name: dep.name, cpf: dep.cpf }]).select();
-                      epId = insertedEp![0].id;
-                   }
-                   allReservationsToCreate.push({ client_id: epId, agenda_id: item.agendaId });
-                 }
-               }
-             }
-          }
-
-          const resReserva = await fetch('/api/create-reserva', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              reservas: allReservationsToCreate
-            })
-          });
-          
-          if (!resReserva.ok) {
-            const errData = await resReserva.json();
-            throw new Error(errData.error || 'Erro ao criar reservas');
-          }
-          
-          const reservaJson = await resReserva.json();
-          reservaIds = reservaJson.reservas.map((r: any) => r.id);
-        } else if (agendaId && savedClient) {
-          // Fallback if accessed via direct URL instead of cart
-          const resReserva = await fetch('/api/create-reserva', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              reservas: [{ client_id: savedClient.id, agenda_id: agendaId }]
-            })
-          });
-          const reservaJson = await resReserva.json();
-          reservaIds = reservaJson.reservas.map((r: any) => r.id);
-          totalItemsPrice = agenda?.price || 0;
-          checkoutTitle = agenda?.title || 'Trilha';
+      const registrationResponse = await fetch(inviteToken ? '/api/clients/dependent-invite' : '/api/clients/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteToken ? { ...payload, token: inviteToken } : payload),
+      });
+      const registration = await registrationResponse.json();
+      if (!registrationResponse.ok) {
+        if (registration.existing) {
+          setDuplicateBlockMessage(registration.error);
+          setIsDuplicateBlock(true);
+          return;
         }
+        throw new Error(registration.error || 'Falha ao salvar cadastro');
+      }
+      const savedClient = registration.client;
 
       // 4. Send Email Notification
       await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'new_registration', client: savedClient })
+        body: JSON.stringify({
+          type: 'new_registration',
+          clientId: savedClient.id,
+          notificationToken: registration.notificationToken,
+        })
       }).catch(err => console.error("Erro ignorado de email", err));
 
-      // 5. Pagamento via InfinitePay
-      if (reservaIds.length > 0) {
-        try {
-          const reqCheckout = await fetch('/api/checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              reserva_ids: reservaIds,
-              agenda_title: checkoutTitle,
-              price: totalItemsPrice,
-              customer: {
-                name: savedClient.full_name,
-                email: savedClient.email,
-                phone_number: savedClient.phone
-              }
-            })
+      // 5. A reserva só é criada depois do login no checkout.
+      if (items.length > 0 || (agendaId && agenda)) {
+        if (items.length === 0 && agendaId && agenda) {
+          const { useCartStore } = await import('@/store/cartStore');
+          useCartStore.getState().addItem({
+            agendaId: agenda.id,
+            title: agenda.title,
+            price: agenda.price,
+            date: agenda.date,
+            quantity: 1,
+            dependents: [],
+            availableSpots: agenda.max_capacity || 15,
+            acceptedPaymentMethods: ['PIX', 'CREDIT_CARD', 'BOLETO']
           });
-          const resCheckout = await reqCheckout.json();
-          
-          if (resCheckout.url) {
-            clearCart();
-            window.location.href = resCheckout.url; // Redireciona para pagar
-            return;
-          }
-        } catch (e) {
-          console.error("Erro ao gerar link InfinitePay", e);
         }
+        
+        window.location.href = '/checkout';
+        return;
       }
 
-      // Se não tiver pagamento online ou falhar, vai para o sucesso genérico
+      // Se não tiver reserva, vai para o sucesso genérico
       setIsSuccess(true);
       
     } catch (error: any) {

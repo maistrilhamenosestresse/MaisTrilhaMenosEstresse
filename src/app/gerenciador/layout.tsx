@@ -1,7 +1,4 @@
 import { Metadata } from 'next';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../api/auth/[...nextauth]/route';
-import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Gerenciador Web IDE | Mais Trilha Menos Estresse',
@@ -9,12 +6,6 @@ export const metadata: Metadata = {
 };
 
 export default async function GerenciadorLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-  
-  if (!session) {
-    redirect('/login');
-  }
-
   return (
     <div className="h-screen w-full bg-[#1e1e1e] text-[#cccccc] overflow-hidden flex flex-col font-mono">
       {/* Top Menu Bar (Like VS Code) */}

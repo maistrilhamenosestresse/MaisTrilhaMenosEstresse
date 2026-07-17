@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 import { sendWhatsAppText, sendWhatsAppImage } from '@/lib/whatsapp';
+import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 
 export async function GET(request: Request) {
   try {
     // SECURITY: Verifica o token do Vercel Cron
     const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       console.warn("Tentativa de disparo não autorizado no Cron de Aniversários.");
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabaseAdmin = createSupabaseAdmin();
     // 1. Busca todos os clientes
-    const { data: clients, error } = await supabase.from('clients').select('*');
+    const { data: clients, error } = await supabaseAdmin.from('clients').select('*');
     if (error) throw error;
     if (!clients || clients.length === 0) {
       return NextResponse.json({ success: true, message: 'Nenhum cliente cadastrado' });
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
                   Que o seu novo ano traga muitas aventuras e momentos incríveis. Esperamos você em nossa próxima trilha para comemorarmos juntos! 🥾⛰️
                 </p>
                 <div style="margin-top: 30px;">
-                  <a href="https://wa.me/5531989025078" style="background-color: #25D366; color: white; text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 16px; display: inline-block;">Falar com a Nívea</a>
+                  <a href="https://wa.me/${String(process.env.WHATSAPP_ADMIN_NUMBER || '').replace(/\D/g, '')}" style="background-color: #25D366; color: white; text-decoration: none; padding: 12px 25px; border-radius: 30px; font-weight: bold; font-size: 16px; display: inline-block;">Falar com a equipe</a>
                 </div>
               </div>
               <div style="background-color: #f8f9fa; padding: 15px; text-align: center; color: #999; font-size: 12px;">
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
           
           await fetch(`${baseUrl}/api/send-email`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
             body: JSON.stringify({
               to: client.email,
               subject: `🎉 Feliz Aniversário, ${client.full_name.split(' ')[0]}! - Mais Trilha Menos Estresse`,
@@ -84,16 +85,17 @@ export async function GET(request: Request) {
         if (client.phone) {
           const zapBdayMsg = `Feliz Aniversário, *${client.full_name.split(' ')[0]}*! 🎁🎉\n\nHoje é um dia muito especial! A equipe da *Mais Trilha Menos Estresse* deseja que sua vida seja uma jornada repleta de saúde, paz, alegria e paisagens inesquecíveis!\n\nQue o seu novo ano traga muitas aventuras e momentos incríveis. Esperamos você em nossa próxima trilha para comemorarmos juntos! 🥾⛰️`;
           
-          // Imagem genérica bonita de natureza comemorativa (pode ser substituída no painel depois)
-          const bdayImageUrl = "https://images.unsplash.com/photo-1501555088652-021faa106b9b?q=80&w=800&auto=format&fit=crop"; 
-          
-          await sendWhatsAppImage(client.phone, bdayImageUrl, zapBdayMsg);
+          if (process.env.BIRTHDAY_IMAGE_URL) {
+            await sendWhatsAppImage(client.phone, process.env.BIRTHDAY_IMAGE_URL, zapBdayMsg);
+          } else {
+            await sendWhatsAppText(client.phone, zapBdayMsg);
+          }
         }
       }
 
       // Se o aniversário for AMANHÃ, registra notificação no painel admin e manda zap pro admin
       if (diffDays === 1) {
-        const { error: supErr } = await supabase.from('notificacoes').insert({
+        const { error: supErr } = await supabaseAdmin.from('notificacoes').insert({
           tipo: 'aniversario',
           titulo: `Aviso de Aniversário 🎁`,
           mensagem: `${client.full_name} faz aniversário amanhã! Prepare os parabéns.`,
@@ -112,7 +114,7 @@ export async function GET(request: Request) {
     if (upcomingBirthdays.length > 0) {
       await fetch(`${baseUrl}/api/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
         body: JSON.stringify({
           type: 'birthday_reminder',
           clients: upcomingBirthdays

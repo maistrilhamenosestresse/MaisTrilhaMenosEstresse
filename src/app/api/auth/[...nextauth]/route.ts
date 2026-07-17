@@ -15,16 +15,10 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user }) {
-      const allowedEmails = [
-        'wellingtonf.social@gmail.com',
-        'maistrilhamenosestresse@gmail.com',
-        'niveamariamagalhaes28@gmail.com'
-      ];
-      
       // Permite e-mails que estão na lista fixa OU na variável de ambiente ADMIN_EMAILS (separados por vírgula)
       const envEmails = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',').map(e => e.trim().toLowerCase()) : [];
       
-      if (user.email && (allowedEmails.includes(user.email.toLowerCase()) || envEmails.includes(user.email.toLowerCase()))) {
+      if (user.email && envEmails.includes(user.email.toLowerCase())) {
         return true;
       }
       

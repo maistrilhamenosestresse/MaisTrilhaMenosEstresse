@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/birthdays",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/backup",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/asaas-reconcile",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

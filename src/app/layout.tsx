@@ -16,6 +16,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL || 'https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/images/logo.png';
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.maistrilhasmenosestresse.com'),
   title: "Mais Trilha Menos Estresse » Ecoturismo, Trilhas e Bate-Volta",
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
     title: "Mais Trilha Menos Estresse",
     description: "Conheça um pouco da nossa história. Somos uma comunidade apaixonada pela natureza, aventura e bem-estar. Venha se desconectar do estresse e se reconectar com a vida através de trilhas incríveis!",
     images: [{
-      url: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+      url: logoUrl,
       width: 1200,
       height: 630,
       alt: 'Mais Trilha Menos Estresse Logo',
@@ -36,12 +38,12 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "Mais Trilha Menos Estresse",
     description: "Conheça um pouco da nossa história. Venha se desconectar do estresse e se reconectar com a vida através do ecoturismo!",
-    images: ['https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png'],
+    images: [logoUrl],
   },
   icons: {
-    icon: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
-    shortcut: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
-    apple: 'https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+    icon: logoUrl,
+    shortcut: logoUrl,
+    apple: logoUrl,
   },
   manifest: '/manifest.json'
 };
@@ -98,7 +100,7 @@ export default function RootLayout({
                 "MaisTrilha"
               ],
               "url": "https://www.maistrilhasmenosestresse.com",
-              "logo": "https://yslikzkgiaxafcgrqvzh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png",
+              "logo": logoUrl,
               "sameAs": [
                 "https://www.instagram.com/maistrilhamenosestresse"
               ]

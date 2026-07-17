@@ -126,7 +126,7 @@ export default function CupomVIPPage() {
       >
         <div className="w-20 h-20 md:w-24 md:h-24 rounded-full p-1 bg-gradient-to-tr from-[#F17B37] to-[#ffd0b0] shadow-[0_0_30px_rgba(241,123,55,0.4)] mb-4">
            <Image
-             src="/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG"
+             src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG"
              alt="Mais Trilha Logo"
              width={96}
              height={96}

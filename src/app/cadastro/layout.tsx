@@ -1,5 +1,7 @@
 import { Metadata } from 'next';
 
+const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL || 'https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/images/logo.png';
+
 export const metadata: Metadata = {
   title: 'Ficha de Cadastro | Mais Trilha Menos Estresse',
   description: 'Preencha seus dados para o seguro aventura e assine o termo de responsabilidade da Mais Trilha Menos Estresse.',
@@ -8,7 +10,7 @@ export const metadata: Metadata = {
     description: 'Preencha seus dados para o seguro aventura e assine o termo de responsabilidade da Mais Trilha Menos Estresse.',
     siteName: 'Mais Trilha Menos Estresse',
     images: [{
-      url: 'https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+      url: logoUrl,
       width: 1200,
       height: 630,
       alt: 'Mais Trilha Menos Estresse Logo',
@@ -19,10 +21,10 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Ficha de Cadastro | Mais Trilha Menos Estresse',
     description: 'Preencha seus dados para o seguro aventura e assine o termo de responsabilidade.',
-    images: ['https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png'],
+    images: [logoUrl],
   },
   icons: {
-    icon: 'https://nyavgcggwygkywjboaxh.supabase.co/storage/v1/object/public/fotos_agendas/logo.png',
+    icon: logoUrl,
   }
 };
 

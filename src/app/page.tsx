@@ -27,18 +27,18 @@ export default function LandingPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const comunidadeImages = [
-    "/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG",
-    "/FotosEvideos/Grupo/IMG_0997.JPG",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/1647fade-8f9e-4eca-9cb9-bbf9b3fb26b6.jpg",
-    "/FotosEvideos/Grupo/5e7df681-58d1-48ae-a6bc-1c9e57a3bcd0.jpg",
-    "/FotosEvideos/Grupo/IMG_8197.webp",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_1809.webp",
-    "/FotosEvideos/Grupo/IMG_8162 - Copia.webp",
-    "/FotosEvideos/Grupo/IMG_9430 - Copia.JPG",
-    "/FotosEvideos/Grupo/IMG_5987.webp",
-    "/FotosEvideos/Grupo/IMG_6178.webp",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/59b3598c-060a-48c1-a372-894e60c16d63 Copy.JPG",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_5466.webp"
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_0997.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/1647fade-8f9e-4eca-9cb9-bbf9b3fb26b6.jpg",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/5e7df681-58d1-48ae-a6bc-1c9e57a3bcd0.jpg",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_8197.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_1809.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_8162%20-%20Copia.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_9430%20-%20Copia.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_5987.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_6178.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/59b3598c-060a-48c1-a372-894e60c16d63%20Copy.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_5466.webp"
   ];
   const visibleImages = showAllComunidade ? comunidadeImages : comunidadeImages.slice(0, 3);
 
@@ -47,7 +47,7 @@ export default function LandingPage() {
   const scrollToNextSection = () => {
     if (typeof window === 'undefined') return;
     const scrollPosition = window.scrollY;
-    
+
     for (let i = 0; i < sections.length; i++) {
       const el = document.getElementById(sections[i]);
       if (el) {
@@ -103,9 +103,9 @@ export default function LandingPage() {
   // Slideshow Fundadoras
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideImages = [
-    "/FotosEvideos/Nivea/WhatsApp Image 2026-06-26 at 10.39.37 (1).jpeg",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/WhatsApp%20Image%202026-06-26%20at%2010.39.37%20(1).jpeg",
 
-    "/FotosEvideos/Nivea/IMG_0521.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/IMG_0521.JPG",
 
   ];
 
@@ -132,7 +132,7 @@ export default function LandingPage() {
           playsInline
           className="absolute top-0 left-0 w-full h-full object-cover z-0 opacity-150 mix-blend-overlay"
         >
-          <source src="/FotosEvideos/Nivea/video.mp4" type="video/mp4" />
+          <source src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/video.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-[#0F1722]/40 z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0F1722]/20 to-[#0F1722] z-10 pointer-events-none" />
@@ -214,7 +214,7 @@ export default function LandingPage() {
               className="flex-1 w-full relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-[0_0_60px_rgba(241,123,55,0.15)] ring-1 ring-white/10 group"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10 pointer-events-none" />
-              <Image src="/FotosEvideos/Nivea/WhatsApp Image 2026-06-26 at 10.28.20.jpeg" alt="Nívea na Cachoeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-1000 ease-out" />
+              <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/WhatsApp%20Image%202026-06-26%20at%2010.28.20.jpeg" alt="Nívea na Cachoeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-1000 ease-out" />
               <div className="absolute bottom-8 left-8 z-20">
                 <p className="font-black text-3xl text-white drop-shadow-lg">Nívea</p>
                 <p className="text-[#F17B37] text-sm font-bold uppercase tracking-widest mt-1 drop-shadow-md">A Fundadora</p>
@@ -242,7 +242,7 @@ export default function LandingPage() {
               transition={{ duration: 1, delay: 0.3 }}
               className="mt-16 relative aspect-[4/5] md:aspect-[16/10] rounded-[2rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] ring-1 ring-white/10 group"
             >
-              <Image src="/FotosEvideos//Nivea/IMG_3883.webp" alt="Nívea com a Bandeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000" />
+              <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/IMG_3883.webp" alt="Nívea com a Bandeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
             </motion.div>
           </motion.div>
@@ -303,7 +303,7 @@ export default function LandingPage() {
       {/* 3. SEÇÃO "OLHARES" (CINEMATOGRÁFICO) */}
       <section id="olhares" className="py-40 relative bg-black overflow-hidden flex flex-col items-center justify-center min-h-[90vh] md:snap-start">
         <motion.div className="absolute inset-0 opacity-40" style={{ y: y3 }}>
-          <Image src="/FotosEvideos/IMG_6341.webp" alt="Background Olhares" width={800} height={800} className="w-full h-[120%] object-cover blur-md scale-110" />
+          <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/IMG_6341.webp" alt="Background Olhares" width={800} height={800} className="w-full h-[120%] object-cover blur-md scale-110" />
           <div className="absolute inset-0 bg-gradient-to-b from-black via-black/80 to-black" />
         </motion.div>
 
@@ -417,23 +417,23 @@ export default function LandingPage() {
           <motion.div layout className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnimatePresence>
               {visibleImages.map((src, idx) => (
-                <motion.div 
+                <motion.div
                   key={src}
                   layout
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.4 }}
-                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 cursor-pointer aspect-[4/5]" 
+                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 cursor-pointer aspect-[4/5]"
                   whileHover={{ scale: 0.98 }}
                   onClick={() => setLightboxIndex(idx)}
                 >
-                  <Image 
-                    src={src} 
-                    alt={`Comunidade Foto ${idx + 1}`} 
-                    width={800} 
-                    height={800} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
+                  <Image
+                    src={src}
+                    alt={`Comunidade Foto ${idx + 1}`}
+                    width={800}
+                    height={800}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </motion.div>
@@ -443,7 +443,7 @@ export default function LandingPage() {
 
           {!showAllComunidade && comunidadeImages.length > 3 && (
             <div className="mt-12 text-center">
-              <button 
+              <button
                 onClick={() => setShowAllComunidade(true)}
                 className="inline-flex items-center gap-2 bg-[#F17B37] hover:bg-[#e06925] text-white px-8 py-4 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(241,123,55,0.4)] hover:scale-105 transition-all"
               >
@@ -462,7 +462,7 @@ export default function LandingPage() {
           viewport={{ once: true }}
           className="max-w-3xl mx-auto"
         >
-          <Image src="/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG" alt="Mais Trilha Logo" width={800} height={800} className="h-32 w-32 rounded-full aspect-square object-cover object-center mx-auto mb-10 shadow-[0_0_30px_rgba(241,123,55,0.3)] border-4 border-[#F17B37]/50" />
+          <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG" alt="Mais Trilha Logo" width={800} height={800} className="h-32 w-32 rounded-full aspect-square object-cover object-center mx-auto mb-10 shadow-[0_0_30px_rgba(241,123,55,0.3)] border-4 border-[#F17B37]/50" />
 
           <h2 className="text-4xl md:text-5xl font-black mb-6 drop-shadow-xl">Pronto para a sua próxima aventura?</h2>
           <p className="text-xl text-gray-400 mb-12">Junte-se a nós e descubra do que você é capaz.</p>
@@ -472,21 +472,21 @@ export default function LandingPage() {
               <Map className="h-5 w-5" /> Ver Agenda Completa
             </button>
             <a href="https://wa.me/5531998793939?text=Oi Nívea! Quero entrar no grupo VIP do Mais Trilha!" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-full font-bold text-lg transition-all flex items-center justify-center gap-3 hover:scale-105 ring-1 ring-white/20">
-              <Users className="h-5 w-5" /> Entrar no Grupo 
+              <Users className="h-5 w-5" /> Entrar no Grupo
             </a>
           </div>
 
           <motion.div className="mt-24 pt-10 border-t border-white/10 flex flex-col items-center gap-8 text-gray-400">
-            
+
             <div className="w-full flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
               <div className="flex flex-col items-center md:items-start gap-2">
                 <div className="flex items-center gap-3">
                   {/* AQUI ESTÁ O TRUQUE DE CSS: mix-blend-lighten com alto contraste tenta mesclar o fundo escuro do JPG com o fundo preto da página */}
-                  <img 
-                    src="/FotosEvideos/logo/rodape.JPG" 
-                    alt="Montanhas Mais Trilha" 
+                  <img
+                    src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/rodape.JPG"
+                    alt="Montanhas Mais Trilha"
                     className="h-12 w-auto mix-blend-lighten rounded-lg"
-                    style={{ filter: 'contrast(2) brightness(0.9)' }} 
+                    style={{ filter: 'contrast(2) brightness(0.9)' }}
                   />
                   <span className="font-bold text-lg text-white">Mais Trilha Menos Estresse</span>
                 </div>
@@ -505,7 +505,7 @@ export default function LandingPage() {
                 </a>
               </div>
             </div>
-            
+
             {/* AVISO DE COPYRIGHT */}
             <div className="mt-8 text-center text-sm text-gray-500 opacity-80 flex flex-col items-center gap-2">
               <p>&copy; {new Date().getFullYear()} Mais Trilha Menos Estresse. Todos os direitos reservados.</p>
@@ -516,7 +516,7 @@ export default function LandingPage() {
       </section>
 
       {/* FIXED BACK TO TOP BUTTON */}
-      <button 
+      <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className="fixed bottom-6 right-6 z-50 w-12 h-12 md:w-14 md:h-14 bg-[#0F1722]/80 backdrop-blur-md flex items-center justify-center rounded-full border-2 border-white/20 hover:border-[#F17B37] hover:bg-[#F17B37] text-white transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(241,123,55,0.6)] group"
         title="Voltar ao Topo"
@@ -525,7 +525,7 @@ export default function LandingPage() {
       </button>
 
       {/* SMART SCROLL DOWN BUTTON */}
-      <motion.button 
+      <motion.button
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
         onClick={scrollToNextSection}
@@ -538,7 +538,7 @@ export default function LandingPage() {
       {/* LIGHTBOX DE FOTOS COMUNIDADE */}
       <AnimatePresence>
         {lightboxIndex !== null && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -546,7 +546,7 @@ export default function LandingPage() {
             onClick={() => setLightboxIndex(null)}
           >
             {/* Fechar */}
-            <button 
+            <button
               onClick={() => setLightboxIndex(null)}
               className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition z-50"
             >
@@ -555,7 +555,7 @@ export default function LandingPage() {
 
             {/* Anterior */}
             {lightboxIndex > 0 && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
                 className="absolute left-4 md:left-8 text-white/70 hover:text-white hover:scale-110 bg-black/50 hover:bg-black/80 p-3 md:p-4 rounded-full transition-all z-50 cursor-pointer shadow-lg"
               >
@@ -565,7 +565,7 @@ export default function LandingPage() {
 
             {/* Próxima */}
             {lightboxIndex < comunidadeImages.length - 1 && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
                 className="absolute right-4 md:right-8 text-white/70 hover:text-white hover:scale-110 bg-black/50 hover:bg-black/80 p-3 md:p-4 rounded-full transition-all z-50 cursor-pointer shadow-lg"
               >
@@ -585,7 +585,7 @@ export default function LandingPage() {
               className="w-full h-full object-contain max-w-6xl mx-auto p-4 cursor-default drop-shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
-            
+
             {/* Indicador */}
             <div className="absolute bottom-8 left-0 right-0 text-center text-white/70 text-sm font-bold tracking-widest z-50 bg-black/40 py-1.5 w-24 mx-auto rounded-full backdrop-blur-md border border-white/10">
               {lightboxIndex + 1} / {comunidadeImages.length}

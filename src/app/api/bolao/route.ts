@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yslikzkgiaxafcgrqvzh.supabase.co'),
-  process.env.SUPABASE_SERVICE_ROLE_KEY || (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_P08GCyftnuBDqcOaCdS92g_8AZYEWoj')
-);
-
 export async function POST(request: Request) {
   try {
+    const originError = assertSameOrigin(request);
+    if (originError) return originError;
     const lockTime = new Date('2026-07-05T16:55:00-03:00').getTime();
     if (new Date().getTime() >= lockTime) {
       return NextResponse.json({ error: 'O Bolão já está encerrado! Boa sorte aos participantes.' }, { status: 400 });
     }
 
-    const { nome, whatsapp, placar_brasil, placar_rival, rival_nome } = await request.json();
+    const parsed = await readJsonBody<any>(request, 20_000);
+    if (parsed.response) return parsed.response;
+    const { nome, whatsapp, placar_brasil, placar_rival, rival_nome } = parsed.data;
+    const supabase = createSupabaseAdmin();
 
     if (!nome || !whatsapp || placar_brasil === undefined || placar_rival === undefined) {
       return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await createSupabaseAdmin()
       .from('bolao_apostas')
       .select('nome, placar_brasil, placar_rival, created_at')
       .order('created_at', { ascending: true });

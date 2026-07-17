@@ -13,6 +13,7 @@ import { Folder, FileCode, Image as ImageIcon, Send, Loader2, ChevronRight, Chev
 import { motion, AnimatePresence } from "framer-motion";
 import { Octokit } from "@octokit/rest";
 import { toast } from "sonner";
+import { uploadMediaToAws } from "@/lib/upload-media-client";
 
 /**
  * @function WebIDEClient
@@ -129,7 +130,13 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
   // Iframe Bridge Listener
   useEffect(() => {
-    const handleIframeMessage = (event: MessageEvent) => {
+    const handleIframeMessage = async (event: MessageEvent) => {
+      if (!previewUrl) return;
+      try {
+        if (event.origin !== new URL(previewUrl).origin) return;
+      } catch {
+        return;
+      }
       if (event.data?.type === "CMS_TEXT_UPDATED") {
         const { originalText, newText } = event.data.payload;
         
@@ -162,48 +169,34 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       }
       if (event.data?.type === "CMS_IMAGE_UPDATED") {
         const { originalSrc, base64Data, fileName } = event.data.payload;
-        
-        if (octokit && selectedRepo) {
-          toast.info(`Salvando imagem ${fileName} no Github...`);
-          
-          // O base64Data do FileReader vem como "data:image/png;base64,iVBORw0KGgo..."
-          // Precisamos separar o header do conteúdo real
-          const base64Content = base64Data.split(',')[1];
-          const imagePath = `public/images/${Date.now()}-${fileName}`;
-          const finalUrl = `/images/${Date.now()}-${fileName}`;
-
-          commitToGithub(imagePath, base64Content, `Upload de imagem via Visual Mode: ${fileName}`, true)
-            .then(success => {
-              if (success) {
-                toast.success('Imagem salva com sucesso!');
-                // Atualiza o JSON
-                setCmsData((prevCmsData: any) => {
-                  if (!prevCmsData) return prevCmsData;
-                  const deepReplace = (obj: any, oldVal: string, newVal: string): any => {
-                    if (typeof obj === 'string') return obj.trim() === oldVal.trim() ? newVal : obj;
-                    if (Array.isArray(obj)) return obj.map(item => deepReplace(item, oldVal, newVal));
-                    if (typeof obj === 'object' && obj !== null) {
-                      const newObj: any = {};
-                      for (const key in obj) newObj[key] = deepReplace(obj[key], oldVal, newVal);
-                      return newObj;
-                    }
-                    return obj;
-                  };
-                  return deepReplace(prevCmsData, originalSrc, finalUrl);
-                });
-              } else {
-                toast.error('Falha ao fazer upload da imagem.');
+        try {
+          toast.info(`Enviando ${fileName} para a AWS...`);
+          const blob = await (await fetch(base64Data)).blob();
+          const result = await uploadMediaToAws(new File([blob], fileName, { type: blob.type || 'image/png' }), fileName);
+          setCmsData((prevCmsData: any) => {
+            if (!prevCmsData) return prevCmsData;
+            const deepReplace = (obj: any, oldVal: string, newVal: string): any => {
+              if (typeof obj === 'string') return obj.trim() === oldVal.trim() ? newVal : obj;
+              if (Array.isArray(obj)) return obj.map(item => deepReplace(item, oldVal, newVal));
+              if (typeof obj === 'object' && obj !== null) {
+                const newObj: any = {};
+                for (const key in obj) newObj[key] = deepReplace(obj[key], oldVal, newVal);
+                return newObj;
               }
-            });
-        } else {
-           toast.error('Erro: Repositório não conectado.');
+              return obj;
+            };
+            return deepReplace(prevCmsData, originalSrc, result.url);
+          });
+          toast.success('Imagem salva na AWS com sucesso!');
+        } catch (error: any) {
+          toast.error(error.message || 'Falha ao fazer upload da imagem.');
         }
       }
     };
 
     window.addEventListener("message", handleIframeMessage);
     return () => window.removeEventListener("message", handleIframeMessage);
-  }, [octokit, selectedRepo]);
+  }, [previewUrl]);
 
   const handleSelectRepo = async (repo: any, okitInstance = octokit) => {
     if (!okitInstance) return;
@@ -318,7 +311,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       return;
     }
 
-    let newFile = { ...node };
+    const newFile = { ...node };
 
     if (node.type === 'image') {
       newFile.url = `https://raw.githubusercontent.com/${selectedRepo.owner.login}/${selectedRepo.name}/${selectedRepo.default_branch}/${node.path}`;
@@ -353,34 +346,17 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   const activeFile = openFiles.find(f => f.id === activeFileId);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (!selectedRepo || !octokit) {
-      alert("Selecione um repositório primeiro.");
-      return;
-    }
-    
     for (const file of acceptedFiles) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64Content = (event.target?.result as string).split(',')[1];
-        
-        try {
-          await octokit.repos.createOrUpdateFileContents({
-            owner: selectedRepo.owner.login,
-            repo: selectedRepo.name,
-            path: `public/images/${file.name.replace(/\s+/g, '-')}`,
-            message: `Upload de ${file.name} via Web IDE`,
-            content: base64Content,
-            branch: selectedRepo.default_branch
-          });
-          alert(`Upload de ${file.name} concluído com sucesso! Recarregue a página para ver no repositório.`);
-        } catch(e) {
-          console.error("Erro no upload", e);
-          alert(`Erro ao fazer upload de ${file.name}`);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const result = await uploadMediaToAws(file, file.name);
+        await navigator.clipboard.writeText(result.url);
+        alert(`Upload de ${file.name} concluído na AWS. A URL foi copiada.`);
+      } catch(e) {
+        console.error("Erro no upload", e);
+        alert(`Erro ao fazer upload de ${file.name}`);
+      }
     }
-  }, [octokit, selectedRepo]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, noClick: true });
 

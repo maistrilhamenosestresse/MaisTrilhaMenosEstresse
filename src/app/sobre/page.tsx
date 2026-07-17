@@ -16,8 +16,8 @@ export default function SobrePage() {
       {/* Hero Section */}
       <section className="relative pt-40 pb-10 px-6 flex flex-col items-center justify-center text-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#F17B37]/10 via-[#0F1722]/80 to-[#0F1722] z-0" />
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative z-10 max-w-4xl mx-auto"
@@ -32,19 +32,19 @@ export default function SobrePage() {
         </motion.div>
 
         {/* Tab Selector - Estilo Painel/Pílula */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="relative z-10 flex bg-white/5 p-1.5 rounded-full border border-white/10 backdrop-blur-md shadow-2xl max-w-md mx-auto w-full"
         >
-          <button 
+          <button
             onClick={() => setActiveTab('historia')}
             className={`flex-1 py-3 px-6 rounded-full font-bold text-sm transition-all duration-300 ${activeTab === 'historia' ? 'bg-[#F17B37] text-white shadow-[0_0_15px_rgba(241,123,55,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
             A Nossa História
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('equipe')}
             className={`flex-1 py-3 px-6 rounded-full font-bold text-sm transition-all duration-300 ${activeTab === 'equipe' ? 'bg-[#F17B37] text-white shadow-[0_0_15px_rgba(241,123,55,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
@@ -57,9 +57,9 @@ export default function SobrePage() {
       <section className="py-10 px-6 relative z-10 min-h-[50vh]">
         <div className="max-w-6xl mx-auto">
           <AnimatePresence mode="wait">
-            
+
             {activeTab === 'historia' && (
-              <motion.div 
+              <motion.div
                 key="historia"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -68,9 +68,9 @@ export default function SobrePage() {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center mb-24">
                   <div>
-                    <Image 
-                      src="/FotosEvideos/Nivea/IMG_0521.JPG" 
-                      alt="Nossa história" 
+                    <Image
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/IMG_0521.JPG"
+                      alt="Nossa história"
                       width={800}
                       height={500}
                       className="w-full h-[500px] object-cover rounded-[2rem] shadow-2xl shadow-[#F17B37]/20 border border-white/10"
@@ -114,7 +114,7 @@ export default function SobrePage() {
             )}
 
             {activeTab === 'equipe' && (
-              <motion.div 
+              <motion.div
                 key="equipe"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -127,7 +127,7 @@ export default function SobrePage() {
                   <div className="order-2 md:order-1 space-y-6 text-lg text-gray-300 leading-relaxed">
                     <h2 className="text-4xl md:text-5xl font-black text-white mb-2">Nívea Maria</h2>
                     <h3 className="text-[#F17B37] font-bold tracking-[0.2em] uppercase text-sm mb-8">Guia e Fundadora</h3>
-                    
+
                     <p>
                       Me chamo Nívea Maria, tenho 35 anos e, há três, o ecoturismo transformou a minha vida. Minha conexão com a natureza vem de berço: sempre amei o simples, o essencial, e é nela que me sinto verdadeiramente em casa.
                     </p>
@@ -146,9 +146,9 @@ export default function SobrePage() {
                   </div>
                   <div className="order-1 md:order-2 relative">
                     <div className="absolute inset-0 bg-[#F17B37] blur-[100px] opacity-20 rounded-full" />
-                    <Image 
-                      src="/FotosEvideos/equipe/Nivea.jpeg" 
-                      alt="Nívea Maria" 
+                    <Image
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/equipe/Nivea.jpeg"
+                      alt="Nívea Maria"
                       width={600}
                       height={600}
                       className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
@@ -160,9 +160,9 @@ export default function SobrePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-[#25D366] blur-[100px] opacity-10 rounded-full" />
-                    <Image 
-                      src="/FotosEvideos/equipe/Palestino.jpeg" 
-                      alt="Palestino" 
+                    <Image
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/equipe/Palestino.jpeg"
+                      alt="Palestino"
                       width={600}
                       height={600}
                       className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#25D366]/50 transition-colors duration-500"
@@ -171,7 +171,7 @@ export default function SobrePage() {
                   <div className="space-y-6 text-lg text-gray-300 leading-relaxed">
                     <h2 className="text-4xl md:text-5xl font-black text-white mb-2">Palestino</h2>
                     <h3 className="text-[#F17B37] font-bold tracking-[0.2em] uppercase text-sm mb-8">Motorista Oficial</h3>
-                    
+
                     <p>
                       Conheci o Mais Trilha através do meu antigo trabalho, quando fui escalado para um frete com o grupo. Fui tão bem acolhido por todos que, nas viagens seguintes, me tornei o motorista oficial. O que começou como uma simples prestação de serviço transformou-se em amizade, parceria e família.
                     </p>
@@ -190,13 +190,13 @@ export default function SobrePage() {
 
       {/* Footer simplificado */}
       <footer className="mt-20 border-t border-white/10 pt-10 text-center text-gray-500 text-sm flex flex-col items-center gap-4">
-        <Image 
-          src="/FotosEvideos/logo/rodape.JPG" 
-          alt="Montanhas Mais Trilha" 
+        <Image
+          src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/rodape.JPG"
+          alt="Montanhas Mais Trilha"
           width={300}
           height={48}
           className="h-12 w-auto mix-blend-screen opacity-50"
-          style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
+          style={{ filter: 'contrast(1.8) brightness(0.8)' }}
         />
         <p>© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
       </footer>

@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { requireAdminUser } from '@/lib/server/auth';
+import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: Request) {
   try {
+    const originError = assertSameOrigin(request);
+    if (originError) return originError;
     // SECURITY: Verifica autenticação
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
-    }
+    const auth = await requireAdminUser();
+    if (auth.response) return auth.response;
 
-    const { financialData } = await request.json();
+    const parsed = await readJsonBody<{ financialData?: unknown }>(request, 500_000);
+    if (parsed.response) return parsed.response;
+    const { financialData } = parsed.data;
 
     if (!financialData) {
       return NextResponse.json({ error: 'Dados financeiros são obrigatórios' }, { status: 400 });

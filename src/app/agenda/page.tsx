@@ -5,12 +5,13 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin, DollarSign, ChevronRight, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { Navigation } from "@/components/Navigation";
+import { getLowestGrossPrice } from "@/lib/fees";
 
 export default function AgendaList() {
   const [agendas, setAgendas] = useState<any[]>([]);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchAgendas() {
@@ -33,30 +34,39 @@ export default function AgendaList() {
         console.error("Erro ao registrar acesso global", e);
       }
 
-      const { data: resSettings } = await supabase.from('settings').select('*').single();
-      if (resSettings && resSettings.maintenance_mode) {
-        setIsMaintenance(true);
+      // const { data: resSettings } = await supabase.from('settings').select('*').single();
+      // if (resSettings && resSettings.maintenance_mode) {
+      //   setIsMaintenance(true);
+      //   setIsLoading(false);
+      //   return;
+      // }
+      
+      const { data, error } = await supabase
+        .from('agendas')
+        .select('*')
+        .gte('date', today)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao buscar agendas:', error);
+        setLoadError('Não foi possível carregar as trilhas. Tente novamente.');
         setIsLoading(false);
         return;
       }
-      
-      try {
-        const { data, error } = await supabase
-          .from('agendas')
-          .select('*, reservas(status_pagamento)')
-          .gte('date', today)
-          .order('date', { ascending: true });
-          
-        if (!error && data) {
-          setAgendas(data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
 
+      const availabilityResponse = await fetch('/api/agendas/availability', { cache: 'no-store' });
+      const availability = availabilityResponse.ok
+        ? await availabilityResponse.json()
+        : { reservedByAgenda: {} };
+
+      if (data) {
+        setAgendas(data.map((agenda) => ({
+          ...agenda,
+          reserved_count: availability.reservedByAgenda?.[agenda.id] || 0,
+        })));
+      }
+      setIsLoading(false);
+    }
     fetchAgendas();
   }, []);
 
@@ -71,9 +81,9 @@ export default function AgendaList() {
           Por favor, volte em alguns instantes.
         </p>
         <div className="flex flex-col md:flex-row gap-4">
-            <a href="/" className="bg-white/10 hover:bg-white/20 border border-white/10 px-8 py-4 rounded-2xl font-bold transition">
+            <Link href="/" className="bg-white/10 hover:bg-white/20 border border-white/10 px-8 py-4 rounded-2xl font-bold transition">
               Voltar ao Início
-            </a>
+            </Link>
             <a href="/carrinho" className="bg-[#F17B37] hover:bg-orange-600 px-8 py-4 rounded-2xl font-bold transition shadow-[0_0_20px_rgba(241,123,55,0.4)]">
               Ver meu Carrinho
             </a>
@@ -84,29 +94,46 @@ export default function AgendaList() {
 
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans selection:bg-[#F17B37] selection:text-white pb-20 overflow-hidden relative">
-      <Navigation />
-      
       {/* Background Decorativo */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-10 pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
 
-      {/* Hero Simples */}
-      <div className="pt-32 pb-10 px-6 max-w-7xl mx-auto relative z-10 text-center">
-        <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
-          Próximas <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-[#f9a06b]">Trilhas</span>
-        </h1>
-        <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-          Escolha sua próxima aventura. Vagas limitadas, garanta a sua com antecedência.
-        </p>
-      </div>
+      <header className="pt-16 pb-12 px-6 max-w-7xl mx-auto relative z-10 text-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 backdrop-blur-md"
+        >
+          <span className="text-[#F17B37] text-sm font-bold tracking-widest uppercase">Mais Trilha Menos Estresse</span>
+        </motion.div>
+        
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 leading-tight"
+        >
+          Calendário <br className="md:hidden" />de <span className="text-[#F17B37]">Aventuras</span>
+        </motion.h1>
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-gray-400 text-lg max-w-2xl mx-auto"
+        >
+          Escolha o seu próximo destino, convide a galera e recarregue as energias.
+        </motion.p>
+      </header>
 
-      {/* Lista de Trilhas */}
-      <div className="px-3 md:px-6 max-w-7xl mx-auto relative z-10">
+      <div className="px-6 max-w-7xl mx-auto relative z-10">
         {isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-64 bg-white/5 border border-white/10 rounded-3xl w-full animate-pulse"></div>
             ))}
+          </div>
+        ) : loadError ? (
+          <div className="text-center py-20 bg-red-500/10 rounded-3xl border border-red-400/20 max-w-2xl mx-auto">
+            <p className="text-red-200 font-bold">{loadError}</p>
           </div>
         ) : agendas.length === 0 ? (
           <motion.div 
@@ -126,7 +153,7 @@ export default function AgendaList() {
               const day = eventDate.toLocaleDateString('pt-BR', { day: '2-digit' });
               const month = eventDate.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
               
-              const occupied = agenda.reservas ? agenda.reservas.filter((r: any) => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length : 0;
+              const occupied = Number(agenda.reserved_count || 0);
               const maxCap = agenda.max_capacity || 15;
               const remaining = Math.max(0, maxCap - occupied);
               const isFull = remaining === 0;
@@ -175,7 +202,7 @@ export default function AgendaList() {
                         </div>
                         <div className="flex items-center gap-1.5 md:gap-3 text-xs md:text-sm text-gray-400">
                           <DollarSign className={`h-3 w-3 md:h-4 md:w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
-                          <span className="font-semibold text-white">R$ {agenda.price}</span>
+                          <span className="font-semibold text-white text-xs text-gray-400">a partir de</span> <span className="font-black text-white">R$ {getLowestGrossPrice(agenda.price, agenda.taxa_gratis).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 

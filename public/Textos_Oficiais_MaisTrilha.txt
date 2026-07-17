@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import VisualEditorBridge from "@/components/VisualEditorBridge";
@@ -64,7 +64,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased md:snap-y md:snap-proximity`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col max-w-full overflow-x-hidden">
-        
+
         {/* Google Analytics - Ativado via VariÃ¡vel de Ambiente */}
         {process.env.NEXT_PUBLIC_GA_ID && (
           <>
@@ -81,7 +81,7 @@ export default function RootLayout({
         )}
         {/* Isca para o Warsaw (Diebold Nixdorf) - Evita Hydration Mismatch */}
         <div id="_tela" style={{ display: 'none' }}></div>
-        
+
         {/* JSON-LD Schema.org para o Google Search (AssociaÃ§Ã£o da Marca e Sitelinks) */}
         <script
           type="application/ld+json"
@@ -167,18 +167,18 @@ export default function LandingPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const comunidadeImages = [
-    "/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG",
-    "/FotosEvideos/Grupo/IMG_0997.JPG",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/1647fade-8f9e-4eca-9cb9-bbf9b3fb26b6.jpg",
-    "/FotosEvideos/Grupo/5e7df681-58d1-48ae-a6bc-1c9e57a3bcd0.jpg",
-    "/FotosEvideos/Grupo/IMG_8197.webp",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_1809.webp",
-    "/FotosEvideos/Grupo/IMG_8162 - Copia.webp",
-    "/FotosEvideos/Grupo/IMG_9430 - Copia.JPG",
-    "/FotosEvideos/Grupo/IMG_5987.webp",
-    "/FotosEvideos/Grupo/IMG_6178.webp",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/59b3598c-060a-48c1-a372-894e60c16d63 Copy.JPG",
-    "/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_5466.webp"
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_9320%20-%20Copia.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_0997.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/1647fade-8f9e-4eca-9cb9-bbf9b3fb26b6.jpg",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/5e7df681-58d1-48ae-a6bc-1c9e57a3bcd0.jpg",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_8197.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_1809.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_8162%20-%20Copia.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_9430%20-%20Copia.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_5987.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Grupo/IMG_6178.webp",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/59b3598c-060a-48c1-a372-894e60c16d63%20Copy.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/PESSOAS%20ESPECIAIS/IMG_5466.webp"
   ];
   const visibleImages = showAllComunidade ? comunidadeImages : comunidadeImages.slice(0, 3);
 
@@ -187,7 +187,7 @@ export default function LandingPage() {
   const scrollToNextSection = () => {
     if (typeof window === 'undefined') return;
     const scrollPosition = window.scrollY;
-    
+
     for (let i = 0; i < sections.length; i++) {
       const el = document.getElementById(sections[i]);
       if (el) {
@@ -243,9 +243,9 @@ export default function LandingPage() {
   // Slideshow Fundadoras
   const [currentSlide, setCurrentSlide] = useState(0);
   const slideImages = [
-    "/FotosEvideos/Nivea/WhatsApp Image 2026-06-26 at 10.39.37 (1).jpeg",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/WhatsApp%20Image%202026-06-26%20at%2010.39.37%20(1).jpeg",
 
-    "/FotosEvideos/Nivea/IMG_0521.JPG",
+    "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/IMG_0521.JPG",
 
   ];
 
@@ -272,7 +272,7 @@ export default function LandingPage() {
           playsInline
           className="absolute top-0 left-0 w-full h-full object-cover z-0 opacity-150 mix-blend-overlay"
         >
-          <source src="/FotosEvideos/Nivea/video.mp4" type="video/mp4" />
+          <source src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/video.mp4" type="video/mp4" />
         </video>
         <div className="absolute inset-0 bg-[#0F1722]/40 z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0F1722]/20 to-[#0F1722] z-10 pointer-events-none" />
@@ -354,7 +354,7 @@ export default function LandingPage() {
               className="flex-1 w-full relative aspect-[4/5] rounded-[2rem] overflow-hidden shadow-[0_0_60px_rgba(241,123,55,0.15)] ring-1 ring-white/10 group"
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10 pointer-events-none" />
-              <Image src="/FotosEvideos/Nivea/WhatsApp Image 2026-06-26 at 10.28.20.jpeg" alt="NÃ­vea na Cachoeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-1000 ease-out" />
+              <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/WhatsApp%20Image%202026-06-26%20at%2010.28.20.jpeg" alt="NÃ­vea na Cachoeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-1000 ease-out" />
               <div className="absolute bottom-8 left-8 z-20">
                 <p className="font-black text-3xl text-white drop-shadow-lg">NÃ­vea</p>
                 <p className="text-[#F17B37] text-sm font-bold uppercase tracking-widest mt-1 drop-shadow-md">A Fundadora</p>
@@ -382,7 +382,7 @@ export default function LandingPage() {
               transition={{ duration: 1, delay: 0.3 }}
               className="mt-16 relative aspect-[4/5] md:aspect-[16/10] rounded-[2rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.5)] ring-1 ring-white/10 group"
             >
-              <Image src="/FotosEvideos//Nivea/IMG_3883.webp" alt="NÃ­vea com a Bandeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000" />
+              <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/IMG_3883.webp" alt="NÃ­vea com a Bandeira" width={800} height={800} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
             </motion.div>
           </motion.div>
@@ -443,7 +443,7 @@ export default function LandingPage() {
       {/* 3. SEÃ‡ÃƒO "OLHARES" (CINEMATOGRÃFICO) */}
       <section id="olhares" className="py-40 relative bg-black overflow-hidden flex flex-col items-center justify-center min-h-[90vh] md:snap-start">
         <motion.div className="absolute inset-0 opacity-40" style={{ y: y3 }}>
-          <Image src="/FotosEvideos/IMG_6341.webp" alt="Background Olhares" width={800} height={800} className="w-full h-[120%] object-cover blur-md scale-110" />
+          <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/IMG_6341.webp" alt="Background Olhares" width={800} height={800} className="w-full h-[120%] object-cover blur-md scale-110" />
           <div className="absolute inset-0 bg-gradient-to-b from-black via-black/80 to-black" />
         </motion.div>
 
@@ -557,23 +557,23 @@ export default function LandingPage() {
           <motion.div layout className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnimatePresence>
               {visibleImages.map((src, idx) => (
-                <motion.div 
+                <motion.div
                   key={src}
                   layout
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.4 }}
-                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 cursor-pointer aspect-[4/5]" 
+                  className="relative rounded-2xl overflow-hidden shadow-xl group ring-1 ring-white/10 cursor-pointer aspect-[4/5]"
                   whileHover={{ scale: 0.98 }}
                   onClick={() => setLightboxIndex(idx)}
                 >
-                  <Image 
-                    src={src} 
-                    alt={`Comunidade Foto ${idx + 1}`} 
-                    width={800} 
-                    height={800} 
-                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000" 
+                  <Image
+                    src={src}
+                    alt={`Comunidade Foto ${idx + 1}`}
+                    width={800}
+                    height={800}
+                    className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-1000"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                 </motion.div>
@@ -583,7 +583,7 @@ export default function LandingPage() {
 
           {!showAllComunidade && comunidadeImages.length > 3 && (
             <div className="mt-12 text-center">
-              <button 
+              <button
                 onClick={() => setShowAllComunidade(true)}
                 className="inline-flex items-center gap-2 bg-[#F17B37] hover:bg-[#e06925] text-white px-8 py-4 rounded-full font-bold text-lg shadow-[0_0_20px_rgba(241,123,55,0.4)] hover:scale-105 transition-all"
               >
@@ -602,7 +602,7 @@ export default function LandingPage() {
           viewport={{ once: true }}
           className="max-w-3xl mx-auto"
         >
-          <Image src="/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG" alt="Mais Trilha Logo" width={800} height={800} className="h-32 w-32 rounded-full aspect-square object-cover object-center mx-auto mb-10 shadow-[0_0_30px_rgba(241,123,55,0.3)] border-4 border-[#F17B37]/50" />
+          <Image src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/55C232D4-8B60-45C4-82BC-4B25960F8B60%20Copy.JPG" alt="Mais Trilha Logo" width={800} height={800} className="h-32 w-32 rounded-full aspect-square object-cover object-center mx-auto mb-10 shadow-[0_0_30px_rgba(241,123,55,0.3)] border-4 border-[#F17B37]/50" />
 
           <h2 className="text-4xl md:text-5xl font-black mb-6 drop-shadow-xl">Pronto para a sua prÃ³xima aventura?</h2>
           <p className="text-xl text-gray-400 mb-12">Junte-se a nÃ³s e descubra do que vocÃª Ã© capaz.</p>
@@ -612,12 +612,12 @@ export default function LandingPage() {
               <Map className="h-5 w-5" /> Ver Agenda Completa
             </button>
             <a href="https://wa.me/5531998793939?text=Oi NÃ­vea! Quero entrar no grupo VIP do Mais Trilha!" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-full font-bold text-lg transition-all flex items-center justify-center gap-3 hover:scale-105 ring-1 ring-white/20">
-              <Users className="h-5 w-5" /> Entrar no Grupo 
+              <Users className="h-5 w-5" /> Entrar no Grupo
             </a>
           </div>
 
           <motion.div className="mt-24 pt-10 border-t border-white/10 flex flex-col items-center gap-8 text-gray-400">
-            
+
             {/* AVISO DE COPYRIGHT */}
             <div className="text-sm md:text-base text-center">
               &copy; {new Date().getFullYear()} MaisTrilhaMenosEstresse. Todos os direitos reservados. <br className="md:hidden" />
@@ -628,11 +628,11 @@ export default function LandingPage() {
               <div className="flex flex-col items-center md:items-start gap-2">
                 <div className="flex items-center gap-3">
                   {/* AQUI ESTÃ O TRUQUE DE CSS: mix-blend-screen com contraste tira o fundo da JPG! */}
-                  <img 
-                    src="/FotosEvideos/logo/rodape.JPG" 
-                    alt="Montanhas Mais Trilha" 
+                  <img
+                    src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/rodape.JPG"
+                    alt="Montanhas Mais Trilha"
                     className="h-12 w-auto mix-blend-screen"
-                    style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
+                    style={{ filter: 'contrast(1.8) brightness(0.8)' }}
                   />
                   <span className="font-bold text-lg text-white">Mais Trilha Menos Estresse</span>
                 </div>
@@ -651,7 +651,7 @@ export default function LandingPage() {
                 </a>
               </div>
             </div>
-            
+
             {/* DIREITOS AUTORAIS */}
             <div className="mt-12 text-center text-sm text-gray-500 opacity-60 flex flex-col items-center gap-4">
               <p>Â© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
@@ -661,7 +661,7 @@ export default function LandingPage() {
       </section>
 
       {/* FIXED BACK TO TOP BUTTON */}
-      <button 
+      <button
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className="fixed bottom-6 right-6 z-50 w-12 h-12 md:w-14 md:h-14 bg-[#0F1722]/80 backdrop-blur-md flex items-center justify-center rounded-full border-2 border-white/20 hover:border-[#F17B37] hover:bg-[#F17B37] text-white transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_30px_rgba(241,123,55,0.6)] group"
         title="Voltar ao Topo"
@@ -670,7 +670,7 @@ export default function LandingPage() {
       </button>
 
       {/* SMART SCROLL DOWN BUTTON */}
-      <motion.button 
+      <motion.button
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
         onClick={scrollToNextSection}
@@ -683,7 +683,7 @@ export default function LandingPage() {
       {/* LIGHTBOX DE FOTOS COMUNIDADE */}
       <AnimatePresence>
         {lightboxIndex !== null && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -691,7 +691,7 @@ export default function LandingPage() {
             onClick={() => setLightboxIndex(null)}
           >
             {/* Fechar */}
-            <button 
+            <button
               onClick={() => setLightboxIndex(null)}
               className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition z-50"
             >
@@ -700,7 +700,7 @@ export default function LandingPage() {
 
             {/* Anterior */}
             {lightboxIndex > 0 && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
                 className="absolute left-4 md:left-8 text-white/70 hover:text-white hover:scale-110 bg-black/50 hover:bg-black/80 p-3 md:p-4 rounded-full transition-all z-50 cursor-pointer shadow-lg"
               >
@@ -710,7 +710,7 @@ export default function LandingPage() {
 
             {/* PrÃ³xima */}
             {lightboxIndex < comunidadeImages.length - 1 && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
                 className="absolute right-4 md:right-8 text-white/70 hover:text-white hover:scale-110 bg-black/50 hover:bg-black/80 p-3 md:p-4 rounded-full transition-all z-50 cursor-pointer shadow-lg"
               >
@@ -730,7 +730,7 @@ export default function LandingPage() {
               className="w-full h-full object-contain max-w-6xl mx-auto p-4 cursor-default drop-shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
-            
+
             {/* Indicador */}
             <div className="absolute bottom-8 left-0 right-0 text-center text-white/70 text-sm font-bold tracking-widest z-50 bg-black/40 py-1.5 w-24 mx-auto rounded-full backdrop-blur-md border border-white/10">
               {lightboxIndex + 1} / {comunidadeImages.length}
@@ -769,7 +769,7 @@ export const metadata: Metadata = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   // SECURITY: A proteÃ§Ã£o de rota agora Ã© feita exclusivamente pelo src/middleware.ts usando Supabase Auth.
   // Removemos o next-auth daqui para evitar o loop infinito de redirecionamento (ERR_TOO_MANY_REDIRECTS).
-  
+
   return <>{children}</>;
 }
 "use client";
@@ -777,9 +777,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Calendar, DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2, 
-  CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation, 
+import {
+  Calendar, DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2,
+  CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation,
   Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -804,7 +804,7 @@ export default function AdminPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
-  
+
   // Novos estados para a UI tipo App
   const [mainTab, setMainTab] = useState<'trilhas' | 'clientes' | 'reservas' | 'financas'>('trilhas');
   const [clientesTab, setClientesTab] = useState<'todos' | 'listas' | 'avaliacoes'>('todos');
@@ -831,13 +831,13 @@ export default function AdminPage() {
   const [reservas, setReservas] = useState<any[]>([]);
   const [custos, setCustos] = useState<any[]>([]);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
-  
+
   const [financasTab, setFinancasTab] = useState<'receitas' | 'despesas' | 'relatorios'>('despesas');
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [allReservas, setAllReservas] = useState<any[]>([]);
   const [allCustos, setAllCustos] = useState<any[]>([]);
   const [isFetchingGlobalFinances, setIsFetchingGlobalFinances] = useState(false);
-  
+
   // Filtros do Dashboard
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
@@ -860,7 +860,7 @@ export default function AdminPage() {
   const [recordingType, setRecordingType] = useState<'meeting_point' | 'description' | 'assistant' | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isAssistantProcessing, setIsAssistantProcessing] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([{ sender: 'bot', text: 'OlÃ¡! Sou sua assistente. Pergunte qualquer coisa ou me mande cadastrar uma trilha!' }]);
@@ -880,7 +880,7 @@ export default function AdminPage() {
   // --- FunÃ§Ãµes de ExportaÃ§Ã£o (Excel/CSV) ---
   const handleExportCSV = (type: 'reservas' | 'relatorios') => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    
+
     if (type === 'reservas') {
       csvContent += "Nome,CPF,Telefone,Status de Pagamento,Valor Pago\n";
       reservas.forEach(r => {
@@ -906,7 +906,7 @@ export default function AdminPage() {
     document.body.removeChild(link);
   };
 
-  
+
   const generateWhatsAppVan = () => {
     if (!selectedAgendaId) return;
     const agenda = agendas.find(a => a.id === selectedAgendaId);
@@ -964,7 +964,7 @@ export default function AdminPage() {
         const { data, error } = await supabase.from('agendas').select('*, reservas(status_pagamento)').order('date', { ascending: true });
         if (error) throw error;
         setAgendas(data || []);
-      
+
       const { data: resSettings } = await supabase.from('settings').select('*').single();
       if (resSettings) setIsMaintenance(resSettings.maintenance_mode);
 
@@ -988,7 +988,7 @@ export default function AdminPage() {
   }, [mainTab]);
 
   useEffect(() => {
-    
+
     // --- SEGURANÃ‡A: LOG DE ACESSO DO DESENVOLVEDOR ---
     async function checkDevAccess() {
       try {
@@ -1037,8 +1037,8 @@ export default function AdminPage() {
       })
       .subscribe();
 
-    return () => { 
-      if (timerRef.current) clearInterval(timerRef.current); 
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -1068,7 +1068,7 @@ export default function AdminPage() {
         .select('*, clients(*), agendas(*)')
         .eq('id', notif.reserva_id)
         .single();
-        
+
       if (data) {
         setNotificationReceipt(data);
         setIsNotificationsOpen(false); // Fecha o dropdown
@@ -1102,8 +1102,8 @@ export default function AdminPage() {
 
   // --- FunÃ§Ãµes de Clientes ---
   const normalizeString = (str: string) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
-  const filteredClients = clients.filter(c => 
-    normalizeString(c.full_name).includes(normalizeString(searchTerm)) || 
+  const filteredClients = clients.filter(c =>
+    normalizeString(c.full_name).includes(normalizeString(searchTerm)) ||
     (c.cpf && c.cpf.includes(searchTerm))
   );
 
@@ -1124,17 +1124,17 @@ export default function AdminPage() {
     try {
       const originalClient = clients.find(c => c.id === editingClient.id);
       const isEmailChanged = originalClient && originalClient.email !== editingClient.email;
-      
+
       await supabase.from('clients').update({
         full_name: editingClient.full_name, email: editingClient.email,
         cpf: editingClient.cpf, rg: editingClient.rg,
         phone: editingClient.phone, health_notes: editingClient.health_notes
       }).eq('id', editingClient.id);
-      
+
       setClients(clients.map(c => c.id === editingClient.id ? editingClient : c));
-      
+
       let message = "Cliente atualizado!";
-      
+
       if (isEmailChanged) {
         const res = await fetch("/api/send-client-email", {
           method: "POST",
@@ -1144,7 +1144,7 @@ export default function AdminPage() {
         if (res.ok) message += " O contrato foi reenviado para o novo e-mail.";
         else message += " Mas ocorreu um erro ao reenviar o contrato.";
       }
-      
+
       setEditingClient(null);
       alert(message);
     } catch (err: any) { alert("Erro ao editar cliente."); }
@@ -1236,7 +1236,7 @@ export default function AdminPage() {
   const handleAddReserva = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!novaReservaClientId) return alert("Selecione um cliente.");
-    
+
     // Verifica se jÃ¡ estÃ¡ na lista
     if (reservas.some(r => r.client_id === novaReservaClientId)) {
       return alert("Este cliente jÃ¡ estÃ¡ na lista desta trilha.");
@@ -1246,7 +1246,7 @@ export default function AdminPage() {
       const { data, error } = await supabase.from('reservas').insert([
         { agenda_id: selectedAgendaId, client_id: novaReservaClientId, status_pagamento: novaReservaStatus, valor_pago: selectedAgendaData?.price || 0 }
       ]).select('*, clients(*)').single();
-      
+
       if (error) throw error;
       setReservas([...reservas, data]);
       setNovaReservaClientId('');
@@ -1354,11 +1354,11 @@ export default function AdminPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: userMsg, history: chatHistory.slice(-5) })
       });
-      
+
       if (!res.ok) throw new Error(`Erro no servidor: ${res.status}`);
-      
+
       const data = await res.json();
-      
+
       if (data.result) {
         if (data.result.type === 'chat') {
           setChatHistory(prev => [...prev, { sender: 'bot', text: data.result.message }]);
@@ -1389,9 +1389,9 @@ export default function AdminPage() {
       const res = await fetch("/api/generate-message", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, type })
       });
-      
+
       if (!res.ok) throw new Error(`Erro na API: ${res.status}`);
-      
+
       const data = await res.json();
       if (data.result) {
         setValue(type, data.result);
@@ -1400,7 +1400,7 @@ export default function AdminPage() {
     } catch (error: any) {
       console.error("Erro na FormataÃ§Ã£o da IA:", error);
       alert(`Ops! A InteligÃªncia Artificial falhou. Verifique se o backend estÃ¡ rodando ou se sua chave (API Key) nÃ£o expirou.\n\nDetalhe: ${error.message}`);
-    } 
+    }
     finally {
       if (type === 'meeting_point') setIsFormattingMeetingPoint(false);
       else setIsFormattingDescription(false);
@@ -1413,7 +1413,7 @@ export default function AdminPage() {
       let imageUrls: string[] = editingAgenda ? editingAgenda.images || [] : [];
       let videoUrl: string | null = editingAgenda ? editingAgenda.video_url : null;
       let flyerUrl: string | null = editingAgenda ? editingAgenda.flyer_url : null;
-      
+
       // Upload Flyer
       if (data.flyer && data.flyer.length > 0) {
         const file = data.flyer[0];
@@ -1432,7 +1432,7 @@ export default function AdminPage() {
         }
       }
 
-      
+
       if (data.video && data.video.length > 0) {
         const file = data.video[0];
         const fileName = `vid_${Date.now()}.${file.name.split('.').pop()}`;
@@ -1457,7 +1457,7 @@ export default function AdminPage() {
         const { error } = await supabase.from('agendas').insert([payload]);
         if (error) throw error;
       }
-      
+
       setIsFormModalOpen(false);
       reset();
       fetchAgendasAndCleanup();
@@ -1479,7 +1479,7 @@ export default function AdminPage() {
       fetchAgendasAndCleanup();
     } catch (error) { alert("Erro ao atualizar avaliaÃ§Ã£o"); }
   };
-  
+
   const deleteAvaliacao = async (id: string) => {
     if(!window.confirm("Excluir esta avaliaÃ§Ã£o permanentemente?")) return;
     try {
@@ -1507,7 +1507,7 @@ export default function AdminPage() {
 
   return (
     <div suppressHydrationWarning className="h-[100dvh] print:h-auto print:min-h-screen w-full flex flex-col md:flex-row bg-gray-50 overflow-hidden print:overflow-visible relative">
-      
+
       {/* DESKTOP SIDEBAR */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 z-20 shrink-0 h-full shadow-sm">
         <div className="p-6 flex items-center gap-3 border-b border-gray-100 shrink-0">
@@ -1521,15 +1521,15 @@ export default function AdminPage() {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-          <button 
+          <button
             onClick={() => setMainTab('trilhas')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'trilhas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
             <CalendarDays className="h-5 w-5" />
             Trilhas
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setMainTab('clientes')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'clientes' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
@@ -1537,7 +1537,7 @@ export default function AdminPage() {
             Clientes
           </button>
 
-          <button 
+          <button
             onClick={() => setMainTab('reservas')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'reservas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
@@ -1545,7 +1545,7 @@ export default function AdminPage() {
             Reservas
           </button>
 
-          <button 
+          <button
             onClick={() => setMainTab('financas')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
@@ -1554,7 +1554,7 @@ export default function AdminPage() {
           </button>
 
           <div className="pt-4 mt-4 border-t border-gray-100 hidden md:block">
-            <button 
+            <button
               onClick={() => window.location.href = '/gerenciador'}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all bg-[#1D2A3A] text-white hover:bg-gray-900 shadow-md hover:scale-105"
             >
@@ -1587,11 +1587,11 @@ export default function AdminPage() {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mais Trilha Menos Estresse</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 md:gap-4 ml-auto">
-            
+
             {deferredPrompt && (
-              <button 
+              <button
                 onClick={async () => {
                   deferredPrompt.prompt();
                   const { outcome } = await deferredPrompt.userChoice;
@@ -1605,7 +1605,7 @@ export default function AdminPage() {
             )}
 
             {deferredPrompt && (
-              <button 
+              <button
                 onClick={async () => {
                   deferredPrompt.prompt();
                   const { outcome } = await deferredPrompt.userChoice;
@@ -1618,7 +1618,7 @@ export default function AdminPage() {
               </button>
             )}
 
-            <button 
+            <button
               onClick={() => window.open('/agenda', '_blank')}
               className="hidden md:flex items-center gap-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
               title="Acessar PÃ¡gina de Agendas PÃºblica"
@@ -1626,7 +1626,7 @@ export default function AdminPage() {
               <ExternalLink className="h-4 w-4" /> Ver Site
             </button>
 
-            <button 
+            <button
               onClick={() => window.open('/agenda', '_blank')}
               className="md:hidden flex items-center justify-center p-2 text-gray-500 hover:text-gray-900 bg-gray-100 rounded-lg"
               title="Acessar PÃ¡gina de Agendas PÃºblica"
@@ -1636,7 +1636,7 @@ export default function AdminPage() {
 
             {/* NOTIFICAÃ‡Ã•ES */}
             <div className="relative">
-              <button 
+              <button
                 onClick={handleOpenNotifications}
                 className="relative p-2 text-gray-500 hover:text-gray-900 transition-colors"
               >
@@ -1645,7 +1645,7 @@ export default function AdminPage() {
                   <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
                 )}
               </button>
-              
+
               <AnimatePresence>
                 {isNotificationsOpen && (
                   <motion.div
@@ -1667,8 +1667,8 @@ export default function AdminPage() {
                         <p className="p-6 text-center text-gray-400 text-sm">Nenhuma notificaÃ§Ã£o.</p>
                       ) : (
                         notifications.map((notif, idx) => (
-                          <div 
-                            key={notif.id} 
+                          <div
+                            key={notif.id}
                             onClick={() => handleNotificationClick(notif)}
                             className={`p-4 border-b border-gray-50 text-sm transition-colors ${notif.reserva_id ? 'cursor-pointer hover:bg-gray-100' : ''} ${idx === 0 && !notif.lida ? 'bg-blue-50/30' : ''}`}
                           >
@@ -1697,12 +1697,12 @@ export default function AdminPage() {
       {/* 2. ÃREA CENTRAL DE CONTEÃšDO ROLÃVEL */}
       <main className="flex-1 overflow-y-auto print:overflow-visible custom-scrollbar p-4 md:p-8 pb-28 md:pb-8">
         <div className="max-w-7xl mx-auto w-full">
-          
+
           <AnimatePresence mode="wait">
             {/* --- VISÃƒO DAS TRILHAS --- */}
             {mainTab === 'trilhas' && (
               <motion.div key="trilhas" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                
+
                 {/* Banner de Enviar CalendÃ¡rio e Modo ManutenÃ§Ã£o */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-gradient-to-br from-[#1D2A3A] to-gray-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
@@ -1713,13 +1713,13 @@ export default function AdminPage() {
                       <Send className="h-4 w-4" /> Enviar no Grupo
                     </a>
                   </div>
-                  
+
                   <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[60px] opacity-20" />
                     <h3 className="font-bold text-lg mb-1">Controle do Site</h3>
                     <p className="text-sm text-white/80 mb-5 max-w-[80%]">{isMaintenance ? 'O site estÃ¡ pausado. NinguÃ©m pode comprar.' : 'Pause o site para ediÃ§Ã£o.'}</p>
-                    <button 
-                      onClick={handleToggleMaintenance} 
+                    <button
+                      onClick={handleToggleMaintenance}
                       disabled={isTogglingMaintenance}
                       className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:scale-105 transition ${isMaintenance ? 'bg-green-500 text-white' : 'bg-red-600 text-white'}`}
                     >
@@ -1743,7 +1743,7 @@ export default function AdminPage() {
                       </div>
                     )}
                   </div>
-                  
+
                   {isFetching ? (
                     <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#F17B37]" /></div>
                   ) : agendas.length === 0 ? (
@@ -1760,7 +1760,7 @@ export default function AdminPage() {
 
                         return (
                           <div key={agenda.id} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${expandedAgendaId === agenda.id ? 'border-[#F17B37] ring-1 ring-[#F17B37]/20' : 'border-gray-100 hover:shadow-md'} ${isFull ? 'opacity-70 grayscale' : ''}`}>
-                            <div 
+                            <div
                               onClick={() => setExpandedAgendaId(expandedAgendaId === agenda.id ? null : agenda.id)}
                               className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 gap-4"
                             >
@@ -1788,9 +1788,9 @@ export default function AdminPage() {
 
                             <AnimatePresence>
                               {expandedAgendaId === agenda.id && (
-                                <motion.div 
-                                  initial={{ height: 0, opacity: 0 }} 
-                                  animate={{ height: 'auto', opacity: 1 }} 
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
                                   exit={{ height: 0, opacity: 0 }}
                                   className="border-t border-gray-100 bg-gray-50/50"
                                 >
@@ -1821,12 +1821,12 @@ export default function AdminPage() {
                   <button type="button" onClick={() => setClientesTab('avaliacoes')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'avaliacoes' ? 'border-[#25D366] text-[#25D366] bg-[#25D366]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>AvaliaÃ§Ãµes</button>
                 </div>
 
-                
+
                 {/* CabeÃ§alho ImpressÃ£o */}
                 <div className="hidden print:block text-center border-b-2 border-black pb-4 mb-6">
                   <style>{`
-                    @media print { 
-                      @page { size: landscape; margin: 10mm; } 
+                    @media print {
+                      @page { size: landscape; margin: 10mm; }
                       html, body { width: 1000px !important; min-width: 1000px !important; overflow: visible !important; }
                     }
                   `}</style>
@@ -1838,9 +1838,9 @@ export default function AdminPage() {
                 {clientesTab === 'todos' && (<>
                 <div className="relative print:hidden">
                   <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                  <input 
-                    type="search" 
-                    placeholder="Buscar por nome ou CPF..." 
+                  <input
+                    type="search"
+                    placeholder="Buscar por nome ou CPF..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-[#F17B37] outline-none font-medium"
@@ -1849,7 +1849,7 @@ export default function AdminPage() {
 
                 <div className="print:hidden">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-2">Total: {filteredClients.length} Cadastrados</p>
-                  
+
                   {filteredClients.length === 0 ? (
                     <div className="text-center py-10">
                       <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
@@ -1872,9 +1872,9 @@ export default function AdminPage() {
   }
   return (
                         <div key={client.id} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${expandedClientId === client.id ? 'border-[#F17B37] ring-1 ring-[#F17B37]/20' : 'border-gray-200'}`}>
-                          
+
                           {/* CabeÃ§alho do Card (Sempre visÃ­vel) */}
-                          <div 
+                          <div
                             onClick={() => toggleClientExpand(client.id)}
                             className={`p-4 flex items-center justify-between cursor-pointer ${isBirthdayClient ? 'bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100' : 'hover:bg-gray-50'}`}
                           >
@@ -1899,9 +1899,9 @@ export default function AdminPage() {
                           {/* Detalhes do Card (Sanfona) */}
                           <AnimatePresence>
                             {expandedClientId === client.id && (
-                              <motion.div 
-                                initial={{ height: 0, opacity: 0 }} 
-                                animate={{ height: 'auto', opacity: 1 }} 
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 className="border-t border-gray-100 bg-gray-50/50"
                               >
@@ -1913,7 +1913,7 @@ export default function AdminPage() {
                                     <div className="col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                       <div><p className="text-gray-500 text-xs font-bold uppercase">Contato EmergÃªncia</p><p className="font-medium">{client.emergency_contact_name} - {client.emergency_contact_phone}</p></div>
                                       {(!client.rg || !client.birth_date || !client.emergency_contact_name || !client.accepted_terms_at) && (
-                                        <button 
+                                        <button
                                           onClick={() => {
                                             const link = `${window.location.origin}/cadastro?cpf=${client.cpf}`;
                                             navigator.clipboard.writeText(link);
@@ -1926,7 +1926,7 @@ export default function AdminPage() {
                                       )}
                                     </div>
                                   </div>
-                                  
+
                                   <div className="bg-red-50 p-3 rounded-xl border border-red-100">
                                     <p className="text-red-800 text-xs font-bold uppercase mb-1">SaÃºde & ObservaÃ§Ãµes</p>
                                     <p className="text-sm font-medium text-red-900 whitespace-pre-wrap">{client.health_notes || "Nenhuma anotaÃ§Ã£o."}</p>
@@ -1959,13 +1959,13 @@ export default function AdminPage() {
                 </div>
                 </>)}
 
-                
+
                 {clientesTab === 'listas' && (
                   <div className="space-y-6 print:hidden">
                     <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
                       <label className="text-sm font-bold text-gray-700">Selecione a Trilha/Evento:</label>
-                      <select 
-                        value={selectedAgendaId} 
+                      <select
+                        value={selectedAgendaId}
                         onChange={(e) => setSelectedAgendaId(e.target.value)}
                         className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-[#1D2A3A] outline-none"
                       >
@@ -2087,11 +2087,11 @@ export default function AdminPage() {
             {/* --- VISÃƒO DE RESERVAS (LISTA DE PASSAGEIROS) --- */}
             {mainTab === 'reservas' && (
               <motion.div key="reservas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-6">
-                
+
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
                   <label className="text-sm font-bold text-gray-700">Selecione a Trilha:</label>
-                  <select 
-                    value={selectedAgendaId} 
+                  <select
+                    value={selectedAgendaId}
                     onChange={(e) => setSelectedAgendaId(e.target.value)}
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-[#F17B37] outline-none"
                   >
@@ -2116,7 +2116,7 @@ export default function AdminPage() {
                           <span className="bg-white/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center">{reservas.length} / {selectedAgendaData?.max_capacity || 15} Vagas</span>
                         </div>
                       </div>
-                      
+
                       <div className="p-4 space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar">
                         {reservas.length === 0 ? (
                           <p className="text-center text-gray-400 py-6 text-sm font-medium">Nenhum passageiro nesta trilha ainda.</p>
@@ -2143,8 +2143,8 @@ export default function AdminPage() {
                         <h4 className={`font-bold flex items-center gap-2 text-sm ${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'text-gray-500' : 'text-blue-900'}`}>
                           <Plus className="h-4 w-4"/> {(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'Trilha Esgotada - InserÃ§Ã£o Bloqueada' : 'Inserir Passageiro Manualmente'}
                         </h4>
-                        <select 
-                          value={novaReservaClientId} 
+                        <select
+                          value={novaReservaClientId}
                           onChange={(e) => setNovaReservaClientId(e.target.value)}
                           disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
                           className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
@@ -2155,8 +2155,8 @@ export default function AdminPage() {
                           ))}
                         </select>
                         <div className="flex gap-3">
-                          <select 
-                            value={novaReservaStatus} 
+                          <select
+                            value={novaReservaStatus}
                             onChange={(e) => setNovaReservaStatus(e.target.value)}
                             disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
                             className="w-1/2 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
@@ -2164,8 +2164,8 @@ export default function AdminPage() {
                             <option value="pago">PAGO</option>
                             <option value="pendente">PENDENTE</option>
                           </select>
-                          <button 
-                            type="submit" 
+                          <button
+                            type="submit"
                             disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
                             className={`w-1/2 font-bold rounded-xl shadow-sm transition ${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                           >
@@ -2181,7 +2181,7 @@ export default function AdminPage() {
             {/* --- VISÃƒO FINANCEIRA --- */}
             {mainTab === 'financas' && (
               <motion.div key="financas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
-                
+
                 {/* Abas Superiores de FinanÃ§as */}
                 <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden shrink-0 mt-4">
                   <button type="button" onClick={() => setFinancasTab('despesas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'despesas' ? 'border-red-500 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Despesas</button>
@@ -2192,8 +2192,8 @@ export default function AdminPage() {
                 {financasTab !== 'relatorios' && (
                   <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
                     <label className="text-sm font-bold text-gray-700">Selecione a Trilha:</label>
-                    <select 
-                      value={selectedAgendaId} 
+                    <select
+                      value={selectedAgendaId}
                       onChange={(e) => setSelectedAgendaId(e.target.value)}
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-[#25D366] outline-none"
                     >
@@ -2259,7 +2259,7 @@ export default function AdminPage() {
                           <p className="text-4xl font-black">R$ {totalRevenue.toFixed(2)}</p>
                           <p className="text-green-100 text-xs mt-2">Baseado em {reservas.filter(r => r.status_pagamento === 'pago').length} passageiros pagos (R$ {selectedAgendaData?.price} cada).</p>
                         </div>
-                        
+
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                           <div className="bg-gray-50 border-b border-gray-100 p-4">
                             <h3 className="font-bold text-gray-800 text-sm">Origem das Receitas (Passageiros Pagos)</h3>
@@ -2289,14 +2289,14 @@ export default function AdminPage() {
                       <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#1D2A3A]" /></div>
                     ) : (
                       <div className="space-y-6 print:m-0 print:p-0">
-                        
+
                         {/* Header do RelatÃ³rio */}
                         <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none flex-col sm:flex-row gap-4">
                           <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2 w-full sm:w-auto">
                             <DollarSign className="h-6 w-6 text-[#25D366]" /> Dashboard Financeiro
                           </h3>
                           <div className="flex flex-wrap gap-2 print:hidden justify-start sm:justify-end w-full sm:w-auto">
-                            <button 
+                            <button
                               onClick={() => {
                                 const payload = { agendas, allReservas, allCustos, year: reportYear };
                                 handleGenerateCFOAdvice(payload);
@@ -2392,8 +2392,8 @@ export default function AdminPage() {
                                     const m = i + 1;
                                     const mName = new Date(2000, i).toLocaleString('pt-BR', { month: 'short' }).toUpperCase();
                                     return (
-                                      <button 
-                                        key={m} 
+                                      <button
+                                        key={m}
                                         onClick={() => setReportMonth(m)}
                                         className={`flex-shrink-0 w-16 py-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1 ${reportMonth === m ? 'border-[#F17B37] bg-[#F17B37]/10' : 'border-gray-200 bg-gray-50'}`}
                                       >
@@ -2492,11 +2492,11 @@ export default function AdminPage() {
                                   }
                                   return acc;
                                 }, {} as Record<string, { name: string, count: number }>);
-                                
+
                                 const topClients = Object.values(clientRanking)
                                   .sort((a: any, b: any) => b.count - a.count)
                                   .slice(0, 10);
-                                  
+
                                 if (topClients.length === 0) return null;
 
                                 return (
@@ -2540,7 +2540,7 @@ export default function AdminPage() {
 
       {/* 3. BOTÃƒO FLUTUANTE (FAB) PARA NOVA TRILHA */}
       {mainTab === 'trilhas' && (
-        <button 
+        <button
           onClick={() => { reset(); setEditingAgenda(null); setIsFormModalOpen(true); }}
           className="fixed bottom-24 right-5 md:bottom-8 md:right-8 bg-[#F17B37] text-white p-4 rounded-full shadow-[0_8px_30px_rgba(241,123,55,0.4)] hover:scale-105 active:scale-95 transition-all z-20 print:hidden flex items-center justify-center"
         >
@@ -2551,8 +2551,8 @@ export default function AdminPage() {
       {/* 4. MENU INFERIOR (BOTTOM NAVIGATION) TIPO APP */}
       <nav className="bg-white border-t border-gray-200 fixed bottom-0 w-full z-30 pb-safe print:hidden md:hidden shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
         <div className="flex justify-around items-center max-w-lg mx-auto relative px-2">
-          
-          <button 
+
+          <button
             onClick={() => setMainTab('trilhas')}
             className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'trilhas' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
           >
@@ -2561,7 +2561,7 @@ export default function AdminPage() {
             <span className="text-[9px] font-bold tracking-wide">Trilhas</span>
           </button>
 
-          <button 
+          <button
             onClick={() => setMainTab('clientes')}
             className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'clientes' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
           >
@@ -2569,7 +2569,7 @@ export default function AdminPage() {
             <FileText className="h-5 w-5 mb-1" />
             <span className="text-[9px] font-bold tracking-wide">Clientes</span>
           </button>
-          
+
           {/* BOTÃƒO ASSISTENTE IA CENTRALIZADO COM ANIMAÃ‡Ã•ES MODERNAS */}
           <div className="relative -top-6 flex justify-center w-[70px] shrink-0 mx-1">
             <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} className="absolute top-0 w-[56px] h-[56px] bg-[#F17B37] rounded-full z-30 pointer-events-none" />
@@ -2578,12 +2578,12 @@ export default function AdminPage() {
               animate={{ y: [0, -4, 0] }} transition={{ y: { duration: 3, repeat: Infinity, ease: "easeInOut" } }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.9, rotate: -5 }}
               className="absolute bg-white rounded-full shadow-[0_0_20px_rgba(241,123,55,0.6)] z-40 border-[3px] border-[#F17B37] overflow-hidden flex items-center justify-center p-0.5" style={{ width: '56px', height: '56px' }}
             >
-              <img src="/logo.png" alt="IA" className="h-full w-full object-cover scale-110 rounded-full" />
+              <img src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/logo.png" alt="IA" className="h-full w-full object-cover scale-110 rounded-full" />
             </motion.button>
           </div>
 
-          <button 
-            onClick={() => setMainTab('reservas')} 
+          <button
+            onClick={() => setMainTab('reservas')}
             className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'reservas' ? 'text-[#F17B37]' : 'text-gray-400 hover:text-gray-600'}`}
           >
             {mainTab === 'reservas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#F17B37] rounded-b-full" />}
@@ -2591,7 +2591,7 @@ export default function AdminPage() {
             <span className="text-[9px] font-bold tracking-wide">Reservas</span>
           </button>
 
-          <button 
+          <button
             onClick={() => setMainTab('financas')}
             className={`flex flex-col items-center justify-center w-full py-3 transition-colors relative ${mainTab === 'financas' ? 'text-[#25D366]' : 'text-gray-400 hover:text-gray-600'}`}
           >
@@ -2607,13 +2607,13 @@ export default function AdminPage() {
       {/* --- MODAL: FORMULÃRIO DE TRILHA (TELA CHEIA) --- */}
       <AnimatePresence>
         {isFormModalOpen && (
-          <motion.div 
+          <motion.div
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-[60] bg-white flex flex-col h-[100dvh] overflow-hidden print:hidden"
           >
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
               <h2 className="text-lg font-bold flex items-center gap-2">
-                <CalendarDays className={`h-5 w-5 ${editingAgenda ? 'text-blue-500' : 'text-[#F17B37]'}`} /> 
+                <CalendarDays className={`h-5 w-5 ${editingAgenda ? 'text-blue-500' : 'text-[#F17B37]'}`} />
                 {editingAgenda ? 'Editar Trilha' : 'Nova Trilha'}
               </h2>
               <button type="button" onClick={cancelEdit} className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200"><X className="h-5 w-5" /></button>
@@ -2624,9 +2624,9 @@ export default function AdminPage() {
               <button type="button" onClick={() => setActiveTab('textos')} className={`flex-1 min-w-0 py-3.5 text-xs font-bold border-b-2 transition-all ${activeTab === 'textos' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>IA / Textos</button>
               <button type="button" onClick={() => setActiveTab('midias')} className={`flex-1 min-w-0 py-3.5 text-xs font-bold border-b-2 transition-all ${activeTab === 'midias' ? 'border-orange-400 text-orange-500' : 'border-transparent text-gray-500'}`}>MÃ­dias</button>
             </div>
-            
+
             <form id="admin-form" onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24">
-              
+
               {activeTab === 'geral' && (
                 <div className="space-y-4 max-w-2xl mx-auto">
                   <div><label className="block text-sm font-bold mb-1">TÃ­tulo</label><input {...register("title", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="Ex: Serra do CipÃ³" /></div>
@@ -2635,7 +2635,7 @@ export default function AdminPage() {
                     <div><label className="block text-sm font-bold mb-1">Valor</label><input {...register("price", { required: true })} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150.00" /></div>
                     <div><label className="block text-sm font-bold mb-1">Vagas</label><input type="number" {...register("max_capacity", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="15" /></div>
                   </div>
-                  
+
                   <div className="grid grid-cols-3 gap-4">
                     <div><label className="block text-sm font-bold mb-1">DuraÃ§Ã£o (h)</label><input type="number" step="0.5" {...register("duration_hours")} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="4.5" /></div>
                     <div><label className="block text-sm font-bold mb-1">DistÃ¢ncia (km)</label><input type="number" step="0.1" {...register("distance_km")} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="12" /></div>
@@ -2661,8 +2661,8 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <textarea {...register("meeting_point", { required: true })} className="w-full h-32 p-4 bg-white border border-gray-200 rounded-xl outline-none resize-none text-sm" placeholder="Grave ou digite..." />
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={() => formatTextWithAI('meeting_point')}
                         disabled={isFormattingMeetingPoint || !watch('meeting_point')}
                         className="mt-2 w-full text-sm bg-blue-600 text-white py-2 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition disabled:opacity-50"
@@ -2680,8 +2680,8 @@ export default function AdminPage() {
                       </button>
                     </div>
                     <textarea {...register("description", { required: true })} className="w-full h-40 p-4 bg-white border border-gray-200 rounded-xl outline-none resize-none text-sm" placeholder="Grave ou digite..." />
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={() => formatTextWithAI('description')}
                         disabled={isFormattingDescription || !watch('description')}
                         className="mt-2 w-full text-sm bg-purple-600 text-white py-2 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-purple-700 transition disabled:opacity-50"
@@ -2757,15 +2757,15 @@ export default function AdminPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    
+
       {isAssistantOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col h-[85vh] max-h-[800px]">
-            
+
             <div className="bg-gradient-to-r from-gray-900 to-black border-b-2 border-[#F17B37] p-4 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <div className="rounded-full overflow-hidden border border-white/20 shadow-sm w-10 h-10 flex shrink-0">
-                  <img src="/logo.png" alt="Logo" className="w-full h-full object-cover scale-110" />
+                  <img src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/logo.png" alt="Logo" className="w-full h-full object-cover scale-110" />
                 </div>
                 <div>
                   <h3 className="font-bold text-lg leading-tight">Assistente IA</h3>
@@ -2781,15 +2781,15 @@ export default function AdminPage() {
               {chatHistory.map((msg, idx) => (
                 <div key={idx} className={`flex w-full ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
-                    msg.sender === 'user' 
-                      ? 'bg-purple-600 text-white rounded-br-none shadow-sm' 
+                    msg.sender === 'user'
+                      ? 'bg-purple-600 text-white rounded-br-none shadow-sm'
                       : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm whitespace-pre-wrap'
                   }`}>
                     {msg.text}
                   </div>
                 </div>
               ))}
-              
+
               {isAssistantProcessing && (
                 <div className="flex w-full justify-start">
                   <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-none px-4 py-3 flex gap-1.5 shadow-sm">
@@ -2804,7 +2804,7 @@ export default function AdminPage() {
 
             <div className="bg-white border-t border-gray-100 p-3 shrink-0">
               <div className="flex items-end gap-2 bg-gray-50 border border-gray-200 p-1.5 rounded-3xl focus-within:border-purple-400 focus-within:ring-1 focus-within:ring-purple-400 transition-all">
-                <textarea 
+                <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2819,9 +2819,9 @@ export default function AdminPage() {
                   className="flex-1 max-h-32 min-h-[44px] bg-transparent outline-none p-3 text-sm resize-none custom-scrollbar"
                   rows={1}
                 />
-                
+
                 {chatInput.trim() && recordingType !== 'assistant' ? (
-                  <button 
+                  <button
                     onClick={() => handleSendChatMessage(chatInput)}
                     disabled={isAssistantProcessing}
                     className="bg-purple-600 text-white h-11 w-11 rounded-full flex items-center justify-center shrink-0 hover:bg-purple-700 transition-colors disabled:opacity-50"
@@ -2829,7 +2829,7 @@ export default function AdminPage() {
                     <Send className="h-5 w-5 ml-1" />
                   </button>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => {
                       if (recordingType === 'assistant') {
                         stopRecording();
@@ -2844,8 +2844,8 @@ export default function AdminPage() {
                     }}
                     disabled={isAssistantProcessing}
                     className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                      recordingType === 'assistant' 
-                        ? 'bg-red-500 text-white animate-pulse' 
+                      recordingType === 'assistant'
+                        ? 'bg-red-500 text-white animate-pulse'
                         : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -2866,7 +2866,7 @@ export default function AdminPage() {
       {notificationReceipt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button 
+            <button
               onClick={() => setNotificationReceipt(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition"
             >
@@ -2879,7 +2879,7 @@ export default function AdminPage() {
               <h2 className="text-xl font-black text-gray-900">Compra Aprovada!</h2>
               <p className="text-sm text-gray-500 mt-1">Detalhes do passageiro</p>
             </div>
-            
+
             <div className="space-y-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-100">
               <div className="flex justify-between border-b border-gray-200 pb-2">
                 <span className="text-gray-500">Passageiro(a)</span>
@@ -2903,7 +2903,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => {
                 setNotificationReceipt(null);
                 setMainTab('reservas');
@@ -2922,7 +2922,7 @@ export default function AdminPage() {
       {editingClient && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <form onSubmit={handleSaveEditedClient} className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button 
+            <button
               type="button"
               onClick={() => setEditingClient(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-2 transition"
@@ -2932,77 +2932,77 @@ export default function AdminPage() {
             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
               <Edit2 className="h-5 w-5 text-blue-500" /> Editar Cliente
             </h2>
-            
+
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Nome Completo</label>
-                <input 
+                <input
                   type="text" required
                   value={editingClient.full_name}
                   onChange={e => setEditingClient({...editingClient, full_name: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" 
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">CPF</label>
-                  <input 
+                  <input
                     type="text" required
                     value={editingClient.cpf}
                     onChange={e => setEditingClient({...editingClient, cpf: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">RG</label>
-                  <input 
+                  <input
                     type="text" required
                     value={editingClient.rg}
                     onChange={e => setEditingClient({...editingClient, rg: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">E-mail</label>
-                  <input 
+                  <input
                     type="email" required
                     value={editingClient.email}
                     onChange={e => setEditingClient({...editingClient, email: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">Telefone</label>
-                  <input 
+                  <input
                     type="text" required
                     value={editingClient.phone}
                     onChange={e => setEditingClient({...editingClient, phone: e.target.value})}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">SaÃºde / ObservaÃ§Ãµes</label>
-                <textarea 
+                <textarea
                   value={editingClient.health_notes}
                   onChange={e => setEditingClient({...editingClient, health_notes: e.target.value})}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none" 
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none"
                 />
               </div>
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setEditingClient(null)}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition"
               >
                 Cancelar
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2"
               >
                 <CheckCircle2 className="h-5 w-5" /> Salvar EdiÃ§Ã£o
@@ -3084,13 +3084,13 @@ export default function AgendaList() {
         setIsLoading(false);
         return;
       }
-      
+
       const { data, error } = await supabase
         .from('agendas')
         .select('*, reservas(status_pagamento)')
         .gte('date', today)
         .order('date', { ascending: true });
-        
+
       if (!error && data) {
         setAgendas(data);
       }
@@ -3106,7 +3106,7 @@ export default function AgendaList() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
         <h1 className="text-4xl md:text-6xl font-black text-[#F17B37] mb-6">Em ManutenÃ§Ã£o ðŸš§</h1>
         <p className="text-gray-300 max-w-lg mb-8 text-lg md:text-xl">
-          Nossa equipe estÃ¡ atualizando a agenda com novas aventuras incrÃ­veis! 
+          Nossa equipe estÃ¡ atualizando a agenda com novas aventuras incrÃ­veis!
           Por favor, volte em alguns instantes.
         </p>
         <div className="flex flex-col md:flex-row gap-4">
@@ -3124,28 +3124,28 @@ export default function AgendaList() {
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans selection:bg-[#F17B37] selection:text-white pb-20 overflow-hidden relative">
       <Navigation />
-      
+
       {/* Background Decorativo */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-10 pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
 
       <header className="pt-16 pb-12 px-6 max-w-7xl mx-auto relative z-10 text-center">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 backdrop-blur-md"
         >
           <span className="text-[#F17B37] text-sm font-bold tracking-widest uppercase">Mais Trilha Menos Estresse</span>
         </motion.div>
-        
-        <motion.h1 
+
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 leading-tight"
         >
           CalendÃ¡rio <br className="md:hidden" />de <span className="text-[#F17B37]">Aventuras</span>
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -3163,7 +3163,7 @@ export default function AgendaList() {
             ))}
           </div>
         ) : agendas.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md max-w-2xl mx-auto"
@@ -3179,21 +3179,21 @@ export default function AgendaList() {
               const eventDate = new Date(agenda.date + 'T12:00:00Z');
               const day = eventDate.toLocaleDateString('pt-BR', { day: '2-digit' });
               const month = eventDate.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
-              
+
               const occupied = agenda.reservas ? agenda.reservas.filter((r: any) => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length : 0;
               const maxCap = agenda.max_capacity || 15;
               const remaining = Math.max(0, maxCap - occupied);
               const isFull = remaining === 0;
-              
+
               return (
                 <div key={agenda.id} className="block group">
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     className={`bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden transition-all duration-300 relative h-full flex flex-col ${isFull ? 'opacity-70 grayscale' : 'hover:bg-white/10 md:hover:-translate-y-2 md:hover:shadow-2xl hover:shadow-[#F17B37]/10'}`}
                   >
-                    
+
                     {/* Imagem de Capa do Card */}
                     <div className="h-32 md:h-48 relative overflow-hidden shrink-0">
                       <div className="absolute inset-0 bg-gradient-to-t from-[#1a2332] to-transparent z-10" />
@@ -3202,13 +3202,13 @@ export default function AgendaList() {
                       ) : (
                         <div className="w-full h-full bg-gray-800 flex items-center justify-center"><ImageIcon className="text-gray-600 h-8 w-8 md:h-10 md:w-10" /></div>
                       )}
-                      
+
                       {/* Badge da Data */}
                       <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl p-1.5 md:p-2 px-2 md:px-4 text-center shadow-xl">
                         <p className={`${isFull ? 'text-gray-400' : 'text-[#F17B37]'} font-bold tracking-widest text-[8px] md:text-[10px] uppercase mb-0.5`}>{month}</p>
                         <p className="text-lg md:text-2xl font-black leading-none">{day}</p>
                       </div>
-                      
+
                       {isFull && (
                         <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40 backdrop-blur-sm">
                           <span className="bg-red-500 text-white font-black px-4 py-2 rounded-xl tracking-widest uppercase transform -rotate-12 border-2 border-white/20 shadow-2xl text-sm md:text-base">
@@ -3221,7 +3221,7 @@ export default function AgendaList() {
                     {/* ConteÃºdo */}
                     <div className="p-3 md:p-6 flex-1 flex flex-col relative z-20 bg-[#1a2332]">
                       <h3 className={`text-sm md:text-xl font-bold mb-2 md:mb-4 transition line-clamp-2 ${isFull ? 'text-gray-300' : 'group-hover:text-[#F17B37]'}`}>{agenda.title}</h3>
-                      
+
                       <div className="space-y-2 md:space-y-3 mb-4 md:mb-6 mt-auto">
                         <div className="flex items-start gap-1.5 md:gap-3 text-xs md:text-sm text-gray-400">
                           <MapPin className={`h-3 w-3 md:h-4 md:w-4 shrink-0 mt-0.5 ${isFull ? 'text-gray-500' : 'text-[#F17B37]'}`} />
@@ -3274,7 +3274,7 @@ export default function AvaliacoesPage() {
   const [name, setName] = useState("");
   const [comment, setComment] = useState("");
   const [agendaId, setAgendaId] = useState("");
-  
+
   const [agendas, setAgendas] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -3288,7 +3288,7 @@ export default function AvaliacoesPage() {
         .from('agendas')
         .select('id, title, date')
         .order('date', { ascending: false });
-        
+
       if (agendasData) {
         setAgendas(agendasData);
       }
@@ -3306,7 +3306,7 @@ export default function AvaliacoesPage() {
       if (avaliacoesData) {
         setAvaliacoes(avaliacoesData);
       }
-      
+
       setIsLoading(false);
     }
     fetchData();
@@ -3315,7 +3315,7 @@ export default function AvaliacoesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       const { error } = await supabase.from('avaliacoes').insert([{
         name,
@@ -3336,7 +3336,7 @@ export default function AvaliacoesPage() {
         setRating(5);
         setAgendaId("");
       }, 3000);
-      
+
     } catch (err: any) {
       alert("Erro ao enviar avaliaÃ§Ã£o: " + err.message);
     } finally {
@@ -3363,28 +3363,28 @@ export default function AvaliacoesPage() {
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans selection:bg-[#F17B37] selection:text-white pb-20 overflow-hidden relative">
       <Navigation />
-      
+
       {/* Background Decorativo */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-10 pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
 
       <header className="pt-24 pb-12 px-6 max-w-7xl mx-auto relative z-10 text-center">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 backdrop-blur-md"
         >
           <span className="text-[#F17B37] text-sm font-bold tracking-widest uppercase">Prova Social</span>
         </motion.div>
-        
-        <motion.h1 
+
+        <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight"
         >
           O que nossos <span className="text-[#F17B37]">aventureiros</span> dizem
         </motion.h1>
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -3419,7 +3419,7 @@ export default function AvaliacoesPage() {
         ) : (
           <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
             {avaliacoes.map((av, index) => (
-              <motion.div 
+              <motion.div
                 key={av.id}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -3521,7 +3521,7 @@ export default function AvaliacoesPage() {
                       placeholder="Como vocÃª quer ser chamado?"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Qual trilha vocÃª fez?</label>
                     <select
@@ -3648,9 +3648,9 @@ export default function BioPage() {
         >
           <div className="w-28 h-28 rounded-full p-[3px] bg-gradient-to-tr from-[#F17B37] to-[#FFB347] animate-[spin_4s_linear_infinite]" style={{ animationDirection: 'reverse' }}>
             <div className="w-full h-full bg-[#0F1722] rounded-full flex items-center justify-center p-1 relative overflow-hidden animate-[spin_4s_linear_infinite]">
-              <Image 
-                src="/bio/Gemini_Generated_Image_gzfrdngzfrdngzfr.png" 
-                alt="Mais Trilha Menos Estresse" 
+              <Image
+                src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/bio/Gemini_Generated_Image_gzfrdngzfrdngzfr.png"
+                alt="Mais Trilha Menos Estresse"
                 fill
                 className="rounded-full object-cover"
               />
@@ -3817,7 +3817,7 @@ function CadastroContent() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isDuplicateBlock, setIsDuplicateBlock] = useState(false);
   const [duplicateBlockMessage, setDuplicateBlockMessage] = useState("");
-  
+
   const searchParams = useSearchParams();
   const agendaId = searchParams.get('agenda_id');
   const { items, clearCart } = useCartStore();
@@ -3830,7 +3830,7 @@ function CadastroContent() {
 
   const primaryAgendas = items.map(i => i.agendaId);
   const hasExtraPassengers = false;
-  
+
   // Update total steps
   const totalSteps = 4;
 
@@ -3870,7 +3870,7 @@ function CadastroContent() {
       });
     }
   }, [initialCpf]);
-  
+
   const sigCanvas = useRef<SignatureCanvas>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -3954,7 +3954,7 @@ function CadastroContent() {
     v = v.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     let letters = v.replace(/[^A-Z]/g, "").substring(0, 2);
     let numbers = v.replace(/[^0-9]/g, "").substring(0, 9);
-    
+
     if (numbers.length > 0) {
       if (numbers.length > 5) {
         numbers = numbers.replace(/^(\d{2})(\d{3})(\d{1,4})/, "$1.$2.$3");
@@ -3983,17 +3983,17 @@ function CadastroContent() {
       if (formData.photo) {
         const fileExt = formData.photo.name.split('.').pop();
         const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        
+
         const { error: uploadError } = await supabase.storage
           .from('fotos_agendas')
           .upload(fileName, formData.photo);
-          
+
         if (uploadError) throw uploadError;
-        
+
         const { data: publicUrlData } = supabase.storage
           .from('fotos_agendas')
           .getPublicUrl(fileName);
-          
+
         photoUrl = publicUrlData.publicUrl;
       }
 
@@ -4001,18 +4001,18 @@ function CadastroContent() {
       if (signatureData) {
         const res = await fetch(signatureData);
         const blob = await res.blob();
-        
+
         const signatureName = `signature_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
         const { error: sigUploadError } = await supabase.storage
           .from('fotos_agendas')
           .upload(signatureName, blob, { contentType: 'image/png' });
-          
+
         if (sigUploadError) throw sigUploadError;
 
         const { data: publicSigData } = supabase.storage
           .from('fotos_agendas')
           .getPublicUrl(signatureName);
-        
+
         signatureUrl = publicSigData.publicUrl;
       }
 
@@ -4048,7 +4048,7 @@ function CadastroContent() {
         savedClient = insertedData[0];
       }
 
-        
+
         // 3. Criar Reserva se existir agendaId (Substituido por Carrinho)
         let reservaIds = [];
         let totalItemsPrice = 0;
@@ -4058,9 +4058,9 @@ function CadastroContent() {
           // Calcula preco total
           totalItemsPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
           if (items.length === 1) checkoutTitle = items[0].title;
-          
+
           const allReservationsToCreate = [];
-          
+
           // Primary buyer spots
           primaryAgendas.forEach(aId => {
              allReservationsToCreate.push({ client_id: savedClient.id, agenda_id: aId });
@@ -4093,12 +4093,12 @@ function CadastroContent() {
               reservas: allReservationsToCreate
             })
           });
-          
+
           if (!resReserva.ok) {
             const errData = await resReserva.json();
             throw new Error(errData.error || 'Erro ao criar reservas');
           }
-          
+
           const reservaJson = await resReserva.json();
           reservaIds = reservaJson.reservas.map((r: any) => r.id);
         } else if (agendaId && savedClient) {
@@ -4141,7 +4141,7 @@ function CadastroContent() {
             })
           });
           const resCheckout = await reqCheckout.json();
-          
+
           if (resCheckout.url) {
             clearCart();
             window.location.href = resCheckout.url; // Redireciona para pagar
@@ -4154,7 +4154,7 @@ function CadastroContent() {
 
       // Se nÃ£o tiver pagamento online ou falhar, vai para o sucesso genÃ©rico
       setIsSuccess(true);
-      
+
     } catch (error: any) {
       console.error("Erro completo:", error);
       const errorMessage = error.message || error.error_description || (typeof error === 'object' ? JSON.stringify(error) : String(error));
@@ -4167,7 +4167,7 @@ function CadastroContent() {
   if (isDuplicateBlock) {
     return (
       <div className="min-h-screen bg-[#0F1722] flex items-center justify-center p-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-[#1a2332] border border-white/10 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl"
@@ -4179,7 +4179,7 @@ function CadastroContent() {
           <p className="text-gray-300 mb-8 leading-relaxed">
             {duplicateBlockMessage}
           </p>
-          <button 
+          <button
             onClick={() => window.location.href = '/'}
             className="w-full bg-[#F17B37] text-white py-3 rounded-xl font-bold hover:bg-[#d9682b] transition"
           >
@@ -4193,7 +4193,7 @@ function CadastroContent() {
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-[#0F1722] flex items-center justify-center p-6">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-[#1a2332] border border-white/10 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl"
@@ -4205,7 +4205,7 @@ function CadastroContent() {
           <p className="text-gray-400 mb-8">
             Sua vaga foi prÃ©-reservada. Se vocÃª nÃ£o foi redirecionado para o pagamento, aguarde o contato da equipe.
           </p>
-          <button 
+          <button
             onClick={() => window.location.href = `/agenda/${agendaId || ''}`}
             className="w-full bg-[#F17B37] text-white py-3 rounded-xl font-bold hover:bg-[#d9682b] transition"
           >
@@ -4232,11 +4232,11 @@ function CadastroContent() {
 
       <div className="w-full max-w-2xl px-6 relative z-10">
         <form onSubmit={onSubmit} className="bg-[#1a2332] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-          
+
           <div className="flex mb-8">
             {Array.from({ length: totalSteps }).map((_, idx) => idx + 1).map((i) => (
               <div key={i} className="flex-1 h-2 bg-gray-800 first:rounded-l-full last:rounded-r-full overflow-hidden">
-                <motion.div 
+                <motion.div
                   className="h-full bg-[#F17B37]"
                   initial={{ width: "0%" }}
                   animate={{ width: step >= i ? "100%" : "0%" }}
@@ -4248,7 +4248,7 @@ function CadastroContent() {
 
           <AnimatePresence mode="wait">
             {step === 1 && (
-              <motion.div 
+              <motion.div
                 key="step1"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -4277,24 +4277,24 @@ function CadastroContent() {
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">Nome Completo</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={formData.full_name}
                     onChange={e => setFormData({...formData, full_name: e.target.value})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="JoÃ£o da Silva Pereira"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">E-mail</label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     required
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="seuemail@exemplo.com"
                   />
                 </div>
@@ -4303,19 +4303,19 @@ function CadastroContent() {
                   <label className="block text-sm font-bold text-gray-300 mb-2">Telefone / WhatsApp</label>
                   <div className="relative">
                     <Phone className="absolute left-4 top-4 h-5 w-5 text-gray-500" />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       required
                       value={formData.phone}
                       onChange={e => setFormData({...formData, phone: formatPhone(e.target.value)})}
-                      className="w-full pl-12 p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                      className="w-full pl-12 p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                       placeholder="(00) 00000-0000"
                     />
                   </div>
                 </div>
 
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleNext}
                   disabled={!formData.full_name || !formData.phone || !formData.photo}
                   className="w-full mt-6 bg-white/10 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition disabled:opacity-50"
@@ -4326,7 +4326,7 @@ function CadastroContent() {
             )}
 
             {step === 2 && (
-              <motion.div 
+              <motion.div
                 key="step2"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -4339,25 +4339,25 @@ function CadastroContent() {
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">CPF</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     disabled={!!initialCpf}
                     value={formData.cpf}
                     onChange={e => setFormData({...formData, cpf: formatCPF(e.target.value)})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="000.000.000-00"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">RG</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={formData.rg}
                     onChange={e => setFormData({...formData, rg: formatRG(e.target.value)})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="MG-00.000.000"
                   />
                 </div>
@@ -4366,12 +4366,12 @@ function CadastroContent() {
                   <label className="block text-sm font-bold text-gray-300 mb-2">Data de Nascimento</label>
                   <div className="relative">
                     <Calendar className="absolute left-4 top-4 h-5 w-5 text-gray-500" />
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       required
                       value={formData.birth_date}
                       onChange={e => setFormData({...formData, birth_date: e.target.value})}
-                      className="w-full pl-12 p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all text-white [&::-webkit-calendar-picker-indicator]:invert" 
+                      className="w-full pl-12 p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all text-white [&::-webkit-calendar-picker-indicator]:invert"
                     />
                   </div>
                 </div>
@@ -4380,8 +4380,8 @@ function CadastroContent() {
                   <button type="button" onClick={handlePrev} className="flex-none px-6 bg-white/5 text-gray-300 rounded-2xl font-bold hover:bg-white/10 transition">
                     Voltar
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={handleNext}
                     disabled={!formData.cpf || !formData.rg || !formData.birth_date || isLoading}
                     className="flex-1 bg-white/10 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition disabled:opacity-50"
@@ -4393,7 +4393,7 @@ function CadastroContent() {
             )}
 
             {step === 3 && (
-              <motion.div 
+              <motion.div
                 key="step3"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -4413,56 +4413,56 @@ function CadastroContent() {
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">Nome do Contato de EmergÃªncia</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={formData.emergency_contact_name}
                     onChange={e => setFormData({...formData, emergency_contact_name: e.target.value})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="Nome da pessoa"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">Telefone do Contato</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     required
                     value={formData.emergency_contact_phone}
                     onChange={e => setFormData({...formData, emergency_contact_phone: formatPhone(e.target.value)})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="(00) 00000-0000"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">VocÃª possui alguma alergia a medicamentos?</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={formData.allergies}
                     onChange={e => setFormData({...formData, allergies: e.target.value})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="Ex: Alergia a Dipirona, Penicilina, etc. (Opcional)"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">Possui alguma condiÃ§Ã£o mÃ©dica/doenÃ§a?</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={formData.medical_conditions}
                     onChange={e => setFormData({...formData, medical_conditions: e.target.value})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600"
                     placeholder="Ex: PressÃ£o alta, asma, diabetes, etc. (Opcional)"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-gray-300 mb-2">Outras ObservaÃ§Ãµes (Opcional)</label>
-                  <textarea 
+                  <textarea
                     value={formData.health_notes}
                     onChange={e => setFormData({...formData, health_notes: e.target.value})}
-                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600 resize-none h-24" 
+                    className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600 resize-none h-24"
                     placeholder="Tipagem sanguÃ­nea, cirurgias recentes ou outra nota."
                   />
                 </div>
@@ -4471,8 +4471,8 @@ function CadastroContent() {
                   <button type="button" onClick={handlePrev} className="flex-none px-6 bg-white/5 text-gray-300 rounded-2xl font-bold hover:bg-white/10 transition">
                     Voltar
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={handleNext}
                     disabled={!formData.emergency_contact_name || !formData.emergency_contact_phone}
                     className="flex-1 bg-white/10 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition disabled:opacity-50"
@@ -4483,9 +4483,9 @@ function CadastroContent() {
               </motion.div>
             )}
 
-            
+
             {step === (hasExtraPassengers ? 5 : 4) && (
-              <motion.div 
+              <motion.div
                 key="step4"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -4518,10 +4518,10 @@ function CadastroContent() {
                   <p className="block text-sm font-bold text-gray-300 mb-3">AutorizaÃ§Ã£o de Uso de Imagem</p>
                   <div className="space-y-3">
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="image_auth" 
-                        value="sim" 
+                      <input
+                        type="radio"
+                        name="image_auth"
+                        value="sim"
                         checked={formData.image_authorization === "sim"}
                         onChange={() => setFormData({...formData, image_authorization: "sim"})}
                         className="mt-1"
@@ -4531,10 +4531,10 @@ function CadastroContent() {
                       </span>
                     </label>
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input 
-                        type="radio" 
-                        name="image_auth" 
-                        value="nao" 
+                      <input
+                        type="radio"
+                        name="image_auth"
+                        value="nao"
                         checked={formData.image_authorization === "nao"}
                         onChange={() => setFormData({...formData, image_authorization: "nao"})}
                         className="mt-1"
@@ -4548,8 +4548,8 @@ function CadastroContent() {
 
                 <div>
                   <label className="flex items-center gap-3 cursor-pointer p-2">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       required
                       checked={acceptedTerms}
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
@@ -4562,12 +4562,12 @@ function CadastroContent() {
                 <div className="mt-4">
                   <label className="block text-sm font-bold text-gray-300 mb-2">Assinatura igual o documento</label>
                   {!signatureData ? (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setIsSignatureModalOpen(true)}
                       className="w-full bg-white/10 text-[#F17B37] border-2 border-dashed border-[#F17B37]/50 p-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 hover:bg-[#F17B37]/10 transition"
                     >
-                      <PenTool className="w-6 h-6" /> 
+                      <PenTool className="w-6 h-6" />
                       <span>Clique aqui para assinar</span>
                     </button>
                   ) : (
@@ -4578,8 +4578,8 @@ function CadastroContent() {
                       <p className="text-green-400 font-bold flex items-center justify-center gap-1 mb-2">
                         <CheckCircle2 className="w-4 h-4" /> Assinatura Registrada
                       </p>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => setIsSignatureModalOpen(true)}
                         className="text-xs text-gray-400 hover:text-white transition underline"
                       >
@@ -4593,8 +4593,8 @@ function CadastroContent() {
                   <button type="button" onClick={handlePrev} className="flex-none px-6 bg-white/5 text-gray-300 rounded-2xl font-bold hover:bg-white/10 transition">
                     Voltar
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isLoading || !acceptedTerms || !signatureData}
                     className="flex-1 bg-gradient-to-r from-[#F17B37] to-[#f9a03f] text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] shadow-lg shadow-[#F17B37]/20 transition disabled:opacity-50 disabled:scale-100"
                   >
@@ -4611,7 +4611,7 @@ function CadastroContent() {
       {/* MODAL DE ASSINATURA FULL SCREEN (Refatorado e Modernizado) */}
       <AnimatePresence>
         {isSignatureModalOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
@@ -4626,29 +4626,29 @@ function CadastroContent() {
                 </h3>
                 <p className="text-gray-400 text-xs mt-1">Desenhe sua assinatura no centro do quadro.</p>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setIsSignatureModalOpen(false)}
                 className="bg-white/5 hover:bg-red-500/10 text-gray-300 hover:text-red-400 p-2.5 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 border border-transparent hover:border-red-500/20"
               >
                 Cancelar
               </button>
             </div>
-            
+
             {/* Ãrea de Desenho (Quadro Branco) */}
             <div className="flex-1 relative w-full p-4 md:p-8 flex flex-col touch-none">
               <div className="flex-1 w-full bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden relative border-4 border-[#1a2332]">
-                
+
                 {/* Dica visual suave no fundo */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 select-none">
                   <span className="text-4xl md:text-6xl font-black text-gray-300 transform -rotate-12">Assine Aqui</span>
                 </div>
 
-                <SignatureCanvas 
+                <SignatureCanvas
                   ref={sigCanvas}
                   canvasProps={{
                     // As classes absolutas garantem que o canvas ocupe 100% sem recalcular errado no mobile
-                    className: 'w-full h-full absolute inset-0 cursor-crosshair touch-none z-10' 
+                    className: 'w-full h-full absolute inset-0 cursor-crosshair touch-none z-10'
                   }}
                   backgroundColor="transparent" // Fundo transparente para ver a marca d'Ã¡gua
                   penColor="#0F1722" // Cor da caneta combinando com o tema escuro
@@ -4656,8 +4656,8 @@ function CadastroContent() {
 
                 {/* BotÃ£o Flutuante de Limpar */}
                 <div className="absolute top-4 right-4 z-20">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => sigCanvas.current?.clear()}
                     className="bg-gray-100/80 backdrop-blur text-gray-700 border border-gray-200 px-4 py-2.5 rounded-full text-xs font-bold shadow-md flex items-center gap-1.5 hover:bg-red-50 hover:text-red-600 transition-all active:scale-95"
                   >
@@ -4669,8 +4669,8 @@ function CadastroContent() {
 
             {/* Footer com BotÃ£o de ConfirmaÃ§Ã£o */}
             <div className="p-5 pb-8 md:pb-5 bg-[#1a2332]/80 border-t border-white/10 shrink-0 shadow-[0_-10px_30px_rgba(0,0,0,0.3)] z-10">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
                     // Pega a assinatura sem os espaÃ§os em branco extras
@@ -4748,14 +4748,14 @@ export default function CarrinhoPage() {
     return v;
   };
 
-  const hasMissingDependents = items.some(item => 
+  const hasMissingDependents = items.some(item =>
     item.quantity > 1 && item.dependents?.some(dep => !dep.name || dep.cpf.length < 14)
   );
 
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans pb-32">
       <div className="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-5 pointer-events-none" />
-      
+
       <header className="px-6 pt-24 pb-8 relative z-10">
         <button onClick={() => router.push('/agenda')} className="bg-white/5 p-3 rounded-full border border-white/10 hover:bg-white/10 transition mb-6">
           <ChevronLeft className="h-5 w-5" />
@@ -4772,7 +4772,7 @@ export default function CarrinhoPage() {
             <ShoppingCart className="h-16 w-16 text-gray-600 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Seu carrinho estÃ¡ vazio</h2>
             <p className="text-gray-400 mb-8">Bora escolher sua prÃ³xima aventura?</p>
-            <button 
+            <button
               onClick={() => router.push('/')}
               className="bg-white/10 text-white px-8 py-3 rounded-xl font-bold hover:bg-white/20 transition"
             >
@@ -4782,7 +4782,7 @@ export default function CarrinhoPage() {
         ) : (
           <div className="space-y-6">
             {items.map((item) => (
-              <motion.div 
+              <motion.div
                 key={item.agendaId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -4795,17 +4795,17 @@ export default function CarrinhoPage() {
                       <MapPin className="h-3 w-3" /> {item.date}
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
                     <div className="flex items-center gap-3 bg-white/5 p-1 rounded-xl border border-white/10">
-                      <button 
+                      <button
                         onClick={() => updateQuantity(item.agendaId, Math.max(1, item.quantity - 1))}
                         className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition"
                       >
                         -
                       </button>
                       <span className="font-bold w-6 text-center">{item.quantity}</span>
-                      <button 
+                      <button
                         onClick={() => updateQuantity(item.agendaId, item.quantity + 1)}
                         disabled={item.quantity >= (item.availableSpots || 100)}
                         className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
@@ -4813,13 +4813,13 @@ export default function CarrinhoPage() {
                         +
                       </button>
                     </div>
-                    
+
                     <div className="text-right">
                       <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Subtotal</p>
                       <p className="font-bold text-[#25D366] text-lg">R$ {(item.price * item.quantity).toFixed(2)}</p>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => removeItem(item.agendaId)}
                       className="p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition"
                       title="Remover Item"
@@ -4836,13 +4836,13 @@ export default function CarrinhoPage() {
                       <h4 className="font-bold text-sm text-gray-300">Dados dos Acompanhantes</h4>
                     </div>
                     <p className="text-xs text-gray-400">1 vaga Ã© sua (Titular). Preencha os dados das {item.quantity - 1} vagas extras para gerar as reservas.</p>
-                    
+
                     {item.dependents?.map((dep, idx) => (
                       <div key={idx} className="flex flex-col md:flex-row gap-4 pt-2 border-t border-white/5 first:border-0 first:pt-0">
                         <div className="flex-1">
                           <label className="block text-xs font-bold text-gray-400 mb-1">Nome Completo (Acompanhante {idx + 1})</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={dep.name}
                             onChange={(e) => updateDependent(item.agendaId, idx, 'name', e.target.value)}
                             placeholder="Nome completo do acompanhante"
@@ -4851,8 +4851,8 @@ export default function CarrinhoPage() {
                         </div>
                         <div className="flex-1 relative">
                           <label className="block text-xs font-bold text-gray-400 mb-1">CPF (Acompanhante {idx + 1})</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={dep.cpf}
                             maxLength={14}
                             onChange={(e) => handleCpfChange(item.agendaId, idx, e.target.value)}
@@ -4878,15 +4878,15 @@ export default function CarrinhoPage() {
                 <span className="text-xl font-bold text-gray-300">Total da Compra</span>
                 <span className="text-3xl font-black text-[#25D366]">R$ {getTotalPrice().toFixed(2)}</span>
               </div>
-              
+
               <div className="flex flex-col md:flex-row gap-4">
-                <button 
+                <button
                   onClick={() => router.push('/agenda')}
                   className="flex-1 px-6 py-4 bg-white/5 text-white rounded-xl font-bold hover:bg-white/10 transition border border-white/10"
                 >
                   Continuar Comprando
                 </button>
-                <button 
+                <button
                   onClick={() => router.push('/checkout')}
                   disabled={hasMissingDependents}
                   className="flex-[2] bg-gradient-to-r from-[#F17B37] to-[#f9a03f] text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] shadow-lg shadow-[#F17B37]/20 transition disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
@@ -4935,14 +4935,14 @@ import { Suspense } from "react";
 function CheckoutAuthContent() {
   const router = useRouter();
   const { items, clearCart, getTotalPrice } = useCartStore();
-  
+
   const [step, setStep] = useState<'email' | 'otp' | 'cart' | 'edit'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [clientData, setClientData] = useState<any>(null);
-  
+
   // Edit form state
   const [editForm, setEditForm] = useState<any>({});
 
@@ -4958,7 +4958,7 @@ function CheckoutAuthContent() {
           .select('*')
           .eq('email', session.user.email.toLowerCase())
           .single();
-          
+
         if (existingClient) {
           setClientData(existingClient);
           setStep('cart');
@@ -4972,23 +4972,23 @@ function CheckoutAuthContent() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     const { data: existingClient } = await supabase.from('clients').select('*').eq('email', email.trim().toLowerCase()).single();
-    
+
     if (!existingClient) {
       // Se nÃ£o existir, vai pro cadastro completo
       router.push(`/cadastro?email=${encodeURIComponent(email)}`);
       return;
     }
-    
+
     setClientData(existingClient);
-    
+
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
     });
-    
+
     setIsLoading(false);
-    
+
     if (error) {
       alert("Erro ao enviar cÃ³digo: " + error.message);
     } else {
@@ -4999,13 +4999,13 @@ function CheckoutAuthContent() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     let { error } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
       token: otp,
       type: 'email'
     });
-    
+
     if (error) {
       const retry1 = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp, type: 'magiclink' });
       error = retry1.error;
@@ -5015,9 +5015,9 @@ function CheckoutAuthContent() {
       const retry2 = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: otp, type: 'signup' });
       error = retry2.error;
     }
-    
+
     setIsLoading(false);
-    
+
     if (error) {
       alert("CÃ³digo invÃ¡lido ou expirado.");
     } else {
@@ -5066,12 +5066,12 @@ function CheckoutAuthContent() {
     setIsLoading(true);
     try {
       let allReservationsToCreate: any[] = [];
-      
+
       // Monta as reservas do Comprador Principal e dos Acompanhantes
       for (const item of items) {
         // Reserva do titular
         allReservationsToCreate.push({ client_id: clientData.id, agenda_id: item.agendaId });
-        
+
         // Reservas dos acompanhantes
         if (item.dependents && item.dependents.length > 0) {
           for (const dep of item.dependents) {
@@ -5099,18 +5099,18 @@ function CheckoutAuthContent() {
           reservas: allReservationsToCreate
         })
       });
-      
+
       if (!resReserva.ok) {
         const errData = await resReserva.json();
         throw new Error(errData.error || 'Erro ao criar reserva');
       }
-      
+
       const reservaJson = await resReserva.json();
       const reservaIds = reservaJson.reservas.map((r: any) => r.id);
-      
+
       const totalItemsPrice = getTotalPrice();
       const checkoutTitle = items.length === 1 ? items[0].title : 'Combo Trilha';
-      
+
       const dependentCPFs: string[] = [];
       items.forEach(item => {
         item.dependents?.forEach(dep => {
@@ -5136,7 +5136,7 @@ function CheckoutAuthContent() {
         })
       });
       const resCheckout = await reqCheckout.json();
-      
+
       if (resCheckout.url) {
         // Removemos o clearCart daqui para nÃ£o triggar o useEffect que joga pra home.
         // O carrinho serÃ¡ mantido. Idealmente limpar na pÃ¡gina de sucesso.
@@ -5162,7 +5162,7 @@ function CheckoutAuthContent() {
 
       <div className="w-full max-w-md relative z-10">
         <AnimatePresence mode="wait">
-          
+
           {step === 'email' && (
             <motion.form key="email" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} onSubmit={handleSendOtp} className="bg-[#1a2332] border border-white/10 p-8 rounded-3xl shadow-2xl relative">
               <button type="button" onClick={() => router.push('/carrinho')} className="absolute top-6 left-6 text-gray-400 hover:text-white transition">
@@ -5266,7 +5266,7 @@ function CheckoutAuthContent() {
                   </div>
                 </div>
               )}
-              
+
               <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl mb-6 text-xs text-orange-200">
                 Ao prosseguir, vocÃª confirma que leu e estÃ¡ ciente dos riscos desta expediÃ§Ã£o, concordando com as regras do seguro e utilizaÃ§Ã£o de imagem.
               </div>
@@ -5355,8 +5355,8 @@ export default function ContatoPage() {
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 px-6 flex flex-col items-center justify-center min-h-[60vh] text-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#F17B37]/10 via-[#0F1722]/80 to-[#0F1722] z-0" />
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative z-10 max-w-4xl mx-auto"
@@ -5366,7 +5366,7 @@ export default function ContatoPage() {
             Pronto para sua <br/> prÃ³xima <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#F17B37] to-amber-500">aventura?</span>
           </h1>
           <p className="text-xl text-gray-300 leading-relaxed max-w-2xl mx-auto">
-            Tem dÃºvidas sobre roteiros, quer sugerir um destino ou precisa de ajuda com sua reserva? 
+            Tem dÃºvidas sobre roteiros, quer sugerir um destino ou precisa de ajuda com sua reserva?
             Nossa equipe estÃ¡ pronta para te atender.
           </p>
         </motion.div>
@@ -5375,11 +5375,11 @@ export default function ContatoPage() {
       {/* Contact Cards */}
       <section className="py-10 px-6 relative z-10">
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-          
+
           {/* WhatsApp Card */}
-          <motion.a 
-            href="https://wa.me/5531998793939?text=Oi NÃ­vea! Quero saber mais sobre o Mais Trilha!" 
-            target="_blank" 
+          <motion.a
+            href="https://wa.me/5531998793939?text=Oi NÃ­vea! Quero saber mais sobre o Mais Trilha!"
+            target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -5399,9 +5399,9 @@ export default function ContatoPage() {
           </motion.a>
 
           {/* Instagram Card */}
-          <motion.a 
-            href="https://www.instagram.com/maistrilhamenosestresse/" 
-            target="_blank" 
+          <motion.a
+            href="https://www.instagram.com/maistrilhamenosestresse/"
+            target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -5426,11 +5426,11 @@ export default function ContatoPage() {
 
       {/* Footer simplificado */}
       <footer className="mt-32 border-t border-white/10 pt-10 text-center text-gray-500 text-sm flex flex-col items-center gap-4">
-        <img 
-          src="/FotosEvideos/logo/rodape.JPG" 
-          alt="Montanhas Mais Trilha" 
+        <img
+          src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/rodape.JPG"
+          alt="Montanhas Mais Trilha"
           className="h-12 w-auto mix-blend-screen opacity-50"
-          style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
+          style={{ filter: 'contrast(1.8) brightness(0.8)' }}
         />
         <p>Â© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
       </footer>
@@ -5465,7 +5465,7 @@ export const metadata: Metadata = {
 
 export default async function GerenciadorLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session) {
     redirect('/login');
   }
@@ -5483,7 +5483,7 @@ export default async function GerenciadorLayout({ children }: { children: React.
           <span className="text-xs font-medium tracking-wider text-gray-300">Mais Trilha - Web IDE</span>
         </div>
       </div>
-      
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative">
         {children}
@@ -5600,7 +5600,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   const handleDeleteFile = async () => {
      if (!contextMenu.file || !octokit || !selectedRepo) return;
      if (!confirm(`Tem certeza que deseja deletar ${contextMenu.file.name}?`)) return;
-     
+
      try {
        await octokit.repos.deleteFile({
          owner: selectedRepo.owner.login,
@@ -5635,7 +5635,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     if (accessToken) {
       const okit = new Octokit({ auth: accessToken });
       setOctokit(okit);
-      
+
       okit.repos.listForAuthenticatedUser({ sort: 'updated', per_page: 50 })
         .then(res => {
           setRepos(res.data);
@@ -5656,10 +5656,10 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     const handleIframeMessage = (event: MessageEvent) => {
       if (event.data?.type === "CMS_TEXT_UPDATED") {
         const { originalText, newText } = event.data.payload;
-        
+
         setCmsData((prevCmsData: any) => {
           if (!prevCmsData) return prevCmsData;
-          
+
           const deepReplace = (obj: any, oldVal: string, newVal: string): any => {
             if (typeof obj === 'string') {
               return obj.trim() === oldVal.trim() ? newVal : obj;
@@ -5676,20 +5676,20 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
             }
             return obj;
           };
-          
+
           return deepReplace(prevCmsData, originalText, newText);
         });
       }
-      
+
       if (event.data?.type === "CMS_ROUTE_CHANGED") {
         setPreviewUrl(event.data.payload.url);
       }
       if (event.data?.type === "CMS_IMAGE_UPDATED") {
         const { originalSrc, base64Data, fileName } = event.data.payload;
-        
+
         if (octokit && selectedRepo) {
           toast.info(`Salvando imagem ${fileName} no Github...`);
-          
+
           // O base64Data do FileReader vem como "data:image/png;base64,iVBORw0KGgo..."
           // Precisamos separar o header do conteÃºdo real
           const base64Content = base64Data.split(',')[1];
@@ -5757,7 +5757,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       console.warn("Deployments API check failed, falling back to basic URL.");
       setPreviewUrl(repo.homepage || `https://${repo.name}.vercel.app`);
     }
-    
+
     try {
       const branchInfo = await okitInstance.repos.getBranch({ owner: repo.owner.login, repo: repo.name, branch: repo.default_branch });
       const treeData = await okitInstance.git.getTree({ owner: repo.owner.login, repo: repo.name, tree_sha: branchInfo.data.commit.sha, recursive: "1" });
@@ -5769,7 +5769,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         const parts = item.path.split("/");
         const name = parts.pop();
         const parentPath = parts.join("/");
-        
+
         const node = {
           id: item.sha,
           name,
@@ -5789,7 +5789,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
       const initialExpanded: any = {};
       root.forEach(n => { if(n.type === 'folder') initialExpanded[n.id] = true });
-      
+
       setExpandedFolders(initialExpanded);
       setFileTree(root);
     } catch (error) {
@@ -5835,7 +5835,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
   const handleSelectFileNode = async (node: any) => {
     if (node.type === 'folder') return;
     setIsLowCodeMode(false);
-    
+
     const alreadyOpen = openFiles.find(f => f.id === node.id);
     if (alreadyOpen) {
       setActiveFileId(node.id);
@@ -5881,12 +5881,12 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       alert("Selecione um repositÃ³rio primeiro.");
       return;
     }
-    
+
     for (const file of acceptedFiles) {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Content = (event.target?.result as string).split(',')[1];
-        
+
         try {
           await octokit.repos.createOrUpdateFileContents({
             owner: selectedRepo.owner.login,
@@ -5918,7 +5918,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       if (node.type === "folder") {
         return (
           <div key={node.id}>
-            <div 
+            <div
               className={`flex items-center gap-1.5 py-1 px-2 cursor-pointer hover:bg-[#2a2d2e] transition-colors`}
               style={{ paddingLeft: `${level * 12 + 8}px` }}
               onClick={() => toggleFolder(node.id)}
@@ -5937,7 +5937,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       }
 
       return (
-        <div 
+        <div
           key={node.id}
           className={`flex items-center gap-2 py-1 px-2 cursor-pointer hover:bg-[#2a2d2e] transition-colors ${isSelected ? 'bg-[#37373d] text-white' : 'text-gray-400'}`}
           style={{ paddingLeft: `${(level * 12) + 24}px` }}
@@ -5965,7 +5965,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
   const commitToGithub = async (filePath: string, newContent: string, message: string, isBase64: boolean = false) => {
     if (!octokit || !selectedRepo) return false;
-    
+
     try {
       let currentSha = undefined;
       // 1. Tenta pegar o SHA atual do arquivo se ele jÃ¡ existir
@@ -5979,10 +5979,10 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       } catch (err) {
         // Arquivo nÃ£o existe, serÃ¡ criado. Ignora o erro.
       }
-  
+
       // 2. Transforma o conteÃºdo em Base64 (suporta acentos) ou usa o Base64 cru
       const contentBase64 = isBase64 ? newContent : btoa(unescape(encodeURIComponent(newContent)));
-  
+
       // 3. Faz o Commit real
       await octokit.repos.createOrUpdateFileContents({
         owner: selectedRepo.owner.login,
@@ -5993,7 +5993,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         sha: currentSha,
         branch: selectedRepo.default_branch
       });
-      
+
       return true;
     } catch (error) {
       console.error("Erro no commit:", error);
@@ -6030,7 +6030,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
     return Object.keys(data).map(key => {
       const val = data[key];
       const currentPath = [...path, key];
-      
+
       if (typeof val === 'object' && val !== null) {
         return (
           <div key={currentPath.join('-')} className="bg-[#252526] border border-[#3c3c3c] rounded-xl p-6 shadow-xl mb-6">
@@ -6041,7 +6041,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           </div>
         );
       }
-      
+
       const isColor = typeof val === 'string' && val.startsWith('#') && (val.length === 4 || val.length === 7);
       const isImage = typeof val === 'string' && val.match(/\.(jpeg|jpg|gif|png|svg|webp)$/i) != null;
       const isVideo = typeof val === 'string' && val.match(/\.(mp4|webm|ogg)$/i) != null;
@@ -6123,7 +6123,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
         <input {...getInputProps()} />
       <AnimatePresence>
         {isDragActive && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 z-50 bg-[#1e1e1e]/90 backdrop-blur-sm border-4 border-dashed border-[#F17B37] flex flex-col items-center justify-center rounded-lg m-4"
           >
@@ -6137,7 +6137,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       {/* SIDEBAR */}
       <div className="w-64 bg-[#252526] border-r border-[#3c3c3c] flex flex-col shrink-0">
         <div className="p-2 border-b border-[#3c3c3c]">
-          <select 
+          <select
             className="w-full bg-[#1e1e1e] border border-[#3c3c3c] text-sm text-gray-300 rounded p-1.5 outline-none focus:border-[#F17B37]"
             value={selectedRepo?.id || ""}
             onChange={(e) => {
@@ -6181,7 +6181,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
       {!isLowCodeMode && (
         <div className="flex-1 flex min-w-0">
           <div className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] border-r border-[#3c3c3c]">
-            
+
             {/* VS CODE TOP MENU BAR */}
             <div className="h-8 bg-[#333333] flex items-center px-2 text-[13px] text-[#cccccc] select-none shrink-0 border-b border-[#252526]">
                <div className="flex items-center">
@@ -6207,8 +6207,8 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
 
             <div className="h-10 bg-[#252526] flex items-center overflow-x-auto custom-scrollbar border-b border-[#3c3c3c] shrink-0">
             {openFiles.map(file => (
-              <div 
-                key={file.id} 
+              <div
+                key={file.id}
                 onClick={() => { setActiveFileId(file.id); setIsLowCodeMode(false); }}
                 className={`group flex items-center gap-2 px-3 h-full border-r border-[#3c3c3c] cursor-pointer min-w-[120px] max-w-[200px] select-none ${activeFileId === file.id && !isLowCodeMode ? 'bg-[#1e1e1e] text-white border-t-2 border-t-blue-500' : 'text-gray-400 hover:bg-[#2d2d2d]'}`}
               >
@@ -6225,11 +6225,11 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
             <div className="text-xs text-gray-400 flex items-center gap-2 font-mono truncate">
                {isLowCodeMode ? "Tudo EditÃ¡vel > Base de Dados (JSON)" : activeFile?.path || "Nenhum arquivo aberto"}
             </div>
-            
+
             <div className="flex gap-2">
               {/* BotÃ£o de Salvar do Dev (SÃ³ aparece fora do Modo Visual) */}
               {!isLowCodeMode && activeFile && activeFile.type === 'file' && (
-                <button 
+                <button
                   onClick={async () => {
                     setIsDeploying(true);
                     const success = await commitToGithub(activeFile.path, activeFile.content, `AtualizaÃ§Ã£o dev: ${activeFile.name}`);
@@ -6244,8 +6244,8 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                   Salvar CÃ³digo
                 </button>
               )}
-  
-              <button 
+
+              <button
                 onClick={handleDeploy}
                 disabled={isDeploying}
                 className={`text-xs font-bold px-4 py-1.5 rounded-md flex items-center gap-2 transition-all shadow-sm ${
@@ -6255,11 +6255,11 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                   'bg-[#1D2A3A] hover:bg-gray-900 text-white border border-[#3c3c3c]'
                 }`}
               >
-                {deployStatus === 'building' ? <Loader2 className="h-3 w-3 animate-spin" /> : 
+                {deployStatus === 'building' ? <Loader2 className="h-3 w-3 animate-spin" /> :
                  deployStatus === 'success' ? <CheckCircle2 className="h-3 w-3" /> :
                  deployStatus === 'error' ? <AlertCircle className="h-3 w-3" /> :
                  <Send className="h-3 w-3" />}
-                {deployStatus === 'building' ? 'Enviando p/ Vercel...' : 
+                {deployStatus === 'building' ? 'Enviando p/ Vercel...' :
                  deployStatus === 'success' ? 'Site Atualizado!' :
                  deployStatus === 'error' ? 'Erro no Deploy' :
                  'Simular / Atualizar Site'}
@@ -6279,14 +6279,14 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
                 height="100%"
                 theme="vs-dark"
                 language={
-                  activeFile.extension === 'tsx' || activeFile.extension === 'ts' ? 'typescript' : 
-                  activeFile.extension === 'css' ? 'css' : 
-                  activeFile.extension === 'json' ? 'json' : 
-                  activeFile.extension === 'html' ? 'html' : 
-                  activeFile.extension === 'php' ? 'php' : 
-                  activeFile.extension === 'py' ? 'python' : 
-                  activeFile.extension === 'md' ? 'markdown' : 
-                  activeFile.extension === 'js' || activeFile.extension === 'jsx' ? 'javascript' : 
+                  activeFile.extension === 'tsx' || activeFile.extension === 'ts' ? 'typescript' :
+                  activeFile.extension === 'css' ? 'css' :
+                  activeFile.extension === 'json' ? 'json' :
+                  activeFile.extension === 'html' ? 'html' :
+                  activeFile.extension === 'php' ? 'php' :
+                  activeFile.extension === 'py' ? 'python' :
+                  activeFile.extension === 'md' ? 'markdown' :
+                  activeFile.extension === 'js' || activeFile.extension === 'jsx' ? 'javascript' :
                   'javascript'
                 }
                 value={activeFile.content}
@@ -6314,9 +6314,9 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
          <div className="h-10 bg-[#f3f4f6] flex items-center px-4 border-b border-gray-200 shrink-0 gap-3 text-gray-600">
            <Globe className="h-4 w-4 text-blue-500 shrink-0" />
            <span className="text-xs font-bold uppercase tracking-wider shrink-0 hidden lg:block">Preview</span>
-           
+
            {/* Editable URL Bar */}
-           <input 
+           <input
              type="text"
              value={previewUrl}
              onChange={(e) => setPreviewUrl(e.target.value)}
@@ -6330,11 +6330,11 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
              </button>
            )}
          </div>
-           
+
            <div className="flex-1 relative bg-gray-50 flex items-center justify-center">
              {previewUrl ? (
-               <iframe 
-                 src={previewUrl} 
+               <iframe
+                 src={previewUrl}
                  className="w-full h-full border-none shadow-inner"
                  title="Preview"
                  sandbox="allow-scripts allow-same-origin allow-forms"
@@ -6347,12 +6347,12 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
              )}
            </div>
         </div>
-        
+
       </div>
-      
+
       {/* Context Menu flutuante */}
       {contextMenu.visible && (
-        <div 
+        <div
           className="fixed bg-[#252526] border border-[#3c3c3c] shadow-2xl rounded py-1 z-[99999] min-w-[150px]"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
@@ -6364,7 +6364,7 @@ export default function WebIDEClient({ accessToken }: { accessToken: string }) {
           <button className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white transition-colors" onClick={handleDeleteFile}>Excluir Arquivo</button>
         </div>
       )}
-      
+
       {/* Status Bar no RodapÃ© corrigido (Fora do Flex Row principal) */}
       <div className="h-8 w-full bg-[#333333] border-t border-[#2d2d2d] flex items-center px-4 shrink-0 z-20 justify-between">
         <div className={`flex items-center gap-2 text-xs font-bold transition-colors ${isLowCodeMode ? 'text-green-400' : 'text-red-400'}`}>
@@ -6408,7 +6408,7 @@ export default function LoginPage() {
     }
 
     const supabase = createClient();
-    
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {}
@@ -6430,7 +6430,7 @@ export default function LoginPage() {
     setMessage(null);
 
     const supabase = createClient();
-    
+
     let { data, error } = await supabase.auth.verifyOtp({
       email,
       token,
@@ -6556,10 +6556,10 @@ export default function LoginPage() {
                   {loading ? "Verificando..." : "Entrar no Sistema"}
                 </button>
               </div>
-              
+
               <div className="text-center">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setStep(1)}
                   className="text-sm text-[#F17B37] hover:underline"
                 >
@@ -6568,7 +6568,7 @@ export default function LoginPage() {
               </div>
             </form>
           )}
-          
+
           <div className="mt-6 text-center text-xs text-gray-500">
             Acesso 100% seguro sem senhas.<br/>
             A chave de autenticaÃ§Ã£o expira em alguns minutos.
@@ -6601,26 +6601,26 @@ export default function OlharesPage() {
 
   const olhares = [
     {
-      src: "/FotosEvideos/OLHARES/IMG_8892.JPG",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8892.JPG",
       text: "A forÃ§a que nos faz dar o prÃ³ximo passo, mesmo quando o cansaÃ§o bate."
     },
     {
-      src: "/FotosEvideos/OLHARES/IMG_8889.JPG",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8889.JPG",
       text: "A alegria de chegar ao topo e saber que nÃ£o estamos sozinhos."
     },
     {
-      src: "/FotosEvideos/OLHARES/SCRL_0007.jpg",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/SCRL_0007.jpg",
       text: "A paz que sÃ³ se encontra depois de vencer uma montanha."
     },
     {
-      src: "/FotosEvideos/OLHARES/IMG_8892 - Copia.JPG",
+      src: "https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8892%20-%20Copia.JPG",
       text: "Os encontros reais que a natureza nos proporciona."
     }
   ];
 
   return (
     <div className="bg-[#05080c] text-white min-h-screen overflow-x-hidden font-sans selection:bg-[#F17B37] selection:text-white">
-      
+
       {/* PARTÃCULAS DE POEIRA CINEMATOGRÃFICAS (FAGULHAS E NÃ‰VOA DE FUNDO) */}
 
       {/* PARTÃCULAS DE POEIRA CINEMATOGRÃFICAS (FAGULHAS E NÃ‰VOA DE FUNDO) */}
@@ -6663,7 +6663,7 @@ export default function OlharesPage() {
 
       {/* NAVEGAÃ‡ÃƒO MINIMALISTA */}
       <nav className="fixed top-0 left-0 right-0 z-50 p-6">
-        <button 
+        <button
           onClick={() => router.push('/')}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border border-white/10"
         >
@@ -6675,21 +6675,21 @@ export default function OlharesPage() {
       {/* HERO DRAMÃTICO COM FUNDO FOTOGRÃFICO */}
       <section className="relative min-h-[70vh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
         {/* A imagem de fundo (os olhares especÃ­ficos pedidos) com mÃ¡scara de transparÃªncia */}
-        <div 
+        <div
           className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center"
           style={{
             WebkitMaskImage: 'radial-gradient(ellipse at center, black 10%, transparent 100%)',
             maskImage: 'radial-gradient(ellipse at center, black 10%, transparent 65%)'
           }}
         >
-          <img 
-            src="/FotosEvideos/OLHARES/IMG_8893%20-%20Copia%20(2).JPG" 
-            alt="Olhares Especiais" 
+          <img
+            src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/OLHARES/IMG_8893%20-%20Copia%20(2).JPG"
+            alt="Olhares Especiais"
             className="w-full h-[50vh] md:h-full object-contain md:object-cover opacity-20 grayscale"
           />
         </div>
-        
-        <motion.div 
+
+        <motion.div
           style={{ y: yHero, opacity: opacityHero }}
           initial={{ opacity: 0, filter: "blur(20px)", scale: 1.1 }}
           animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
@@ -6709,7 +6709,7 @@ export default function OlharesPage() {
       {/* GALERIA CINEMATOGRÃFICA DE OLHARES */}
       <section className="py-20 px-6 max-w-7xl mx-auto space-y-40 relative z-10">
         {olhares.map((item, index) => (
-          <motion.div 
+          <motion.div
             key={item.src}
             initial={{ opacity: 0, y: 150, filter: "blur(15px)" }}
             whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -6719,21 +6719,21 @@ export default function OlharesPage() {
           >
             <div className="flex-1 w-full relative group">
               {/* MÃ¡scara de transparÃªncia real, agora com degradÃª extremamente suave para nÃ£o ficar chapado */}
-              <div 
+              <div
                 className="relative aspect-[4/5] md:aspect-[4/4]"
                 style={{
                   WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
                   maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)'
                 }}
               >
-                <img 
-                  src={item.src} 
-                  alt="Um olhar nas trilhas" 
+                <img
+                  src={item.src}
+                  alt="Um olhar nas trilhas"
                   className="w-full h-full object-cover object-center grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 transition-all duration-[2000ms] ease-out"
                 />
               </div>
             </div>
-            
+
             <div className="flex-1 text-center md:text-left">
               <div className="w-12 h-[2px] bg-[#F17B37] mb-8 mx-auto md:mx-0 opacity-50" />
               <p className="text-3xl md:text-5xl font-black text-gray-200 leading-tight drop-shadow-xl">
@@ -6747,7 +6747,7 @@ export default function OlharesPage() {
       {/* FOOTER DRAMÃTICO */}
       <section className="py-32 text-center relative overflow-hidden mt-20">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-[#05080c] to-[#05080c]" />
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -6757,8 +6757,8 @@ export default function OlharesPage() {
           <Heart className="h-12 w-12 text-[#F17B37] mx-auto mb-8 opacity-80 animate-pulse" />
           <h2 className="text-4xl font-bold mb-6 text-white">Nosso mais profundo obrigado.</h2>
           <p className="text-gray-400 text-lg mb-12">Cada trilha Ã© escrita pelos seus passos.</p>
-          
-          <button 
+
+          <button
             onClick={() => router.push('/')}
             className="text-sm font-bold tracking-[0.3em] uppercase text-[#F17B37] hover:text-white transition-colors border-b border-[#F17B37]/30 pb-2 hover:border-white"
           >
@@ -6797,8 +6797,8 @@ export default function SobrePage() {
       {/* Hero Section */}
       <section className="relative pt-40 pb-10 px-6 flex flex-col items-center justify-center text-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#F17B37]/10 via-[#0F1722]/80 to-[#0F1722] z-0" />
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative z-10 max-w-4xl mx-auto"
@@ -6813,19 +6813,19 @@ export default function SobrePage() {
         </motion.div>
 
         {/* Tab Selector - Estilo Painel/PÃ­lula */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="relative z-10 flex bg-white/5 p-1.5 rounded-full border border-white/10 backdrop-blur-md shadow-2xl max-w-md mx-auto w-full"
         >
-          <button 
+          <button
             onClick={() => setActiveTab('historia')}
             className={`flex-1 py-3 px-6 rounded-full font-bold text-sm transition-all duration-300 ${activeTab === 'historia' ? 'bg-[#F17B37] text-white shadow-[0_0_15px_rgba(241,123,55,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
             A Nossa HistÃ³ria
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('equipe')}
             className={`flex-1 py-3 px-6 rounded-full font-bold text-sm transition-all duration-300 ${activeTab === 'equipe' ? 'bg-[#F17B37] text-white shadow-[0_0_15px_rgba(241,123,55,0.4)]' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
           >
@@ -6838,9 +6838,9 @@ export default function SobrePage() {
       <section className="py-10 px-6 relative z-10 min-h-[50vh]">
         <div className="max-w-6xl mx-auto">
           <AnimatePresence mode="wait">
-            
+
             {activeTab === 'historia' && (
-              <motion.div 
+              <motion.div
                 key="historia"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -6849,9 +6849,9 @@ export default function SobrePage() {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center mb-24">
                   <div>
-                    <Image 
-                      src="/FotosEvideos/Nivea/IMG_0521.JPG" 
-                      alt="Nossa histÃ³ria" 
+                    <Image
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/Nivea/IMG_0521.JPG"
+                      alt="Nossa histÃ³ria"
                       width={800}
                       height={500}
                       className="w-full h-[500px] object-cover rounded-[2rem] shadow-2xl shadow-[#F17B37]/20 border border-white/10"
@@ -6895,7 +6895,7 @@ export default function SobrePage() {
             )}
 
             {activeTab === 'equipe' && (
-              <motion.div 
+              <motion.div
                 key="equipe"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -6908,7 +6908,7 @@ export default function SobrePage() {
                   <div className="order-2 md:order-1 space-y-6 text-lg text-gray-300 leading-relaxed">
                     <h2 className="text-4xl md:text-5xl font-black text-white mb-2">NÃ­vea Maria</h2>
                     <h3 className="text-[#F17B37] font-bold tracking-[0.2em] uppercase text-sm mb-8">Guia e Fundadora</h3>
-                    
+
                     <p>
                       Me chamo NÃ­vea Maria, tenho 35 anos e, hÃ¡ trÃªs, o ecoturismo transformou a minha vida. Minha conexÃ£o com a natureza vem de berÃ§o: sempre amei o simples, o essencial, e Ã© nela que me sinto verdadeiramente em casa.
                     </p>
@@ -6927,9 +6927,9 @@ export default function SobrePage() {
                   </div>
                   <div className="order-1 md:order-2 relative">
                     <div className="absolute inset-0 bg-[#F17B37] blur-[100px] opacity-20 rounded-full" />
-                    <Image 
-                      src="/FotosEvideos/equipe/Nivea.jpeg" 
-                      alt="NÃ­vea Maria" 
+                    <Image
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/equipe/Nivea.jpeg"
+                      alt="NÃ­vea Maria"
                       width={600}
                       height={600}
                       className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
@@ -6941,9 +6941,9 @@ export default function SobrePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                   <div className="relative">
                     <div className="absolute inset-0 bg-[#25D366] blur-[100px] opacity-10 rounded-full" />
-                    <Image 
-                      src="/FotosEvideos/equipe/Palestino.jpeg" 
-                      alt="Palestino" 
+                    <Image
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/equipe/Palestino.jpeg"
+                      alt="Palestino"
                       width={600}
                       height={600}
                       className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#25D366]/50 transition-colors duration-500"
@@ -6952,7 +6952,7 @@ export default function SobrePage() {
                   <div className="space-y-6 text-lg text-gray-300 leading-relaxed">
                     <h2 className="text-4xl md:text-5xl font-black text-white mb-2">Palestino</h2>
                     <h3 className="text-[#F17B37] font-bold tracking-[0.2em] uppercase text-sm mb-8">Motorista Oficial</h3>
-                    
+
                     <p>
                       Conheci o Mais Trilha atravÃ©s do meu antigo trabalho, quando fui escalado para um frete com o grupo. Fui tÃ£o bem acolhido por todos que, nas viagens seguintes, me tornei o motorista oficial. O que comeÃ§ou como uma simples prestaÃ§Ã£o de serviÃ§o transformou-se em amizade, parceria e famÃ­lia.
                     </p>
@@ -6971,13 +6971,13 @@ export default function SobrePage() {
 
       {/* Footer simplificado */}
       <footer className="mt-20 border-t border-white/10 pt-10 text-center text-gray-500 text-sm flex flex-col items-center gap-4">
-        <Image 
-          src="/FotosEvideos/logo/rodape.JPG" 
-          alt="Montanhas Mais Trilha" 
+        <Image
+          src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/logo/rodape.JPG"
+          alt="Montanhas Mais Trilha"
           width={300}
           height={48}
           className="h-12 w-auto mix-blend-screen opacity-50"
-          style={{ filter: 'contrast(1.8) brightness(0.8)' }} 
+          style={{ filter: 'contrast(1.8) brightness(0.8)' }}
         />
         <p>Â© {new Date().getFullYear()} Todos os direitos reservados a Mais Trilha Menos Estresse.</p>
       </footer>
@@ -7038,25 +7038,25 @@ function SucessoContent() {
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans flex flex-col items-center justify-center relative overflow-hidden p-6">
       {/* Background Decorativo Animado */}
-      <motion.div 
-        animate={{ 
+      <motion.div
+        animate={{
           scale: [1, 1.2, 1],
           opacity: [0.1, 0.2, 0.1]
         }}
         transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#F17B37] rounded-full blur-[150px] pointer-events-none" 
+        className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-[#F17B37] rounded-full blur-[150px] pointer-events-none"
       />
-      <motion.div 
-        animate={{ 
+      <motion.div
+        animate={{
           scale: [1, 1.3, 1],
           opacity: [0.1, 0.15, 0.1]
         }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#25D366] rounded-full blur-[150px] pointer-events-none" 
+        className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-[#25D366] rounded-full blur-[150px] pointer-events-none"
       />
 
       <div className="w-full max-w-lg z-10">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, type: "spring", bounce: 0.5 }}
@@ -7066,7 +7066,7 @@ function SucessoContent() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#25D366] to-transparent opacity-50" />
 
           {/* Ãcone Animado de Sucesso */}
-          <motion.div 
+          <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1, rotate: 360 }}
             transition={{ delay: 0.3, duration: 0.8, type: "spring" }}
@@ -7120,7 +7120,7 @@ function SucessoContent() {
                   {dependents.map((dep, i) => (
                     <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
                       <span className="font-medium text-sm text-gray-300 truncate">{dep.full_name}</span>
-                      <button 
+                      <button
                         onClick={() => copyLink(dep.cpf)}
                         className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition"
                       >
@@ -7132,7 +7132,7 @@ function SucessoContent() {
               </div>
             )}
 
-            <button 
+            <button
               onClick={() => router.push('/agenda')}
               className="w-full bg-gradient-to-r from-[#F17B37] to-[#f9a03f] text-white py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] shadow-[0_10px_20px_rgba(241,123,55,0.2)] transition-all"
             >
@@ -7143,7 +7143,7 @@ function SucessoContent() {
         </motion.div>
 
         {/* Logo Bottom */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
@@ -7176,14 +7176,14 @@ export default function TermosDeUso() {
   return (
     <div className="min-h-screen bg-[#0F1722] text-gray-300 py-24 px-6 md:px-12 font-sans selection:bg-[#F17B37] selection:text-white">
       <div className="max-w-4xl mx-auto">
-        <button 
+        <button
           onClick={() => router.push('/')}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
         >
           <ArrowLeft className="w-5 h-5" /> Voltar para o inÃ­cio
         </button>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-[#151D2A] border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl"
@@ -7276,17 +7276,17 @@ export default function AgendaDetailsPage() {
         .select('*')
         .eq('id', params.id as string)
         .single();
-        
+
       if (!error && data) {
         setAgenda(data);
-        
+
         // Busca reservas pagas para calcular lotaÃ§Ã£o
         const { count } = await supabase
           .from('reservas')
           .select('*', { count: 'exact', head: true })
           .eq('agenda_id', params.id as string)
           .in('status_pagamento', ['pago', 'pendente']);
-          
+
         setPaidCount(count || 0);
 
         // Incrementa visualizaÃ§Ã£o apenas uma vez por carregamento de pÃ¡gina e por dispositivo
@@ -7294,13 +7294,13 @@ export default function AgendaDetailsPage() {
           if (typeof window !== 'undefined') {
             const viewedKey = `viewed_agenda_${data.id}`;
             const hasViewed = localStorage.getItem(viewedKey);
-            
+
             if (!hasViewed) {
               await supabase
                 .from('agendas')
                 .update({ views: (data.views || 0) + 1 })
                 .eq('id', data.id);
-                
+
               localStorage.setItem(viewedKey, 'true');
             }
           }
@@ -7333,13 +7333,13 @@ export default function AgendaDetailsPage() {
     }
   };
 
-  const coverImage = agenda.images && agenda.images.length > 0 
-    ? agenda.images[currentImageIndex] 
+  const coverImage = agenda.images && agenda.images.length > 0
+    ? agenda.images[currentImageIndex]
     : "https://images.unsplash.com/photo-1522163182402-834f871fd851?q=80&w=2000&auto=format&fit=crop";
 
   const eventDateObj = new Date(agenda.date + 'T12:00:00Z');
   const eventDate = eventDateObj.toLocaleDateString('pt-BR');
-  
+
   const maxCap = agenda.max_capacity || 15;
   const remaining = Math.max(0, maxCap - paidCount);
   const isSoldOut = remaining === 0;
@@ -7378,7 +7378,7 @@ export default function AgendaDetailsPage() {
 
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans selection:bg-[#F17B37] selection:text-white pb-32">
-      
+
       {/* Header BotÃµes Superiores */}
       <div className="absolute top-6 left-6 right-6 z-30 flex justify-between">
         <button onClick={() => router.push('/agenda')} className="bg-black/40 backdrop-blur-md p-3 rounded-full border border-white/10 hover:bg-white/10 transition">
@@ -7387,22 +7387,22 @@ export default function AgendaDetailsPage() {
       </div>
 
       {/* Carrossel / Imagem de Capa */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1 }}
         className="relative h-[45vh] w-full group"
       >
         <div className="absolute inset-0 bg-gradient-to-t from-[#0F1722] via-[#0F1722]/60 to-transparent z-10" />
-        
+
         <AnimatePresence mode="wait">
-          <motion.img 
+          <motion.img
             key={currentImageIndex}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             src={coverImage}
-            alt={agenda.title} 
+            alt={agenda.title}
             className="w-full h-full object-cover"
           />
         </AnimatePresence>
@@ -7417,7 +7417,7 @@ export default function AgendaDetailsPage() {
 
       {/* ConteÃºdo Principal */}
       <div className="relative z-20 max-w-2xl mx-auto px-6 -mt-16">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -7479,7 +7479,7 @@ export default function AgendaDetailsPage() {
               </div>
             )}
           </div>
-          
+
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Valor da Trilha</p>
@@ -7490,19 +7490,19 @@ export default function AgendaDetailsPage() {
 
           {/* NavegaÃ§Ã£o de Abas */}
           <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 backdrop-blur-md sticky top-4 z-40 shadow-2xl">
-            <button 
+            <button
               onClick={() => setActiveTab('roteiro')}
               className={`flex-1 py-3 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'roteiro' ? 'bg-[#F17B37] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
               <FileText className="h-4 w-4" /> Roteiro
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('embarque')}
               className={`flex-1 py-3 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'embarque' ? 'bg-[#F17B37] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
               <MapPin className="h-4 w-4" /> Embarque
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('galeria')}
               className={`flex-1 py-3 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${activeTab === 'galeria' ? 'bg-[#F17B37] text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
             >
@@ -7513,10 +7513,10 @@ export default function AgendaDetailsPage() {
           {/* Ãrea de ConteÃºdo das Abas */}
           <div className="min-h-[300px]">
             <AnimatePresence mode="wait">
-              
+
               {/* ABA: ROTEIRO */}
               {activeTab === 'roteiro' && (
-                <motion.div 
+                <motion.div
                   key="roteiro"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -7537,7 +7537,7 @@ export default function AgendaDetailsPage() {
 
               {/* ABA: EMBARQUE */}
               {activeTab === 'embarque' && (
-                <motion.div 
+                <motion.div
                   key="embarque"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -7558,7 +7558,7 @@ export default function AgendaDetailsPage() {
 
               {/* ABA: GALERIA */}
               {activeTab === 'galeria' && (
-                <motion.div 
+                <motion.div
                   key="galeria"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -7572,9 +7572,9 @@ export default function AgendaDetailsPage() {
                         <VideoIcon className="h-5 w-5" /> VÃ­deo Promocional
                       </h3>
                       <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video relative bg-black">
-                        <video 
-                          src={agenda.video_url} 
-                          controls 
+                        <video
+                          src={agenda.video_url}
+                          controls
                           className="w-full h-full object-contain"
                           controlsList="nodownload"
                           preload="metadata"
@@ -7592,8 +7592,8 @@ export default function AgendaDetailsPage() {
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
                         {agenda.images.map((img: string, idx: number) => (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             onClick={() => setLightboxIndex(idx)}
                             className="aspect-square rounded-xl overflow-hidden border border-white/10 group cursor-pointer"
                           >
@@ -7614,12 +7614,12 @@ export default function AgendaDetailsPage() {
 
             </AnimatePresence>
           </div>
-          
+
         </motion.div>
       </div>
 
       {/* Footer Fixo */}
-      <motion.div 
+      <motion.div
         initial={{ y: 100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
@@ -7628,7 +7628,7 @@ export default function AgendaDetailsPage() {
         <div className="max-w-2xl mx-auto flex flex-col gap-3">
           <div className="flex gap-2">
             {isSoldOut ? (
-              <button 
+              <button
                 disabled
                 className="flex-1 flex items-center justify-center gap-2 bg-red-500/80 text-white p-4 rounded-2xl font-bold text-lg shadow-lg cursor-not-allowed opacity-80"
               >
@@ -7636,7 +7636,7 @@ export default function AgendaDetailsPage() {
                 Vagas Esgotadas
               </button>
             ) : (
-              <button 
+              <button
                 onClick={handleComprar}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] text-white p-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-[#20b858] hover:scale-[1.02] transition-all"
               >
@@ -7645,7 +7645,7 @@ export default function AgendaDetailsPage() {
               </button>
             )}
 
-            <a 
+            <a
               href={`https://wa.me/5531998793939?text=Oi NÃ­vea! Tenho uma dÃºvida sobre a trilha: ${agenda.title}`}
               target="_blank"
               rel="noreferrer"
@@ -7656,16 +7656,16 @@ export default function AgendaDetailsPage() {
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
               </svg>
             </a>
-            
-            <button 
+
+            <button
               onClick={handleShare}
               className="flex-none flex items-center justify-center bg-white/10 hover:bg-white/20 text-white p-4 rounded-2xl font-bold shadow-lg hover:scale-[1.02] transition-all border border-white/10"
               title="Compartilhar Trilha"
             >
               <Send className="h-6 w-6" />
             </button>
-            
-            <a 
+
+            <a
               href="https://www.instagram.com/maistrilhamenosestresse/"
               target="_blank"
               rel="noreferrer"
@@ -7685,7 +7685,7 @@ export default function AgendaDetailsPage() {
       {/* LIGHTBOX DE FOTOS */}
       <AnimatePresence>
         {lightboxIndex !== null && agenda.images && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -7693,7 +7693,7 @@ export default function AgendaDetailsPage() {
             onClick={() => setLightboxIndex(null)}
           >
             {/* Fechar */}
-            <button 
+            <button
               onClick={() => setLightboxIndex(null)}
               className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition z-50"
             >
@@ -7702,7 +7702,7 @@ export default function AgendaDetailsPage() {
 
             {/* Anterior */}
             {lightboxIndex > 0 && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
                 className="absolute left-4 md:left-8 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition z-50"
               >
@@ -7712,7 +7712,7 @@ export default function AgendaDetailsPage() {
 
             {/* PrÃ³xima */}
             {lightboxIndex < agenda.images.length - 1 && (
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
                 className="absolute right-4 md:right-8 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 p-3 rounded-full transition z-50"
               >
@@ -7732,7 +7732,7 @@ export default function AgendaDetailsPage() {
               className="w-full h-full object-contain max-w-5xl mx-auto p-4 cursor-default"
               onClick={(e) => e.stopPropagation()}
             />
-            
+
             {/* Indicador */}
             <div className="absolute bottom-8 left-0 right-0 text-center text-white/70 text-sm font-bold tracking-widest z-50 bg-black/40 py-1 w-24 mx-auto rounded-full backdrop-blur">
               {lightboxIndex + 1} / {agenda.images.length}
@@ -7780,7 +7780,7 @@ export default function TermoPrintPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8 print:p-0 print:bg-white text-black font-sans">
       <div className="max-w-[800px] mx-auto mb-6 print:hidden flex justify-end items-center">
-        <button 
+        <button
           onClick={() => window.print()}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition"
         >
@@ -7789,7 +7789,7 @@ export default function TermoPrintPage() {
       </div>
 
       <div className="max-w-[800px] mx-auto bg-white p-6 md:p-12 shadow-lg print:shadow-none print:p-0 text-base md:text-sm print:text-sm">
-        
+
         <div className="text-center mb-8 border-b-2 border-black pb-6">
           <h1 className="text-2xl font-black text-[#113a5d] mb-4 uppercase">TERMO DE RECONHECIMENTO DE RISCO E ISENÃ‡ÃƒO DE RESPONSABILIDADE</h1>
           <p className="text-gray-600 text-sm">ExpediÃ§Ã£o: Trilha Mais Trilha â€¢ Organizadora: Mais Trilha Menos Estresse</p>
@@ -7799,7 +7799,7 @@ export default function TermoPrintPage() {
           <div className="bg-[#eef5fa] p-2 mb-4 border-l-4 border-[#113a5d]">
             <h2 className="font-bold text-[#113a5d]">1. Dados do Participante</h2>
           </div>
-          
+
           <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-base md:text-sm print:text-sm min-w-[300px]">
             <tbody>
@@ -7929,7 +7929,7 @@ export default function TermoPrintPage() {
             <div className="text-base md:text-sm print:text-sm w-full md:w-1/3 text-center md:text-left">
               <p>Data: {client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : 'Data nÃ£o registrada'}</p>
             </div>
-            
+
             <div className="w-full md:w-1/2 flex flex-col items-center">
               {client.signature_url ? (
                 // eslint-disable-next-line @next/next/no-img-element

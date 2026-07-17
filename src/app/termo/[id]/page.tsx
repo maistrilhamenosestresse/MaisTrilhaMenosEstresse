@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import { Loader2, Printer } from "lucide-react";
 import type { Client } from "@/types";
 
@@ -14,9 +13,10 @@ export default function TermoPrintPage() {
   useEffect(() => {
     async function loadClient() {
       if (!id) return;
-      const { data, error } = await supabase.from('clients').select('*').eq('id', id).single();
-      if (!error && data) {
-        setClient(data);
+      const response = await fetch(`/api/clients/${encodeURIComponent(String(id))}/term`, { cache: 'no-store' });
+      if (response.ok) {
+        const { client: clientData } = await response.json();
+        setClient(clientData);
       }
       setIsLoading(false);
     }

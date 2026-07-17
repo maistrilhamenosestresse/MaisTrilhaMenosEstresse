@@ -29,9 +29,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.dev-server*.log
+/.logs/
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backups devem existir somente no S3 criptografado
+/backups/
+backup_*.json
+*.dump
+.media-migration-complete.json
