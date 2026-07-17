@@ -3,14 +3,13 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronLeft, QrCode, CreditCard, Copy, CheckCircle2,
-  Loader2, Calendar, ShieldCheck, Sparkles, X, WalletCards, Coins
+  ChevronLeft, QrCode, CreditCard, CheckCircle2,
+  Loader2, Calendar, ShieldCheck, Sparkles, WalletCards, Coins
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { motion, AnimatePresence } from "framer-motion";
-import { calculateGrossPrice } from "@/lib/fees";
+import { motion } from "framer-motion";
 
 function TrailCheckoutContent() {
   const router = useRouter();
@@ -23,21 +22,7 @@ function TrailCheckoutContent() {
   const [agenda, setAgenda] = useState<any>(null);
   const [client, setClient] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"PIX" | "CREDIT_CARD">("PIX");
-  const [pixData, setPixData] = useState<{
-    encodedImage: string;
-    payload: string;
-    paymentId: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [cardData, setCardData] = useState({
-    number: "",
-    holderName: "",
-    expiry: "",
-    ccv: "",
-  });
-  const [installments, setInstallments] = useState(1);
   const [useCashback, setUseCashback] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
 
@@ -66,20 +51,12 @@ function TrailCheckoutContent() {
   const handleCheckout = async () => {
     if (!client || !agenda || !reservaId) return;
 
-    if (paymentMethod === "CREDIT_CARD" && amountDue > 0) {
-      if (!cardData.number || !cardData.holderName || !cardData.expiry || !cardData.ccv) {
-        alert("Preencha todos os dados do cartão.");
-        return;
-      }
-    }
-
     setProcessing(true);
     try {
-      const [month, year] = cardData.expiry.split("/");
       const payload: any = {
         reserva_ids: [reservaId],
-        payment_method: amountDue <= 0 ? "PIX" : paymentMethod,
-        installments: paymentMethod === "CREDIT_CARD" && amountDue > 0 ? installments : 1,
+        payment_method: "INFINITEPAY",
+        installments: 1,
         checkout_source: "app",
         use_cashback: useCashback,
         use_points: usePoints,
@@ -93,17 +70,6 @@ function TrailCheckoutContent() {
         },
       };
 
-      if (paymentMethod === "CREDIT_CARD" && amountDue > 0) {
-        payload.credit_card_data = {
-          holderName: cardData.holderName,
-          number: cardData.number.replace(/\D/g, ""),
-          expiryMonth: month?.trim(),
-          expiryYear: year?.trim().length === 2 ? `20${year.trim()}` : year?.trim(),
-          ccv: cardData.ccv,
-          installmentCount: installments,
-        };
-      }
-
       const res = await fetch("/api/checkout-asaas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,13 +79,15 @@ function TrailCheckoutContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro no checkout");
 
-      if (data.type === "PIX") {
-        setPixData({
-          encodedImage: data.encodedImage,
-          payload: data.payload,
-          paymentId: data.paymentId,
-        });
-      } else if (data.type === "CREDIT_CARD" || data.type === "INTERNAL") {
+      if (data.type === "INFINITEPAY" && data.redirectUrl) {
+        window.sessionStorage.setItem(
+          `infinitepay:${data.orderNsu}:returnTo`,
+          `/app/trilhas/${agendaId}`,
+        );
+        window.location.assign(data.redirectUrl);
+        return;
+      }
+      if (data.type === "INTERNAL") {
         setSuccess(true);
       }
     } catch (err: any) {
@@ -129,61 +97,12 @@ function TrailCheckoutContent() {
     }
   };
 
-  const handleCopy = () => {
-    if (pixData?.payload) {
-      navigator.clipboard.writeText(pixData.payload);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
-  };
-
-  useEffect(() => {
-    if (!pixData?.paymentId || success) return;
-    let active = true;
-    let attempts = 0;
-    const checkPayment = async () => {
-      attempts += 1;
-      try {
-        const response = await fetch(
-          `/api/checkout-asaas/status?paymentId=${encodeURIComponent(pixData.paymentId)}`,
-          { cache: "no-store" },
-        );
-        const result = await response.json();
-        if (active && response.ok && result.confirmed) {
-          setSuccess(true);
-          setPixData(null);
-        }
-      } catch {
-        // Mantém a próxima tentativa automática.
-      }
-      if (attempts >= 300) active = false;
-    };
-    const initialTimer = window.setTimeout(checkPayment, 1500);
-    const interval = window.setInterval(() => {
-      if (active) checkPayment();
-    }, 3000);
-    return () => {
-      active = false;
-      window.clearTimeout(initialTimer);
-      window.clearInterval(interval);
-    };
-  }, [pixData?.paymentId, success]);
-
   const acceptedPaymentMethods = Array.isArray(agenda?.accepted_payment_methods) &&
     agenda.accepted_payment_methods.length > 0
     ? agenda.accepted_payment_methods
     : ["PIX"];
   const acceptsPix = acceptedPaymentMethods.includes("PIX");
   const acceptsCard = acceptedPaymentMethods.includes("CREDIT_CARD");
-
-  useEffect(() => {
-    if (!agenda) return;
-    if (paymentMethod === "PIX" && !acceptsPix && acceptsCard) {
-      setPaymentMethod("CREDIT_CARD");
-    } else if (paymentMethod === "CREDIT_CARD" && !acceptsCard && acceptsPix) {
-      setPaymentMethod("PIX");
-    }
-  }, [agenda, paymentMethod, acceptsPix, acceptsCard]);
 
   const formatDate = (dateStr: string) => {
     try { return format(parseISO(dateStr), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR }); }
@@ -251,10 +170,7 @@ function TrailCheckoutContent() {
     ? Math.min(pointsAvailable, Math.floor(Math.max(0, grossPrice - cashbackApplied) * 100))
     : 0;
   const netAmountDue = Math.max(0, grossPrice - cashbackApplied - pointsApplied / 100);
-  const amountDue = netAmountDue <= 0
-    ? 0
-    : calculateGrossPrice(netAmountDue, paymentMethod, paymentMethod === "CREDIT_CARD" ? installments : 1);
-  const providerFee = Math.max(0, amountDue - netAmountDue);
+  const amountDue = netAmountDue;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
@@ -300,7 +216,7 @@ function TrailCheckoutContent() {
 
           <button
             type="button"
-            disabled={cashbackAvailable <= 0 || Boolean(pixData)}
+            disabled={cashbackAvailable <= 0}
             onClick={() => setUseCashback((value) => !value)}
             className={`w-full rounded-2xl border p-4 text-left flex items-center gap-3 transition ${
               useCashback ? "border-emerald-300 bg-emerald-50" : "border-gray-200 bg-gray-50"
@@ -322,7 +238,7 @@ function TrailCheckoutContent() {
 
           <button
             type="button"
-            disabled={pointsAvailable <= 0 || Boolean(pixData)}
+            disabled={pointsAvailable <= 0}
             onClick={() => setUsePoints((value) => !value)}
             className={`w-full rounded-2xl border p-4 text-left flex items-center gap-3 transition ${
               usePoints ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-gray-50"
@@ -355,12 +271,6 @@ function TrailCheckoutContent() {
                 <span>- {formatCurrency(pointsApplied / 100)}</span>
               </div>
             )}
-            {providerFee > 0 && (
-              <div className="flex justify-between text-slate-300">
-                <span>Tarifa Asaas repassada</span>
-                <span>+ {formatCurrency(providerFee)}</span>
-              </div>
-            )}
             <div className="flex justify-between font-black text-base pt-2 border-t border-white/10">
               <span>Você paga agora</span>
               <span>{formatCurrency(amountDue)}</span>
@@ -371,217 +281,49 @@ function TrailCheckoutContent() {
           </p>
         </div>
 
-        {/* Seleção de Método de Pagamento */}
-        <AnimatePresence>
-          {!pixData && (
-            <motion.div
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-4"
-            >
-              <h3 className="font-bold text-gray-700 text-sm">
-                {amountDue > 0 ? "Forma de Pagamento" : "Pagamento coberto pelos benefícios"}
-              </h3>
-              {amountDue > 0 && (acceptsPix || acceptsCard) && (
-              <div className="grid grid-cols-2 gap-3">
-                {acceptsPix && (
-                <button
-                  onClick={() => setPaymentMethod("PIX")}
-                  className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
-                    paymentMethod === "PIX"
-                      ? "border-purple-600 bg-purple-50"
-                      : "border-gray-100 bg-white hover:border-gray-200"
-                  }`}
-                >
-                  <QrCode className={`w-7 h-7 ${paymentMethod === "PIX" ? "text-purple-600" : "text-gray-400"}`} />
-                  <span className={`font-bold text-sm ${paymentMethod === "PIX" ? "text-purple-700" : "text-gray-500"}`}>
-                    Pix
-                  </span>
-                  <span className={`text-[10px] font-medium ${paymentMethod === "PIX" ? "text-purple-400" : "text-gray-400"}`}>
-                    Aprovação imediata
-                  </span>
-                </button>
-                )}
-                {acceptsCard && (
-                <button
-                  onClick={() => setPaymentMethod("CREDIT_CARD")}
-                  className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
-                    paymentMethod === "CREDIT_CARD"
-                      ? "border-purple-600 bg-purple-50"
-                      : "border-gray-100 bg-white hover:border-gray-200"
-                  }`}
-                >
-                  <CreditCard className={`w-7 h-7 ${paymentMethod === "CREDIT_CARD" ? "text-purple-600" : "text-gray-400"}`} />
-                  <span className={`font-bold text-sm ${paymentMethod === "CREDIT_CARD" ? "text-purple-700" : "text-gray-500"}`}>
-                    Cartão
-                  </span>
-                  <span className={`text-[10px] font-medium ${paymentMethod === "CREDIT_CARD" ? "text-purple-400" : "text-gray-400"}`}>
-                    Até 12x
-                  </span>
-                </button>
-                )}
-              </div>
-              )}
+        <motion.div initial={{ opacity: 1 }} className="space-y-4">
+          <h3 className="font-bold text-gray-700 text-sm">
+            {amountDue > 0 ? "Forma de Pagamento" : "Pagamento coberto pelos benefícios"}
+          </h3>
 
-              {amountDue > 0 && !acceptsPix && !acceptsCard && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
-                  Esta trilha não possui uma forma de pagamento disponível no aplicativo.
+          {amountDue > 0 && (acceptsPix || acceptsCard) && (
+            <div className="bg-white rounded-3xl p-5 border-2 border-purple-200 shadow-sm">
+              <div className="flex items-center gap-3">
+                <span className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center">
+                  <QrCode className="w-6 h-6" />
+                </span>
+                <div>
+                  <p className="font-black text-gray-800">Pix ou cartão</p>
+                  <p className="text-xs text-gray-500">Checkout seguro da InfinitePay, cartão em até 12x.</p>
                 </div>
-              )}
-
-              {/* Formulário de Cartão */}
-              <AnimatePresence>
-                {paymentMethod === "CREDIT_CARD" && amountDue > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4"
-                  >
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Número do Cartão
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="0000 0000 0000 0000"
-                        maxLength={19}
-                        value={cardData.number}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim();
-                          setCardData({ ...cardData, number: v });
-                        }}
-                        className="w-full mt-1.5 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none tracking-widest"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Nome no Cartão
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="NOME DO TITULAR"
-                        value={cardData.holderName}
-                        onChange={(e) => setCardData({ ...cardData, holderName: e.target.value.toUpperCase() })}
-                        className="w-full mt-1.5 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none uppercase"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                          Validade
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="MM/AA"
-                          maxLength={5}
-                          value={cardData.expiry}
-                          onChange={(e) => {
-                            let v = e.target.value.replace(/\D/g, "");
-                            if (v.length >= 2) v = v.slice(0, 2) + "/" + v.slice(2, 4);
-                            setCardData({ ...cardData, expiry: v });
-                          }}
-                          className="w-full mt-1.5 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                          CVV
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="123"
-                          maxLength={4}
-                          value={cardData.ccv}
-                          onChange={(e) => setCardData({ ...cardData, ccv: e.target.value.replace(/\D/g, "") })}
-                          className="w-full mt-1.5 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                        />
-                      </div>
-                    </div>
-                    {/* Parcelas */}
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        Parcelas
-                      </label>
-                      <select
-                        value={installments}
-                        onChange={(e) => setInstallments(Number(e.target.value))}
-                        className="w-full mt-1.5 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                      >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
-                          <option key={n} value={n}>
-                            {n}x de {formatCurrency(amountDue / n)} {n === 1 ? "(sem juros)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <button
-                onClick={handleCheckout}
-                disabled={processing || (amountDue > 0 && !acceptsPix && !acceptsCard)}
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-60 text-base"
-              >
-                {processing ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>
-                ) : amountDue <= 0 ? (
-                  <><CheckCircle2 className="w-5 h-5" /> Confirmar com benefícios</>
-                ) : paymentMethod === "PIX" ? (
-                  <><QrCode className="w-5 h-5" /> Gerar QR Code Pix</>
-                ) : (
-                  <><CreditCard className="w-5 h-5" /> Confirmar Pagamento</>
-                )}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* QR Code Pix */}
-        <AnimatePresence>
-          {pixData && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col items-center text-center"
-            >
-              <div className="w-52 h-52 bg-gray-50 rounded-2xl mb-5 flex items-center justify-center p-3 overflow-hidden border border-gray-200 shadow-inner">
-                <img
-                  src={`data:image/png;base64,${pixData.encodedImage}`}
-                  alt="QR Code PIX"
-                  className="w-full h-full object-contain"
-                />
+                <CreditCard className="w-6 h-6 text-purple-500 ml-auto" />
               </div>
-              <h3 className="font-black text-gray-800 text-lg mb-1">Escaneie o QR Code</h3>
-              <p className="text-sm text-gray-500 mb-5 font-medium">
-                Sua vaga será confirmada automaticamente assim que o Pix for pago.
+              <p className="text-[11px] text-gray-500 mt-4">
+                Você escolherá a forma de pagamento na próxima tela. Nenhum dado de cartão passa pelo Mais Trilha.
               </p>
-              <div className="mb-4 flex items-center gap-2 text-xs font-bold text-amber-600">
-                <Loader2 className="h-4 w-4 animate-spin" /> Aguardando confirmação da Asaas
-              </div>
-              <button
-                onClick={handleCopy}
-                className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-purple-200 mb-3"
-              >
-                {copied ? (
-                  <><CheckCircle2 className="w-5 h-5 text-green-500" /> Código Copiado!</>
-                ) : (
-                  <><Copy className="w-5 h-5" /> Copiar Código (Copia e Cola)</>
-                )}
-              </button>
-              <button
-                onClick={() => router.push(`/app/trilhas/${agendaId}`)}
-                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-500 font-bold py-3 rounded-xl transition-colors text-sm flex items-center justify-center gap-2"
-              >
-                <X className="w-4 h-4" /> Voltar para detalhes da trilha
-              </button>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+
+          {amountDue > 0 && !acceptsPix && !acceptsCard && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+              Esta trilha não possui Pix ou cartão habilitado.
+            </div>
+          )}
+
+          <button
+            onClick={handleCheckout}
+            disabled={processing || (amountDue > 0 && !acceptsPix && !acceptsCard)}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-60 text-base"
+          >
+            {processing ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /> Preparando checkout...</>
+            ) : amountDue <= 0 ? (
+              <><CheckCircle2 className="w-5 h-5" /> Confirmar com benefícios</>
+            ) : (
+              <><ShieldCheck className="w-5 h-5" /> Continuar para InfinitePay</>
+            )}
+          </button>
+        </motion.div>
       </div>
     </div>
   );

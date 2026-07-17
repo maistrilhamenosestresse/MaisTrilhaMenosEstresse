@@ -187,7 +187,7 @@ export default function AppTermsPage() {
               proteger suas credenciais e manter os dados cadastrais corretos.
             </p>
             <p>
-              Pagamentos são processados pela Asaas. Cashback e pontos seguem as regras mostradas
+              Pix e cartão são processados pela InfinitePay; boleto é processado pelo Asaas. Cashback e pontos seguem as regras mostradas
               no checkout; valores reservados são devolvidos quando um checkout não é concluído ou
               quando o fluxo de cancelamento aplicável determina a devolução.
             </p>

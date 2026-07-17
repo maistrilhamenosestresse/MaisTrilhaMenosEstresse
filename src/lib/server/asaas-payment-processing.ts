@@ -6,6 +6,7 @@ import { sendPurchaseEmail } from '@/lib/email';
 import { sendWhatsAppText } from '@/lib/whatsapp';
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
+type PaymentProvider = 'ASAAS' | 'INFINITEPAY' | 'INTERNAL';
 
 export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, payment: any) {
   const reference = String(payment.externalReference || '');
@@ -22,13 +23,54 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
     throw new Error('Pagamento Asaas inválido');
   }
 
+  return processConfirmedProviderPayment(supabase, {
+    reference,
+    paymentId,
+    paidValue,
+    customerChargedValue: paidValue,
+    billingType: payment.billingType || 'ASAAS',
+    provider: isInternalAppCheckout ? 'INTERNAL' : 'ASAAS',
+  });
+}
+
+export async function processConfirmedProviderPayment(
+  supabase: SupabaseAdmin,
+  payment: {
+    reference: string;
+    paymentId: string;
+    paidValue: number;
+    customerChargedValue?: number;
+    billingType: string;
+    provider: PaymentProvider;
+  },
+) {
+  const reference = String(payment.reference || '');
+  const paymentId = String(payment.paymentId || '');
+  const paidValue = Number(payment.paidValue || 0);
+  const customerChargedValue = Number(payment.customerChargedValue ?? paidValue);
+  const isInternalAppCheckout = payment.provider === 'INTERNAL' &&
+    reference.startsWith('TRILHA_APP:') &&
+    paymentId.startsWith('INTERNAL:');
+  if (
+    !reference ||
+    !paymentId ||
+    !Number.isFinite(paidValue) ||
+    !Number.isFinite(customerChargedValue) ||
+    paidValue < 0 ||
+    customerChargedValue < paidValue ||
+    (paidValue === 0 && !isInternalAppCheckout)
+  ) {
+    throw new Error('Pagamento confirmado inválido');
+  }
+
   if (reference.startsWith('RECARGA:')) {
     const clientId = reference.split(':')[1];
-    const { data: credited, error } = await supabase.rpc('credit_wallet_from_asaas', {
+    const { data: credited, error } = await supabase.rpc('credit_wallet_from_provider', {
       p_client_id: clientId,
       p_payment_id: paymentId,
       p_amount: paidValue,
-      p_description: 'Recarga de carteira via Asaas',
+      p_description: `Recarga de carteira via ${providerLabel(payment.provider)}`,
+      p_provider: payment.provider === 'INTERNAL' ? 'ASAAS' : payment.provider,
     });
     if (error) throw error;
     if (credited) {
@@ -53,7 +95,7 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
       .select('*, clients(full_name, phone), produtos(name)').eq('id', orderId).single();
     await supabase.from('notificacoes').insert({
       tipo: 'venda_loja', titulo: 'Nova venda na loja',
-      mensagem: `Pedido #${orderId.substring(0, 8)} confirmado pela Asaas.`, lida: false,
+      mensagem: `Pedido #${orderId.substring(0, 8)} confirmado pela ${providerLabel(payment.provider)}.`, lida: false,
     });
     if (order && process.env.WHATSAPP_ADMIN_NUMBER) {
       const client = order.clients as any;
@@ -72,7 +114,7 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
       p_benefit_id: benefitId,
       p_payment_id: paymentId,
       p_paid_amount: paidValue,
-      p_billing_type: payment.billingType || 'ASAAS',
+      p_billing_type: payment.billingType,
     });
     if (error) throw error;
     if (!processed) return 'duplicate';
@@ -91,12 +133,21 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
       Number(benefit.amount_due || 0),
       true,
       benefit.owner_id,
-      paidValue,
+      customerChargedValue,
+      payment.provider,
     );
   }
 
   const reservationIds = await reservationIdsFromReference(supabase, reference);
-  return processTrailPayment(supabase, reservationIds, paymentId, paidValue, payment.billingType);
+  return processTrailPayment(
+    supabase,
+    reservationIds,
+    paymentId,
+    paidValue,
+    payment.billingType,
+    customerChargedValue,
+    payment.provider,
+  );
 }
 
 export async function processCanceledAsaasPayment(supabase: SupabaseAdmin, payment: any, event: string) {
@@ -157,7 +208,15 @@ async function reservationIdsFromReference(supabase: SupabaseAdmin, reference: s
   return data.map((item) => item.id);
 }
 
-async function processTrailPayment(supabase: SupabaseAdmin, reservationIds: string[], paymentId: string, paidValue: number, billingType?: string) {
+async function processTrailPayment(
+  supabase: SupabaseAdmin,
+  reservationIds: string[],
+  paymentId: string,
+  paidValue: number,
+  billingType: string,
+  customerChargedValue: number,
+  provider: PaymentProvider,
+) {
   if (!reservationIds.length) throw new Error('Reservas ausentes no pagamento');
   const { data: reservationValues, error: valueError } = await supabase
     .from('reservas')
@@ -174,11 +233,20 @@ async function processTrailPayment(supabase: SupabaseAdmin, reservationIds: stri
   }
   const { data: processed, error } = await supabase.rpc('finalize_trail_payment', {
     p_reservation_ids: reservationIds, p_payment_id: paymentId,
-    p_paid_amount: saleValue, p_billing_type: billingType || 'ASAAS',
+    p_paid_amount: saleValue, p_billing_type: billingType,
   });
   if (error) throw error;
   if (!processed) return 'duplicate';
-  return completeTrailPayment(supabase, reservationIds, paymentId, saleValue, false, undefined, paidValue);
+  return completeTrailPayment(
+    supabase,
+    reservationIds,
+    paymentId,
+    saleValue,
+    false,
+    undefined,
+    customerChargedValue,
+    provider,
+  );
 }
 
 async function completeTrailPayment(
@@ -189,6 +257,7 @@ async function completeTrailPayment(
   rewardEligible: boolean,
   ownerId?: string,
   customerChargedValue = paidValue,
+  provider: PaymentProvider = 'ASAAS',
 ) {
   const { data: reservations, error: reservationError } = await supabase.from('reservas')
     .select('*, clients!reservas_client_id_fkey(*), agendas(*)').in('id', reservationIds);
@@ -219,8 +288,14 @@ async function completeTrailPayment(
   if (process.env.WHATSAPP_ADMIN_NUMBER) {
     await sendWhatsAppText(
       process.env.WHATSAPP_ADMIN_NUMBER,
-      `✅ *NOVA VENDA CONFIRMADA (ASAAS)*\n\n👤 ${principal.clients.full_name}\n🎒 ${principal.agendas.title}\n🎟️ ${reservationIds.length} vaga(s)\n💰 Venda líquida: R$ ${paidValue.toFixed(2)}\n💳 Cobrado do cliente: R$ ${customerChargedValue.toFixed(2)}`,
+      `✅ *NOVA VENDA CONFIRMADA (${providerLabel(provider).toUpperCase()})*\n\n👤 ${principal.clients.full_name}\n🎒 ${principal.agendas.title}\n🎟️ ${reservationIds.length} vaga(s)\n💰 Venda líquida: R$ ${paidValue.toFixed(2)}\n💳 Cobrado do cliente: R$ ${customerChargedValue.toFixed(2)}`,
     );
   }
   return 'completed';
+}
+
+function providerLabel(provider: PaymentProvider) {
+  if (provider === 'INFINITEPAY') return 'InfinitePay';
+  if (provider === 'INTERNAL') return 'saldo e pontos';
+  return 'Asaas';
 }

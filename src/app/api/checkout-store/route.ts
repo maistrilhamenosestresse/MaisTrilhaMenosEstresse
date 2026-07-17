@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { createOrUpdateCustomer, createPayment, getPixQrCode } from '@/lib/asaas';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
+import { createInfinitePayLink } from '@/lib/server/infinitepay';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
@@ -9,8 +10,7 @@ export const dynamic = 'force-dynamic';
 type CheckoutBody = {
   produtoId?: string;
   clientId?: string;
-  method?: 'pix' | 'cartao' | 'cashback';
-  creditCard?: Record<string, string>;
+  method?: 'infinitepay' | 'pix' | 'cartao' | 'cashback';
   postalCode?: string;
   addressNumber?: string;
   forma_entrega?: 'retirada' | 'correios' | 'entrega_trilha';
@@ -26,15 +26,13 @@ export async function POST(request: Request) {
   if (parsed.response) return parsed.response;
 
   const input = parsed.data;
-  const method = input.method || 'pix';
+  const requestedMethod = input.method || 'infinitepay';
+  const method = requestedMethod === 'cashback' ? 'cashback' : 'infinitepay';
   const deliveryMethod = input.forma_entrega || 'retirada';
   if (!isUuid(input.produtoId || '') || !isUuid(input.clientId || '') ||
-      !['pix', 'cartao', 'cashback'].includes(method) ||
+      !['infinitepay', 'pix', 'cartao', 'cashback'].includes(requestedMethod) ||
       !['retirada', 'correios', 'entrega_trilha'].includes(deliveryMethod)) {
     return NextResponse.json({ error: 'Dados do pedido inválidos' }, { status: 400 });
-  }
-  if (method === 'cartao' && !isValidCard(input.creditCard)) {
-    return NextResponse.json({ error: 'Dados do cartão inválidos' }, { status: 400 });
   }
   const deliveryInfo = String(input.delivery_info || '').trim().slice(0, 1000);
   if (deliveryMethod !== 'retirada' && deliveryInfo.length < 5) {
@@ -50,14 +48,9 @@ export async function POST(request: Request) {
   const isOwner = client.auth_user_id === auth.user.id || client.email?.toLowerCase() === auth.user.email?.toLowerCase();
   if (!isOwner) return NextResponse.json({ error: 'Compra em nome de outro cliente não permitida' }, { status: 403 });
 
-  const postalCode = String(input.postalCode || '').replace(/\D/g, '');
-  const addressNumber = String(input.addressNumber || '').trim();
-  if (method === 'cartao' && (postalCode.length !== 8 || !addressNumber)) {
-    return NextResponse.json({ error: 'CEP e número do endereço são obrigatórios para cartão' }, { status: 400 });
-  }
-
   let orderId: string | null = null;
   let paymentCreated = false;
+  let infinitePayOrderNsu: string | null = null;
   try {
     const { data: order, error: orderError } = await supabase.rpc('create_store_order', {
       p_client_id: client.id,
@@ -73,58 +66,60 @@ export async function POST(request: Request) {
     }
     if (method === 'cashback') throw new Error('O saldo não cobre o valor total do produto');
 
-    const customerId = await createOrUpdateCustomer({
-      name: client.full_name,
-      email: client.email,
-      cpfCnpj: client.cpf,
-      phone: client.phone,
-      postalCode: postalCode || undefined,
-      addressNumber: addressNumber || undefined,
+    const orderNsu = randomUUID();
+    infinitePayOrderNsu = orderNsu;
+    const expectedAmountCents = Math.round(amountDue * 100);
+    const reference = `LOJA:${orderId}`;
+    const { error: checkoutInsertError } = await supabase.from('infinitepay_checkouts').insert({
+      id: orderNsu,
+      order_nsu: orderNsu,
+      kind: 'store',
+      reference,
+      client_id: client.id,
+      expected_amount_cents: expectedAmountCents,
+      status: 'creating',
     });
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 1);
-    const payload: Record<string, unknown> = {
-      customer: customerId,
-      billingType: method === 'cartao' ? 'CREDIT_CARD' : 'PIX',
-      dueDate: dueDate.toISOString().split('T')[0],
-      value: amountDue,
-      description: `MaisTrilha Store - Pedido #${orderId.slice(0, 8)}`,
-      externalReference: `LOJA:${orderId}`,
-    };
-    if (method === 'cartao') {
-      payload.creditCard = input.creditCard;
-      payload.creditCardHolderInfo = {
+    if (checkoutInsertError) throw checkoutInsertError;
+
+    const publicBaseUrl = getPublicBaseUrl(request);
+    const link = await createInfinitePayLink({
+      orderNsu,
+      redirectUrl: `${publicBaseUrl}/pagamento/infinitepay/retorno`,
+      webhookUrl: `${publicBaseUrl}/api/webhooks/infinitepay`,
+      customer: {
         name: client.full_name,
         email: client.email,
-        cpfCnpj: String(client.cpf).replace(/\D/g, ''),
-        postalCode,
-        addressNumber,
-        phone: String(client.phone).replace(/\D/g, ''),
-      };
-    }
-
-    const payment = await createPayment(payload);
-    paymentCreated = true;
-    await supabase.from('pedidos_loja').update({ payment_id: payment.id }).eq('id', orderId);
-    await supabase.from('asaas_payments').upsert({
-      id: payment.id,
-      kind: 'store',
-      reference: `LOJA:${orderId}`,
-      client_id: client.id,
-      status: payment.status || 'PENDING',
-      amount: amountDue,
-      updated_at: new Date().toISOString(),
+        phone_number: client.phone,
+      },
+      items: [{
+        quantity: 1,
+        price: expectedAmountCents,
+        description: `MaisTrilha Store - Pedido #${orderId.slice(0, 8)}`,
+      }],
     });
-    if (method === 'cartao') {
-      return NextResponse.json({
-        success: true, type: 'CREDIT_CARD_SUCCESS', paymentId: payment.id,
-        status: payment.status, orderId,
-      });
-    }
-    const pix = await getPixQrCode(payment.id);
+    const { error: checkoutUpdateError } = await supabase
+      .from('infinitepay_checkouts')
+      .update({
+        checkout_url: link.url,
+        status: 'pending',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderNsu);
+    if (checkoutUpdateError) throw checkoutUpdateError;
+
+    const pendingPaymentId = `IP:${orderNsu}`;
+    const orderUpdate = await supabase
+      .from('pedidos_loja')
+      .update({ payment_id: pendingPaymentId, metodo_pagamento: 'INFINITEPAY' })
+      .eq('id', orderId);
+    if (orderUpdate.error) throw orderUpdate.error;
+    paymentCreated = true;
     return NextResponse.json({
-      success: true, type: 'PIX', paymentId: payment.id,
-      pixEncodedImage: pix.encodedImage, pixPayload: pix.payload, orderId,
+      success: true,
+      type: 'INFINITEPAY',
+      redirectUrl: link.url,
+      orderNsu,
+      orderId,
     });
   } catch (error: any) {
     if (orderId && !paymentCreated) {
@@ -134,18 +129,28 @@ export async function POST(request: Request) {
         p_status: 'cancelado',
       });
     }
+    if (infinitePayOrderNsu && !paymentCreated) {
+      await supabase.from('infinitepay_checkouts').update({
+        status: 'failed',
+        updated_at: new Date().toISOString(),
+      }).eq('id', infinitePayOrderNsu);
+    }
     console.error('Erro no checkout da loja:', error);
     return NextResponse.json({ error: error.message || 'Falha no checkout' }, { status: 502 });
   }
 }
 
-function isValidCard(card?: Record<string, string>) {
-  const number = String(card?.number || '').replace(/\D/g, '');
-  return number.length >= 13 && number.length <= 19 && String(card?.holderName || '').trim().length >= 3 &&
-    /^\d{2}$/.test(String(card?.expiryMonth || '')) && /^\d{4}$/.test(String(card?.expiryYear || '')) &&
-    /^\d{3,4}$/.test(String(card?.ccv || ''));
-}
-
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getPublicBaseUrl(request: Request) {
+  const configured = String(
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    new URL(request.url).origin,
+  ).replace(/\/$/, '');
+  const url = new URL(configured);
+  if (url.protocol !== 'https:') throw new Error('URL pública do site deve usar HTTPS');
+  return url.toString().replace(/\/$/, '');
 }

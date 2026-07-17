@@ -12,7 +12,7 @@ const BACKUP_TABLES = [
   'notificacoes', 'coupon_redemptions', 'bolao_apostas', 'settings', 'trilha_gpx',
   'fotos_trilhas', 'produtos', 'pedidos_loja', 'wallet_transactions',
   'points_transactions', 'content_documents', 'profiles', 'asaas_webhook_events',
-  'asaas_payments', 'audit_logs', 'backup_runs',
+  'asaas_payments', 'infinitepay_checkouts', 'audit_logs', 'backup_runs',
   'dependent_registration_invites',
 ] as const;
 

@@ -37,9 +37,10 @@ const formatCurrency = (val: number | string) => Number(val).toLocaleString('pt-
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
 const formatPaymentMethod = (method?: string) => {
-  if (method === 'CREDIT_CARD') return 'Cartão';
+  if (method === 'CREDIT_CARD' || method === 'CREDIT_CARD_INFINITEPAY') return 'Cartão (InfinitePay)';
   if (method === 'BOLETO') return 'Boleto';
-  if (method === 'PIX') return 'Pix';
+  if (method === 'PIX' || method === 'PIX_INFINITEPAY') return 'Pix (InfinitePay)';
+  if (method === 'INFINITEPAY') return 'InfinitePay pendente';
   if (method === 'ASAAS') return 'Asaas';
   return method || 'Não informado';
 };
@@ -2164,8 +2165,15 @@ export default function AdminPage() {
                                                             <span className="font-bold text-gray-800 truncate pr-2">{reserva.clients?.full_name}</span>
                                                             <div className="flex items-center gap-2 shrink-0">
                                                               {(() => {
-                                                                const isCreditCard = reserva.metodo_pagamento === 'CREDIT_CARD' || (reserva.valor_pago && (Number(reserva.valor_pago) > Number(agenda.price) + 0.1));
-                                                                const methodLabel = reserva.metodo_pagamento === 'CREDIT_CARD' ? 'Cartão' : (reserva.metodo_pagamento === 'PIX' ? 'Pix' : (reserva.metodo_pagamento === 'BOLETO' ? 'Boleto' : 'Pix / Dinheiro'));
+                                                                const paymentMethod = String(reserva.metodo_pagamento || '').toUpperCase();
+                                                                const isCreditCard = paymentMethod.includes('CREDIT_CARD') || (reserva.valor_pago && (Number(reserva.valor_pago) > Number(agenda.price) + 0.1));
+                                                                const methodLabel = paymentMethod.includes('CREDIT_CARD')
+                                                                  ? 'Cartão'
+                                                                  : paymentMethod.includes('PIX')
+                                                                    ? 'Pix'
+                                                                    : paymentMethod === 'BOLETO'
+                                                                      ? 'Boleto'
+                                                                      : 'Saldo / Dinheiro';
                                                                 const revenueValue = getReservaNetProfit(reserva, agenda);
                                                                 return (
                                                                   <>
@@ -2433,7 +2441,7 @@ export default function AdminPage() {
                       <label className="block text-sm font-bold mb-1">Valor líquido desejado</label>
                       <input {...register("price", { required: true })} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150,00" />
                       <p className="mt-1 text-[10px] leading-tight text-gray-500">
-                        Este é o valor que a empresa deve receber. A tarifa da Asaas será adicionada no checkout conforme Pix ou cartão.
+                        Este é o valor líquido da venda. Pix e cartão serão processados pela InfinitePay; boleto, pelo Asaas.
                       </p>
                     </div>
                     <div><label className="block text-sm font-bold mb-1">Vagas</label><input type="number" {...register("max_capacity", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="15" /></div>
@@ -2455,26 +2463,27 @@ export default function AdminPage() {
                   {/* FORMAS DE PAGAMENTO ACEITAS */}
                   <div className="mt-4 p-4 border border-gray-200 rounded-2xl bg-gray-50/50">
                     <label className="block text-sm font-bold mb-3 flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-600"/> Formas de Pagamento Permitidas (Asaas)
+                      <DollarSign className="w-4 h-4 text-green-600"/> Formas de Pagamento Permitidas
                     </label>
                     <div className="flex flex-wrap gap-4">
-                      {['PIX', 'CREDIT_CARD', 'BOLETO'].map(method => (
-                        <label key={method} className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
+                      {[
+                        { key: 'INFINITEPAY', methods: ['PIX', 'CREDIT_CARD'], label: 'Pix e cartão (InfinitePay)' },
+                        { key: 'BOLETO', methods: ['BOLETO'], label: 'Boleto (Asaas)' },
+                      ].map(option => (
+                        <label key={option.key} className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
                           <input 
                             type="checkbox" 
                             className="w-4 h-4 text-[#F17B37] rounded focus:ring-[#F17B37]"
-                            checked={acceptedPaymentMethods.includes(method)}
+                            checked={option.methods.some(method => acceptedPaymentMethods.includes(method))}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setAcceptedPaymentMethods(prev => [...prev, method]);
+                                setAcceptedPaymentMethods(prev => [...new Set([...prev, ...option.methods])]);
                               } else {
-                                setAcceptedPaymentMethods(prev => prev.filter(m => m !== method));
+                                setAcceptedPaymentMethods(prev => prev.filter(method => !option.methods.includes(method)));
                               }
                             }}
                           />
-                          <span className="text-sm font-medium text-gray-700">
-                            {method === 'PIX' ? 'PIX' : method === 'CREDIT_CARD' ? 'Cartão de Crédito' : 'Boleto'}
-                          </span>
+                          <span className="text-sm font-medium text-gray-700">{option.label}</span>
                         </label>
                       ))}
                     </div>
@@ -2485,7 +2494,7 @@ export default function AdminPage() {
                       <CreditCard className="h-4 w-4" /> Repasse automático das tarifas
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-emerald-700">
-                      O cliente verá o total final antes de pagar. O sistema calcula a tarifa por forma de pagamento para preservar o valor líquido cadastrado.
+                      Na InfinitePay, configure “Repassar taxas” para o cartão; o Pix não tem tarifa. No boleto, o sistema acrescenta a tarifa do Asaas.
                     </p>
                   </div>
                 </div>

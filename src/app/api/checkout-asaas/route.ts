@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { createOrUpdateCustomer, createPayment, getPixQrCode } from '@/lib/asaas';
+import { createOrUpdateCustomer, createPayment } from '@/lib/asaas';
 import { calculateGrossPrice } from '@/lib/fees';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
+import { createInfinitePayLink } from '@/lib/server/infinitepay';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 import { processConfirmedAsaasPayment } from '@/lib/server/asaas-payment-processing';
@@ -12,10 +13,7 @@ export const dynamic = 'force-dynamic';
 type CheckoutBody = {
   reserva_ids?: string[];
   customer_data?: { postalCode?: string; addressNumber?: string };
-  payment_method?: 'CREDIT_CARD' | 'PIX' | 'BOLETO';
-  credit_card_data?: {
-    holderName?: string; number?: string; expiryMonth?: string; expiryYear?: string; ccv?: string;
-  };
+  payment_method?: 'INFINITEPAY' | 'CREDIT_CARD' | 'PIX' | 'BOLETO';
   installments?: number;
   checkout_source?: 'site' | 'app';
   use_cashback?: boolean;
@@ -31,19 +29,17 @@ export async function POST(request: Request) {
   if (parsed.response) return parsed.response;
 
   const reservationIds = [...new Set(parsed.data.reserva_ids || [])];
-  const paymentMethod = parsed.data.payment_method;
+  const requestedMethod = parsed.data.payment_method;
+  const paymentMethod = requestedMethod === 'BOLETO' ? 'BOLETO' : 'INFINITEPAY';
   const installments = Number(parsed.data.installments || 1);
   const isAppCheckout = parsed.data.checkout_source === 'app';
   if (
     !reservationIds.length || reservationIds.length > 20 || reservationIds.some((id) => !isUuid(id)) ||
-    !paymentMethod || !['PIX', 'CREDIT_CARD', 'BOLETO'].includes(paymentMethod) ||
+    !requestedMethod || !['INFINITEPAY', 'PIX', 'CREDIT_CARD', 'BOLETO'].includes(requestedMethod) ||
     !Number.isInteger(installments) || installments < 1 || installments > 12 ||
-    (paymentMethod !== 'CREDIT_CARD' && installments !== 1)
+    (paymentMethod === 'BOLETO' && installments !== 1)
   ) {
     return NextResponse.json({ error: 'Dados do pagamento inválidos' }, { status: 400 });
-  }
-  if (paymentMethod === 'CREDIT_CARD' && !isValidCardInput(parsed.data.credit_card_data)) {
-    return NextResponse.json({ error: 'Dados do cartão incompletos' }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
@@ -79,9 +75,12 @@ export async function POST(request: Request) {
   if (agendaError || !agendas || agendas.length !== agendaIds.length) {
     return NextResponse.json({ error: 'Trilhas não encontradas' }, { status: 404 });
   }
-  if (agendas.some((agenda: any) =>
-    Array.isArray(agenda.accepted_payment_methods) && !agenda.accepted_payment_methods.includes(paymentMethod)
-  )) {
+  if (agendas.some((agenda: any) => {
+    if (!Array.isArray(agenda.accepted_payment_methods)) return false;
+    return paymentMethod === 'BOLETO'
+      ? !agenda.accepted_payment_methods.includes('BOLETO')
+      : !agenda.accepted_payment_methods.some((method: string) => ['PIX', 'CREDIT_CARD'].includes(method));
+  })) {
     return NextResponse.json({ error: 'Forma de pagamento não aceita para uma das trilhas' }, { status: 400 });
   }
 
@@ -106,14 +105,11 @@ export async function POST(request: Request) {
 
   const postalCode = String(parsed.data.customer_data?.postalCode || '').replace(/\D/g, '');
   const addressNumber = String(parsed.data.customer_data?.addressNumber || '').trim();
-  if (paymentMethod === 'CREDIT_CARD' && (postalCode.length !== 8 || !addressNumber)) {
-    return NextResponse.json({ error: 'CEP e número do endereço são obrigatórios para cartão' }, { status: 400 });
-  }
-
   const attemptId = randomUUID();
   let claimed = false;
   let paymentCreated = false;
   let benefitId: string | null = null;
+  let infinitePayOrderNsu: string | null = null;
   try {
     let netAmountDue = netTotal;
     let benefitSummary: Record<string, unknown> | null = null;
@@ -166,7 +162,75 @@ export async function POST(request: Request) {
       });
     }
 
-    const paymentTotal = calculateGrossPrice(netAmountDue, paymentMethod, installments);
+    if (paymentMethod === 'INFINITEPAY') {
+      const orderNsu = randomUUID();
+      infinitePayOrderNsu = orderNsu;
+      const expectedAmountCents = Math.round(netAmountDue * 100);
+      const { error: checkoutInsertError } = await supabase.from('infinitepay_checkouts').insert({
+        id: orderNsu,
+        order_nsu: orderNsu,
+        kind: 'trail',
+        reference: trailReference,
+        client_id: principal.id,
+        expected_amount_cents: expectedAmountCents,
+        status: 'creating',
+      });
+      if (checkoutInsertError) throw checkoutInsertError;
+
+      const publicBaseUrl = getPublicBaseUrl(request);
+      const link = await createInfinitePayLink({
+        orderNsu,
+        redirectUrl: `${publicBaseUrl}/pagamento/infinitepay/retorno`,
+        webhookUrl: `${publicBaseUrl}/api/webhooks/infinitepay`,
+        customer: {
+          name: principal.full_name,
+          email: principal.email,
+          phone_number: principal.phone,
+        },
+        items: [{
+          quantity: 1,
+          price: expectedAmountCents,
+          description: `Mais Trilha - Lote ${String(claim.data).slice(0, 8)}`,
+        }],
+      });
+
+      const { error: checkoutUpdateError } = await supabase
+        .from('infinitepay_checkouts')
+        .update({
+          checkout_url: link.url,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderNsu);
+      if (checkoutUpdateError) throw checkoutUpdateError;
+
+      const pendingPaymentId = `IP:${orderNsu}`;
+      const reservationUpdate = await supabase.from('reservas').update({
+        nsu_transacao: pendingPaymentId,
+        metodo_pagamento: 'INFINITEPAY',
+      }).in('id', reservationIds).eq('nsu_transacao', `CREATING:${attemptId}`);
+      if (reservationUpdate.error) throw reservationUpdate.error;
+      if (benefitId) {
+        const attached = await supabase.rpc('attach_app_trail_payment', {
+          p_benefit_id: benefitId,
+          p_payment_id: pendingPaymentId,
+        });
+        if (attached.error) throw attached.error;
+      }
+      paymentCreated = true;
+      claimed = false;
+      return NextResponse.json({
+        success: true,
+        type: 'INFINITEPAY',
+        provider: 'INFINITEPAY',
+        redirectUrl: link.url,
+        orderNsu,
+        netAmount: netAmountDue,
+        benefits: benefitSummary,
+      });
+    }
+
+    const paymentTotal = calculateGrossPrice(netAmountDue, 'BOLETO', 1);
 
     const customerId = await createOrUpdateCustomer({
       name: principal.full_name,
@@ -181,37 +245,18 @@ export async function POST(request: Request) {
     dueDate.setDate(dueDate.getDate() + 1);
     const payload: Record<string, unknown> = {
       customer: customerId,
-      billingType: paymentMethod,
+      billingType: 'BOLETO',
       dueDate: dueDate.toISOString().split('T')[0],
       description: `Mais Trilha - Lote ${String(claim.data).slice(0, 8)}`,
       externalReference: trailReference,
       ...(installments > 1 ? { installmentCount: installments, totalValue: paymentTotal } : { value: paymentTotal }),
     };
-    if (paymentMethod === 'CREDIT_CARD') {
-      const card = parsed.data.credit_card_data!;
-      payload.creditCard = {
-        holderName: card.holderName!.trim(),
-        number: card.number!.replace(/\D/g, ''),
-        expiryMonth: card.expiryMonth,
-        expiryYear: card.expiryYear,
-        ccv: card.ccv,
-      };
-      payload.creditCardHolderInfo = {
-        name: principal.full_name,
-        email: principal.email,
-        cpfCnpj: String(principal.cpf).replace(/\D/g, ''),
-        postalCode,
-        addressNumber,
-        phone: String(principal.phone).replace(/\D/g, ''),
-      };
-    }
-
     const payment = await createPayment(payload);
     paymentCreated = true;
     claimed = false;
     await supabase.from('reservas').update({
       nsu_transacao: payment.id,
-      metodo_pagamento: paymentMethod,
+      metodo_pagamento: 'BOLETO',
     }).in('id', reservationIds).eq('nsu_transacao', `CREATING:${attemptId}`);
     if (benefitId) {
       const attached = await supabase.rpc('attach_app_trail_payment', {
@@ -230,30 +275,10 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     });
 
-    if (paymentMethod === 'PIX') {
-      const pix = await getPixQrCode(payment.id);
-      return NextResponse.json({
-        success: true, type: 'PIX', paymentId: payment.id,
-        encodedImage: pix.encodedImage, payload: pix.payload, expirationDate: pix.expirationDate,
-        netAmount: netAmountDue, chargedAmount: paymentTotal,
-        benefits: benefitSummary,
-      });
-    }
-    if (paymentMethod === 'BOLETO') {
-      return NextResponse.json({
-        success: true, type: 'BOLETO', paymentId: payment.id,
-        bankSlipUrl: payment.bankSlipUrl, invoiceUrl: payment.invoiceUrl,
-        netAmount: netAmountDue, chargedAmount: paymentTotal,
-        benefits: benefitSummary,
-      });
-    }
     return NextResponse.json({
-      success: true,
-      type: 'CREDIT_CARD',
-      paymentId: payment.id,
-      status: payment.status,
-      netAmount: netAmountDue,
-      chargedAmount: paymentTotal,
+      success: true, type: 'BOLETO', paymentId: payment.id,
+      bankSlipUrl: payment.bankSlipUrl, invoiceUrl: payment.invoiceUrl,
+      netAmount: netAmountDue, chargedAmount: paymentTotal,
       benefits: benefitSummary,
     });
   } catch (error: any) {
@@ -266,19 +291,28 @@ export async function POST(request: Request) {
     if (benefitId && !paymentCreated) {
       await supabase.rpc('release_app_trail_checkout', { p_benefit_id: benefitId });
     }
-    console.error('Erro no checkout Asaas:', error);
+    if (infinitePayOrderNsu && !paymentCreated) {
+      await supabase.from('infinitepay_checkouts').update({
+        status: 'failed',
+        updated_at: new Date().toISOString(),
+      }).eq('id', infinitePayOrderNsu);
+    }
+    console.error('Erro no checkout híbrido:', error);
     return NextResponse.json({ error: error.message || 'Falha ao processar pagamento' }, { status: 502 });
   }
 }
 
-function isValidCardInput(card: CheckoutBody['credit_card_data']) {
-  if (!card) return false;
-  const number = String(card.number || '').replace(/\D/g, '');
-  return String(card.holderName || '').trim().length >= 3 && number.length >= 13 && number.length <= 19 &&
-    /^\d{2}$/.test(String(card.expiryMonth || '')) && /^\d{4}$/.test(String(card.expiryYear || '')) &&
-    /^\d{3,4}$/.test(String(card.ccv || ''));
-}
-
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getPublicBaseUrl(request: Request) {
+  const configured = String(
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    new URL(request.url).origin,
+  ).replace(/\/$/, '');
+  const url = new URL(configured);
+  if (url.protocol !== 'https:') throw new Error('URL pública do site deve usar HTTPS');
+  return url.toString().replace(/\/$/, '');
 }

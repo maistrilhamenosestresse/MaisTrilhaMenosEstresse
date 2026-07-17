@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, QrCode, CheckCircle2, Copy, Loader2, Wallet } from "lucide-react";
+import { ChevronLeft, QrCode, CheckCircle2, Loader2, Wallet, CreditCard, ShieldCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 export default function LojaCheckoutPage() {
@@ -16,22 +16,10 @@ export default function LojaCheckoutPage() {
   const [client, setClient] = useState<any>(null);
   
   const [processing, setProcessing] = useState(false);
-  const [pixData, setPixData] = useState<any>(null);
-  const [copied, setCopied] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const [formaEntrega, setFormaEntrega] = useState<"retirada" | "correios" | "entrega_trilha">("retirada");
   const [deliveryInfo, setDeliveryInfo] = useState("");
-
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "cartao">("pix");
-  const [cardData, setCardData] = useState({
-    number: "",
-    holderName: "",
-    expiry: "",
-    ccv: "",
-    postalCode: "",
-    addressNumber: ""
-  });
 
   useEffect(() => {
     async function loadData() {
@@ -62,37 +50,16 @@ export default function LojaCheckoutPage() {
   const handleCheckout = async () => {
     if (!product || !client) return;
     
-    // Validar Cartão se selecionado
-    if (faltante > 0 && paymentMethod === 'cartao') {
-      if (!cardData.number || !cardData.holderName || !cardData.expiry || !cardData.ccv || !cardData.postalCode || !cardData.addressNumber) {
-        alert("Preencha todos os dados do cartão.");
-        return;
-      }
-    }
-
     setProcessing(true);
     
     try {
       const payload: any = { 
         produtoId: product.id, 
         clientId: client.id,
-        method: faltante > 0 ? paymentMethod : 'cashback',
+        method: faltante > 0 ? 'infinitepay' : 'cashback',
         forma_entrega: formaEntrega,
         delivery_info: deliveryInfo
       };
-
-      if (paymentMethod === 'cartao' && faltante > 0) {
-        const [month, year] = cardData.expiry.split('/');
-        payload.creditCard = {
-          holderName: cardData.holderName,
-          number: cardData.number.replace(/\D/g, ''),
-          expiryMonth: month,
-          expiryYear: year?.length === 2 ? `20${year}` : year,
-          ccv: cardData.ccv
-        };
-        payload.postalCode = cardData.postalCode;
-        payload.addressNumber = cardData.addressNumber;
-      }
 
       const res = await fetch('/api/checkout-store', {
         method: 'POST',
@@ -104,23 +71,19 @@ export default function LojaCheckoutPage() {
       
       if (!res.ok) throw new Error(data.error || "Erro no checkout");
       
-      if (data.type === 'CASHBACK_FULL' || data.type === 'CREDIT_CARD_SUCCESS') {
+      if (data.type === 'CASHBACK_FULL') {
         setSuccess(true);
-      } else if (data.type === 'PIX') {
-        setPixData({ payload: data.pixPayload, encodedImage: data.pixEncodedImage });
+      } else if (data.type === 'INFINITEPAY' && data.redirectUrl) {
+        window.sessionStorage.setItem(
+          `infinitepay:${data.orderNsu}:returnTo`,
+          '/app/loja',
+        );
+        window.location.assign(data.redirectUrl);
       }
     } catch (err: any) {
       alert("Erro ao processar compra: " + err.message);
     } finally {
       setProcessing(false);
-    }
-  };
-
-  const handleCopy = () => {
-    if (pixData?.payload) {
-      navigator.clipboard.writeText(pixData.payload);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -170,8 +133,8 @@ export default function LojaCheckoutPage() {
             <CheckCircle2 className="w-12 h-12 text-green-600" />
           </div>
           <h2 className="text-2xl font-black text-gray-800 mb-2">Pedido Recebido!</h2>
-          <p className="text-gray-500 mb-8">A confirmação e a baixa do pedido serão atualizadas automaticamente pela Asaas.</p>
-          <button 
+          <p className="text-gray-500 mb-8">Seu pedido foi pago integralmente com saldo e pontos.</p>
+          <button
             onClick={() => router.push('/app/loja')}
             className="w-full max-w-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors"
           >
@@ -284,113 +247,34 @@ export default function LojaCheckoutPage() {
             )}
           </div>
 
-          {faltante > 0 && !pixData && (
+          {faltante > 0 && (
             <div className="space-y-4">
               <h3 className="font-bold text-gray-800 text-sm mb-2">Forma de Pagamento</h3>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <button 
-                  onClick={() => setPaymentMethod("pix")}
-                  className={`p-3 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMethod === 'pix' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}`}
-                >
+              <div className="bg-white rounded-3xl border-2 border-blue-200 p-5">
+                <div className="flex items-center gap-3">
                   <QrCode className="w-5 h-5" />
-                  <span className="font-bold text-sm">Pix</span>
-                </button>
-                <button 
-                  onClick={() => setPaymentMethod("cartao")}
-                  className={`p-3 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMethod === 'cartao' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}`}
-                >
-                  <Wallet className="w-5 h-5" />
-                  <span className="font-bold text-sm">Cartão</span>
-                </button>
-              </div>
-
-              {paymentMethod === 'cartao' && (
-                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase">Número do Cartão</label>
-                    <input 
-                      type="text" placeholder="0000 0000 0000 0000" 
-                      value={cardData.number} onChange={e => setCardData({...cardData, number: e.target.value})}
-                      className="w-full mt-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500" 
-                    />
+                    <p className="font-black text-gray-800">Pix ou cartão</p>
+                    <p className="text-xs text-gray-500">Pagamento seguro na InfinitePay, cartão em até 12x.</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase">Validade</label>
-                      <input 
-                        type="text" placeholder="MM/AA" 
-                        value={cardData.expiry} onChange={e => setCardData({...cardData, expiry: e.target.value})}
-                        className="w-full mt-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500" 
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase">CVV</label>
-                      <input 
-                        type="text" placeholder="123" 
-                        value={cardData.ccv} onChange={e => setCardData({...cardData, ccv: e.target.value})}
-                        className="w-full mt-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500" 
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase">Nome no Cartão</label>
-                    <input 
-                      type="text" placeholder="NOME DO TITULAR" 
-                      value={cardData.holderName} onChange={e => setCardData({...cardData, holderName: e.target.value})}
-                      className="w-full mt-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500" 
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase">CEP</label>
-                      <input
-                        type="text" placeholder="00000-000" maxLength={9}
-                        value={cardData.postalCode}
-                        onChange={e => setCardData({...cardData, postalCode: e.target.value})}
-                        className="w-full mt-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-400 uppercase">Número</label>
-                      <input
-                        type="text" placeholder="123"
-                        value={cardData.addressNumber}
-                        onChange={e => setCardData({...cardData, addressNumber: e.target.value})}
-                        className="w-full mt-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
+                  <CreditCard className="w-6 h-6 text-blue-600 ml-auto" />
                 </div>
-              )}
+                <p className="text-[11px] text-gray-500 mt-4 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  Os dados do cartão não passam pelo nosso servidor.
+                </p>
+              </div>
             </div>
           )}
 
-          {pixData ? (
-             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center text-center">
-              <div className="w-48 h-48 bg-gray-100 rounded-2xl mb-4 flex items-center justify-center p-2 overflow-hidden shadow-inner">
-                <img src={`data:image/png;base64,${pixData.encodedImage}`} alt="QR Code PIX" className="w-full h-full object-contain" />
-              </div>
-              <p className="text-sm font-bold text-gray-800 mb-2">Escaneie o QR Code ou copie o código</p>
-              <p className="text-xs text-gray-500 mb-4">Aguardando confirmação do pagamento...</p>
-              
-              <button 
-                onClick={handleCopy}
-                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-blue-200"
-              >
-                {copied ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5" />}
-                {copied ? "Código Copiado!" : "Copiar Código Pix"}
-              </button>
-             </div>
-          ) : (
-            <button 
-              onClick={handleCheckout}
-              disabled={processing}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-md transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
-            >
-              {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {processing ? "Processando..." : faltante > 0 ? "Confirmar Pagamento" : "Concluir Compra com Saldo"}
-            </button>
-          )}
+          <button
+            onClick={handleCheckout}
+            disabled={processing}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-md transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+          >
+            {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+            {processing ? "Preparando checkout..." : faltante > 0 ? "Continuar para InfinitePay" : "Concluir Compra com Saldo"}
+          </button>
         </div>
       )}
     </div>

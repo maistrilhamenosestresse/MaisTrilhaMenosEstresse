@@ -14,6 +14,9 @@ const ALLOWED_STATUSES = new Set([
 const ALLOWED_METHODS = new Set([
   'PIX',
   'CREDIT_CARD',
+  'PIX_INFINITEPAY',
+  'CREDIT_CARD_INFINITEPAY',
+  'INFINITEPAY',
   'BOLETO',
   'DINHEIRO',
   'TRANSFERENCIA',
@@ -114,7 +117,7 @@ export async function PUT(
   return NextResponse.json({
     reservation,
     warning: current.nsu_transacao
-      ? 'A alteração foi registrada no painel, mas não modifica nem estorna a cobrança existente no Asaas.'
+      ? 'A alteração foi registrada no painel, mas não modifica nem estorna a cobrança existente no provedor de pagamento.'
       : null,
   });
 }

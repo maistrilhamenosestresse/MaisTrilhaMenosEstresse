@@ -21,6 +21,9 @@ const statuses = [
 const methods = [
   { value: "PIX", label: "Pix" },
   { value: "CREDIT_CARD", label: "Cartão" },
+  { value: "PIX_INFINITEPAY", label: "Pix (InfinitePay)" },
+  { value: "CREDIT_CARD_INFINITEPAY", label: "Cartão (InfinitePay)" },
+  { value: "INFINITEPAY", label: "InfinitePay pendente" },
   { value: "BOLETO", label: "Boleto" },
   { value: "DINHEIRO", label: "Dinheiro" },
   { value: "TRANSFERENCIA", label: "Transferência" },

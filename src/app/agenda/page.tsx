@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Calendar, MapPin, DollarSign, ChevronRight, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { getLowestGrossPrice } from "@/lib/fees";
 
 export default function AgendaList() {
   const [agendas, setAgendas] = useState<any[]>([]);
@@ -202,7 +201,7 @@ export default function AgendaList() {
                         </div>
                         <div className="flex items-center gap-1.5 md:gap-3 text-xs md:text-sm text-gray-400">
                           <DollarSign className={`h-3 w-3 md:h-4 md:w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
-                          <span className="font-black text-white">R$ {getLowestGrossPrice(agenda.price, agenda.taxa_gratis).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-black text-white">R$ {Number(agenda.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 

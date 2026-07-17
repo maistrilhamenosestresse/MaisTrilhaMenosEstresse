@@ -7,7 +7,6 @@ const source = (await Promise.all(sourceFiles.map(async (file) => `${file}\n${aw
 const failures = [];
 
 for (const [label, pattern] of [
-  ['integração InfinitePay remanescente', /infinitepay/i],
   ['URL antiga do projeto Supabase', /yslikzkgiaxafcgrqvzh/i],
   ['chave Supabase hardcoded', /sb_(?:publishable|secret)_[A-Za-z0-9_-]+/],
   ['fallback inseguro da service role', /SUPABASE_SERVICE_ROLE_KEY\s*\|\|/],
@@ -24,10 +23,13 @@ if (localMedia.length) failures.push(`${localMedia.length} mídias binárias ain
 
 for (const requiredPath of [
   'src/app/api/webhooks/asaas/route.ts',
+  'src/app/api/webhooks/infinitepay/route.ts',
+  'src/app/api/checkout-infinitepay/status/route.ts',
   'src/app/api/cron/asaas-reconcile/route.ts',
   'src/app/api/cron/backup/route.ts',
   'src/proxy.ts',
   'supabase/migrations/202607160001_security_and_finance_foundation.sql',
+  'supabase/migrations/202607180001_infinitepay_hybrid_checkout.sql',
 ]) {
   try { await readFile(path.join(root, requiredPath)); } catch { failures.push(`arquivo obrigatório ausente: ${requiredPath}`); }
 }

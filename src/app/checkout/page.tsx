@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { calculateGrossPrice } from "@/lib/fees";
 import { useRouter } from "next/navigation";
-import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, CreditCard, QrCode, FileText } from "lucide-react";
+import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, QrCode, FileText } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import Image from "next/image";
 
@@ -15,8 +15,10 @@ function CheckoutAuthContent() {
 
   const cartNetTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const calculateTotalWithMethod = (method: 'PIX'|'BOLETO'|'CREDIT_CARD', installments: number = 1) => {
-    return calculateGrossPrice(cartNetTotal, method, installments);
+  const calculateTotalWithMethod = (method: 'INFINITEPAY' | 'BOLETO') => {
+    return method === 'BOLETO'
+      ? calculateGrossPrice(cartNetTotal, 'BOLETO', 1)
+      : cartNetTotal;
   };
   
   const [step, setStep] = useState<'email' | 'otp' | 'cart' | 'edit' | 'payment' | 'success'>('email');
@@ -28,15 +30,21 @@ function CheckoutAuthContent() {
   const [editForm, setEditForm] = useState<any>({});
   
   // Payment State
-  const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PIX' | 'BOLETO'>('PIX');
+  const [paymentMethod, setPaymentMethod] = useState<'INFINITEPAY' | 'BOLETO'>('INFINITEPAY');
   const [livePaymentMethods, setLivePaymentMethods] = useState<Record<string, string[]>>({});
   
   // Calculate allowed payment methods (intersection of all items in cart)
-  const allowedMethods = useMemo(() => items.reduce<string[]>((acc, item) => {
+  const acceptedLegacyMethods = useMemo(() => items.reduce<string[]>((acc, item) => {
     const methods = livePaymentMethods[item.agendaId] || item.acceptedPaymentMethods || ['PIX'];
     const normalized = methods.length > 0 ? methods : ['PIX'];
     return acc.filter((method) => normalized.includes(method));
   }, ['PIX', 'CREDIT_CARD', 'BOLETO']), [items, livePaymentMethods]);
+  const allowedMethods = useMemo<Array<'INFINITEPAY' | 'BOLETO'>>(() => [
+    ...(acceptedLegacyMethods.some((method) => ['PIX', 'CREDIT_CARD'].includes(method))
+      ? ['INFINITEPAY' as const]
+      : []),
+    ...(acceptedLegacyMethods.includes('BOLETO') ? ['BOLETO' as const] : []),
+  ], [acceptedLegacyMethods]);
 
   useEffect(() => {
     const agendaIds = [...new Set(items.map((item) => item.agendaId))];
@@ -58,46 +66,10 @@ function CheckoutAuthContent() {
 
   useEffect(() => {
     if (!allowedMethods.includes(paymentMethod) && allowedMethods.length > 0) {
-      setPaymentMethod(allowedMethods.includes('PIX') ? 'PIX' : allowedMethods[0] as any);
+      setPaymentMethod(allowedMethods.includes('INFINITEPAY') ? 'INFINITEPAY' : allowedMethods[0]);
     }
   }, [allowedMethods, paymentMethod]);
-  const [cardData, setCardData] = useState({ holderName: '', number: '', expiry: '', ccv: '', installments: 1 });
   const [paymentResult, setPaymentResult] = useState<any>(null);
-
-  useEffect(() => {
-    if (paymentResult?.type !== 'PIX' || !paymentResult.paymentId || paymentResult.confirmed) return;
-    let active = true;
-    let attempts = 0;
-    const checkPayment = async () => {
-      attempts += 1;
-      try {
-        const response = await fetch(
-          `/api/checkout-asaas/status?paymentId=${encodeURIComponent(paymentResult.paymentId)}`,
-          { cache: 'no-store' },
-        );
-        const result = await response.json();
-        if (active && response.ok) {
-          setPaymentResult((current: any) => ({
-            ...current,
-            status: result.status,
-            confirmed: result.confirmed,
-          }));
-        }
-      } catch {
-        // A próxima tentativa mantém a confirmação automática ativa.
-      }
-      if (attempts >= 300) active = false;
-    };
-    const initialTimer = window.setTimeout(checkPayment, 1500);
-    const interval = window.setInterval(() => {
-      if (active) checkPayment();
-    }, 3000);
-    return () => {
-      active = false;
-      window.clearTimeout(initialTimer);
-      window.clearInterval(interval);
-    };
-  }, [paymentResult?.type, paymentResult?.paymentId, paymentResult?.confirmed]);
 
   useEffect(() => {
     if (items.length === 0 && step !== 'success') {
@@ -199,11 +171,6 @@ function CheckoutAuthContent() {
   };
 
   const processPayment = async () => {
-    if (paymentMethod === 'CREDIT_CARD' && (!cardData.number || !cardData.holderName || !cardData.expiry || !cardData.ccv)) {
-      alert("Preencha todos os dados do cartão.");
-      return;
-    }
-
     setIsLoading(true);
     try {
       const resReserva = await fetch('/api/create-reserva', {
@@ -220,8 +187,6 @@ function CheckoutAuthContent() {
       if (!resReserva.ok) throw new Error(reservaJson.error || "Erro ao criar reserva");
       const reservaIds = reservaJson.reservas.map((r: any) => r.id);
 
-      const [expiryMonth, expiryYear] = (cardData.expiry || '').split('/');
-      
       const reqCheckout = await fetch('/api/checkout-asaas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -236,20 +201,23 @@ function CheckoutAuthContent() {
             addressNumber: clientData.addressNumber || '1'
           },
           payment_method: paymentMethod,
-          credit_card_data: paymentMethod === 'CREDIT_CARD' ? {
-            holderName: cardData.holderName,
-            number: cardData.number,
-            expiryMonth: expiryMonth,
-            expiryYear: `20${expiryYear}`,
-            ccv: cardData.ccv
-          } : undefined,
-          installments: paymentMethod === 'CREDIT_CARD' ? cardData.installments : 1
+          installments: 1,
         })
       });
 
       const resCheckout = await reqCheckout.json();
       
       if (resCheckout.success) {
+        if (resCheckout.type === 'INFINITEPAY' && resCheckout.redirectUrl) {
+          window.sessionStorage.setItem(
+            `infinitepay:${resCheckout.orderNsu}:invitations`,
+            JSON.stringify(reservaJson.invitations || []),
+          );
+          window.sessionStorage.setItem(`infinitepay:${resCheckout.orderNsu}:returnTo`, "/");
+          clearCart();
+          window.location.assign(resCheckout.redirectUrl);
+          return;
+        }
         setPaymentResult({ ...resCheckout, invitations: reservaJson.invitations || [] });
         clearCart();
         setStep('success');
@@ -261,14 +229,6 @@ function CheckoutAuthContent() {
       alert("Ocorreu um erro no pagamento: " + err.message);
     }
     setIsLoading(false);
-  };
-
-  const handleCardExpiry = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '');
-    if (val.length > 2) {
-      val = val.substring(0, 2) + '/' + val.substring(2, 4);
-    }
-    setCardData({...cardData, expiry: val});
   };
 
   if (isInitializing) {
@@ -359,14 +319,17 @@ function CheckoutAuthContent() {
               <div className="border-t border-white/10 my-4"></div>
 
               <div className="flex justify-between items-center mb-6">
-                <span className="font-bold text-gray-300">Total a Pagar ({paymentMethod === 'PIX' ? 'PIX' : paymentMethod === 'CREDIT_CARD' ? 'Cartão' : 'Boleto'})</span>
-                <span className="text-2xl font-black text-[#25D366]">R$ {calculateTotalWithMethod(paymentMethod, paymentMethod === 'CREDIT_CARD' ? cardData.installments : 1).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <div className="text-[10px] text-gray-500 mt-1 text-right w-full block font-medium">Taxas incluídas</div>
+                <span className="font-bold text-gray-300">
+                  Total ({paymentMethod === 'INFINITEPAY' ? 'Pix ou cartão' : 'Boleto'})
+                </span>
+                <span className="text-2xl font-black text-[#25D366]">
+                  R$ {calculateTotalWithMethod(paymentMethod).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
 
               <button onClick={() => {
                 if (!clientData?.cpf || clientData.cpf.replace(/\D/g, '').length < 11) {
-                  alert("Para gerar a cobrança no Asaas, é obrigatório ter um CPF válido. Clique em 'Editar' e adicione seu CPF.");
+                  alert("Para gerar a cobrança, é obrigatório ter um CPF válido. Clique em 'Editar' e adicione seu CPF.");
                   openEdit();
                   return;
                 }
@@ -388,17 +351,12 @@ function CheckoutAuthContent() {
                 <p className="text-gray-400 text-sm">Escolha como deseja pagar.</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                {allowedMethods.includes('CREDIT_CARD') && (
-                  <button onClick={() => setPaymentMethod('CREDIT_CARD')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'CREDIT_CARD' ? 'bg-[#F17B37]/20 border-[#F17B37] text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
-                    <CreditCard className="w-6 h-6" />
-                    <span className="text-xs font-bold">Cartão</span>
-                  </button>
-                )}
-                {allowedMethods.includes('PIX') && (
-                  <button onClick={() => setPaymentMethod('PIX')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'PIX' ? 'bg-[#25D366]/20 border-[#25D366] text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {allowedMethods.includes('INFINITEPAY') && (
+                  <button onClick={() => setPaymentMethod('INFINITEPAY')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'INFINITEPAY' ? 'bg-[#25D366]/20 border-[#25D366] text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
                     <QrCode className="w-6 h-6" />
-                    <span className="text-xs font-bold">PIX</span>
+                    <span className="text-xs font-bold">Pix ou cartão</span>
+                    <span className="text-[10px] text-gray-400">InfinitePay</span>
                   </button>
                 )}
                 {allowedMethods.includes('BOLETO') && (
@@ -413,64 +371,20 @@ function CheckoutAuthContent() {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-4 mt-2">
                   <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center justify-between">
                     <span className="text-sm text-white">Total no Boleto:</span>
-                    <span className="font-bold text-white text-lg">R$ {calculateTotalWithMethod('BOLETO', 1).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="font-bold text-white text-lg">R$ {calculateTotalWithMethod('BOLETO').toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
+                  <p className="text-[11px] text-gray-400 mt-2">Boleto processado com segurança pelo Asaas.</p>
                 </motion.div>
               )}
-              {paymentMethod === 'CREDIT_CARD' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-6">
-                  <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">
-                    Parcelamento
-                  </label>
-                  <select value={cardData.installments} onChange={(e) => setCardData({...cardData, installments: Number(e.target.value)})} className="w-full p-3 bg-[#0F1722]/80 border border-white/10 rounded-xl outline-none focus:border-[#F17B37] text-sm text-white appearance-none">
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => (
-                      <option key={num} value={num} className="bg-[#0F1722] text-white">
-                        {num}x de R$ {(calculateTotalWithMethod(paymentMethod, num) / num).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {num === 1 ? 'à vista' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </motion.div>
-              )}
-
-              {paymentMethod === 'PIX' && (
+              {paymentMethod === 'INFINITEPAY' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-6">
                   <div className="bg-[#25D366]/10 p-4 rounded-xl border border-[#25D366]/20 flex items-center justify-between">
-                    <span className="text-sm text-[#25D366]">Total no PIX:</span>
-                    <span className="font-bold text-[#25D366] text-lg">R$ {calculateTotalWithMethod('PIX').toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-sm text-[#25D366]">Valor da compra:</span>
+                    <span className="font-bold text-[#25D366] text-lg">R$ {cartNetTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                </motion.div>
-              )}
-              {paymentMethod === 'CREDIT_CARD' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4 mb-6">
-                  <div className="bg-[#1C2534] p-4 rounded-xl border border-white/5 flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Total no Cartão:</span>
-                    <span className="font-bold text-white text-lg">R$ {calculateTotalWithMethod('CREDIT_CARD', cardData.installments).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Número do Cartão</label>
-                    <input type="text" placeholder="0000 0000 0000 0000" value={cardData.number} onChange={(e) => {
-                      let val = e.target.value.replace(/\D/g, '');
-                      val = val.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
-                      setCardData({...cardData, number: val});
-                    }} maxLength={19} className="w-full p-3 bg-[#0F1722]/80 border border-white/10 rounded-xl outline-none focus:border-[#F17B37] text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Nome Impresso no Cartão</label>
-                    <input type="text" placeholder="NOME DO TITULAR" value={cardData.holderName} onChange={(e) => {
-                      const val = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').toUpperCase();
-                      setCardData({...cardData, holderName: val});
-                    }} className="w-full p-3 bg-[#0F1722]/80 border border-white/10 rounded-xl outline-none focus:border-[#F17B37] text-sm" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Validade</label>
-                      <input type="text" placeholder="MM/AA" maxLength={5} value={cardData.expiry} onChange={handleCardExpiry} className="w-full p-3 bg-[#0F1722]/80 border border-white/10 rounded-xl outline-none focus:border-[#F17B37] text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">CVV</label>
-                      <input type="text" maxLength={3} placeholder="000" value={cardData.ccv} onChange={(e) => setCardData({...cardData, ccv: e.target.value.replace(/\D/g, '')})} className="w-full p-3 bg-[#0F1722]/80 border border-white/10 rounded-xl outline-none focus:border-[#F17B37] text-sm" />
-                    </div>
-                  </div>
+                  <p className="text-[11px] text-gray-400 mt-2">
+                    Você escolherá Pix ou cartão em até 12x na tela segura da InfinitePay. Os dados do cartão não passam pelo nosso servidor.
+                  </p>
                 </motion.div>
               )}
 
@@ -484,35 +398,6 @@ function CheckoutAuthContent() {
           {step === 'success' && paymentResult && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-3xl backdrop-blur-md shadow-2xl relative w-full text-center">
               
-              {paymentResult.type === 'PIX' && (
-                paymentResult.confirmed ? (
-                  <>
-                    <div className="w-20 h-20 bg-[#25D366]/20 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CheckCircle2 className="h-10 w-10" />
-                    </div>
-                    <h1 className="text-3xl font-extrabold mb-2">Pix realizado com sucesso!</h1>
-                    <p className="text-gray-300 text-sm mb-6">
-                      Pagamento confirmado pela Asaas. Sua vaga já está garantida.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 bg-[#25D366]/20 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4"><QrCode className="h-8 w-8" /></div>
-                    <h1 className="text-2xl font-bold mb-2">Pague via PIX</h1>
-                    <p className="text-gray-400 text-sm mb-4">Escaneie o QR Code ou copie o código. Esta tela confirmará o pagamento automaticamente.</p>
-                    <div className="mb-4 flex items-center justify-center gap-2 text-xs font-bold text-amber-300">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Aguardando confirmação da Asaas
-                    </div>
-                    <div className="bg-white p-4 rounded-2xl w-fit mx-auto mb-6">
-                      <img src={`data:image/png;base64,${paymentResult.encodedImage}`} alt="QR Code PIX" className="w-48 h-48" />
-                    </div>
-                    <button onClick={() => { navigator.clipboard.writeText(paymentResult.payload); alert("Código Copiado!") }} className="w-full bg-[#25D366] text-white p-4 rounded-2xl font-bold mb-4 hover:bg-[#1fae52]">
-                      Copiar Código PIX
-                    </button>
-                  </>
-                )
-              )}
-
               {paymentResult.type === 'BOLETO' && (
                 <>
                   <div className="w-16 h-16 bg-white/20 text-white rounded-full flex items-center justify-center mx-auto mb-4"><FileText className="h-8 w-8" /></div>
@@ -521,18 +406,6 @@ function CheckoutAuthContent() {
                   <a href={paymentResult.bankSlipUrl} target="_blank" className="block w-full bg-white text-black p-4 rounded-2xl font-bold mb-4 hover:bg-gray-200 text-center">
                     Visualizar Boleto
                   </a>
-                </>
-              )}
-
-              {paymentResult.type === 'CREDIT_CARD' && (
-                <>
-                  <div className="w-20 h-20 bg-[#25D366]/20 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="h-10 w-10" /></div>
-                  <h1 className="text-3xl font-extrabold mb-2">
-                    {['CONFIRMED', 'RECEIVED'].includes(paymentResult.status) ? 'Pagamento Aprovado!' : 'Pagamento em Análise'}
-                  </h1>
-                  <p className="text-gray-400 text-sm mb-6">
-                    Sua vaga será confirmada automaticamente assim que a Asaas confirmar o pagamento.
-                  </p>
                 </>
               )}
 

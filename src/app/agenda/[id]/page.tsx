@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, MapPin, DollarSign, CheckCircle2, ChevronLeft, ChevronRight, Video as VideoIcon, Send, FileText, Image as ImageIcon, Info, X, Clock, Navigation, Mountain } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getLowestGrossPrice } from "@/lib/fees";
 import { useCartStore } from "@/store/cartStore";
 
 export default function AgendaDetailsPage() {
@@ -251,7 +250,7 @@ export default function AgendaDetailsPage() {
               <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Valor da Trilha</p>
               <p className="font-bold text-2xl text-[#25D366]">
                 <span className="text-xs font-medium text-gray-500 block mb-0.5">a partir de</span>
-                R$ {getLowestGrossPrice(agenda.price, agenda.taxa_gratis).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                R$ {Number(agenda.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
             <DollarSign className="text-[#25D366] h-10 w-10 opacity-50" />

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
-import { getLowestGrossPrice } from "@/lib/fees";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Trash2, ChevronLeft, ShieldCheck, MapPin, Users, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -57,7 +56,7 @@ export default function CarrinhoPage() {
   );
 
   const cartNetTotal = getTotalPrice();
-  const cartTotalGross = getLowestGrossPrice(cartNetTotal, false);
+  const cartTotalGross = cartNetTotal;
 
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans pb-32 lg:pb-12">
