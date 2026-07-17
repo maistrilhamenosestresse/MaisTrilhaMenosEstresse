@@ -10,10 +10,17 @@ const CONFIRMED_EVENTS = new Set(['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED']);
 const CANCELED_EVENTS = new Set(['PAYMENT_REFUNDED', 'PAYMENT_DELETED', 'PAYMENT_OVERDUE', 'PAYMENT_CHARGEBACK_REQUESTED']);
 
 export async function POST(request: Request) {
-  const expectedToken = process.env.ASAAS_WEBHOOK_TOKEN;
-  const receivedToken = request.headers.get('asaas-access-token');
-  if (!expectedToken) return NextResponse.json({ error: 'Webhook indisponível' }, { status: 503 });
-  if (!receivedToken || !safeTokenEquals(receivedToken, expectedToken)) {
+  const expectedTokens = String(process.env.ASAAS_WEBHOOK_TOKEN || '')
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean);
+  const receivedToken = (
+    request.headers.get('asaas-access-token') ||
+    request.headers.get('asaas_access_token') ||
+    ''
+  ).trim();
+  if (!expectedTokens.length) return NextResponse.json({ error: 'Webhook indisponivel' }, { status: 503 });
+  if (!receivedToken || !expectedTokens.some((expectedToken) => safeTokenEquals(receivedToken, expectedToken))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
