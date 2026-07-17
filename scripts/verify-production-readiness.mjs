@@ -15,6 +15,8 @@ await loadEnv(path.join(process.cwd(), '.env.local'));
 const failures = [];
 const successes = [];
 const allowSandbox = process.argv.includes('--allow-sandbox');
+const officialSiteUrl = 'https://www.maistrilhasmenosestresse.com';
+const officialWebhookUrl = `${officialSiteUrl}/api/webhooks/asaas`;
 
 const requiredVariables = [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -35,6 +37,8 @@ const requiredVariables = [
 for (const name of requiredVariables) {
   if (!process.env[name]?.trim()) failures.push(`variável obrigatória ausente: ${name}`);
 }
+
+if (!allowSandbox) checkProductionUrls();
 
 const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET', 'NEXTAUTH_SECRET'];
 const configuredSecrets = [];
@@ -206,6 +210,21 @@ async function checkAsaas() {
     successes.push(`Asaas: credencial e API acessíveis (${asaasHost.includes('sandbox') ? 'sandbox' : 'produção'})`);
   } catch (error) {
     failures.push(`Asaas indisponível ou mal configurada: ${safeMessage(error)}`);
+  }
+}
+
+function checkProductionUrls() {
+  const productionUrls = ['NEXTAUTH_URL', 'NEXT_PUBLIC_BASE_URL', 'NEXT_PUBLIC_SITE_URL'];
+  for (const name of productionUrls) {
+    const value = process.env[name]?.trim().replace(/\/+$/, '');
+    if (!value) {
+      failures.push(`variável obrigatória ausente em produção: ${name}`);
+    } else if (value !== officialSiteUrl) {
+      failures.push(`${name} deve usar o domínio oficial ${officialSiteUrl}`);
+    }
+  }
+  if (!failures.some((failure) => /NEXTAUTH_URL|NEXT_PUBLIC_BASE_URL|NEXT_PUBLIC_SITE_URL/.test(failure))) {
+    successes.push(`Site: domínio oficial e webhook Asaas (${officialWebhookUrl})`);
   }
 }
 

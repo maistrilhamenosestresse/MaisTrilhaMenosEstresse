@@ -15,24 +15,26 @@ Plataforma em Next.js 16 com site público, checkout, app móvel do cliente, pai
 Copie `.env.example` para `.env.local` e preencha todas as variáveis. Em produção, são especialmente obrigatórias:
 
 - `ADMIN_EMAILS`
-- `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`
+- `ASAAS_API_URL=https://api.asaas.com/v3`, uma `ASAAS_API_KEY` de produção e `ASAAS_WEBHOOK_TOKEN`
 - `AWS_S3_BUCKET_NAME` e um `AWS_BACKUP_BUCKET_NAME` diferente
 - `CRON_SECRET`, `RATE_LIMIT_SECRET` e `REGISTRATION_SIGNING_SECRET`
 - credenciais Supabase e AWS
+- `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL` e `NEXT_PUBLIC_SITE_URL` com `https://www.maistrilhasmenosestresse.com`
 
 Nunca envie `.env.local`, dumps ou backups para o Git. Como versões antigas continham dados e credenciais, rotacione as chaves Supabase, AWS, Asaas, Gmail, GitHub, WhatsApp e os segredos de sessão antes do deploy.
 
 ## Ordem obrigatória do deploy
 
 1. Crie/configure os buckets de mídia e backup na AWS. O bucket de backup deve ser separado.
-2. Configure as variáveis de ambiente no provedor de hospedagem.
+2. Configure as variáveis de ambiente de produção no provedor de hospedagem. Não reutilize a chave do sandbox da Asaas.
 3. Execute integralmente [`supabase/migrations/202607160001_security_and_finance_foundation.sql`](supabase/migrations/202607160001_security_and_finance_foundation.sql) no SQL Editor do Supabase.
    Como alternativa, configure `DATABASE_URL` somente no ambiente local e rode `npm run db:migrate`.
-4. Rode `npm run media:sync-manifest` para gravar no Supabase o manifesto já armazenado em `legacy-media/manifest.json` no S3.
-5. Configure na Asaas o webhook `https://SEU_DOMINIO/api/webhooks/asaas`, usando exatamente o valor de `ASAAS_WEBHOOK_TOKEN` como token de autenticação.
-6. Faça o deploy e execute `npm run verify`.
-7. Execute `npm run readiness:check`. Esse comando consulta os serviços reais sem modificar dados e falha se a migration, os segredos, o manifesto, a AWS ou a Asaas ainda não estiverem prontos.
-8. Acione `/api/admin/backup` pelo painel e confirme que o primeiro backup terminou no bucket separado.
+4. Execute [`supabase/migrations/202607170001_backfill_legacy_trail_points.sql`](supabase/migrations/202607170001_backfill_legacy_trail_points.sql) para creditar, sem duplicação, as trilhas pagas anteriores ao sistema de pontos.
+5. Rode `npm run media:sync-manifest` para gravar no Supabase o manifesto já armazenado em `legacy-media/manifest.json` no S3.
+6. Configure na Asaas o webhook `https://www.maistrilhasmenosestresse.com/api/webhooks/asaas`, usando exatamente o valor de `ASAAS_WEBHOOK_TOKEN` como token de autenticação (`asaas-access-token`).
+7. Faça o deploy e execute `npm run verify`.
+8. Execute `npm run readiness:check`. Esse comando consulta os serviços reais sem modificar dados e falha se as migrations, os segredos, o domínio oficial, o manifesto, a AWS ou a Asaas ainda não estiverem prontos.
+9. Acione `/api/admin/backup` pelo painel e confirme que o primeiro backup terminou no bucket separado.
 
 Aplicar o código antes da migration fará endpoints públicos retornarem `503`, pois o rate limit e as transações financeiras dependem das novas funções SQL.
 
