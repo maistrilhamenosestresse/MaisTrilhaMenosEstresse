@@ -16,6 +16,7 @@ import {
   type ResponsiveSignaturePadHandle,
 } from "@/components/contracts/ResponsiveSignaturePad";
 import { getContractDefinition } from "@/lib/contracts";
+import { validateRegistrationInput } from "@/lib/registration-validation";
 
 const REGISTRATION_CONTRACTS = [
   getContractDefinition("responsibility"),
@@ -152,6 +153,20 @@ function CadastroContent() {
     setIsLoading(true);
 
     try {
+      if (!formData.photo) {
+        setStep(1);
+        throw new Error("Envie uma foto de rosto para continuar.");
+      }
+      const validationError = validateRegistrationInput({
+        ...formData,
+        signature_url: signatureData,
+        accepted_terms: acceptedTerms,
+      });
+      if (validationError) {
+        setStep(validationError.step);
+        throw new Error(validationError.message);
+      }
+
       // Verifica Duplicidade - (Removido, faremos Upsert)
 
       let photoUrl = "";
@@ -236,6 +251,7 @@ function CadastroContent() {
           setIsDuplicateBlock(true);
           return;
         }
+        if (registration.step) setStep(registration.step);
         throw new Error(registration.error || 'Falha ao salvar cadastro');
       }
       const savedClient = registration.client;
@@ -268,7 +284,7 @@ function CadastroContent() {
               agenda.accepted_payment_methods.length > 0
                 ? agenda.accepted_payment_methods
                 : ['PIX'],
-            taxa_gratis: true,
+            taxa_gratis: false,
           });
         }
         
@@ -441,7 +457,7 @@ function CadastroContent() {
                 <button 
                   type="button" 
                   onClick={handleNext}
-                  disabled={!formData.full_name || !formData.phone || !formData.photo}
+                  disabled={!formData.full_name || !formData.email || !formData.phone || !formData.photo}
                   className="w-full mt-6 bg-white/10 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition disabled:opacity-50"
                 >
                   Continuar <ChevronRight className="h-5 w-5" />

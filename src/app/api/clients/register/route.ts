@@ -6,6 +6,7 @@ import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { requireServerEnv } from '@/lib/server/env';
 import { signRegistrationNotification } from '@/lib/server/registration-notification';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
+import { validateRegistrationInput } from '@/lib/registration-validation';
 
 type RegistrationBody = {
   full_name?: string;
@@ -37,16 +38,14 @@ export async function POST(request: Request) {
   const email = String(input.email || '').trim().toLowerCase();
   const name = String(input.full_name || '').trim();
   const birthDate = String(input.birth_date || '');
-  const emergencyPhone = String(input.emergency_contact_phone || '').replace(/\D/g, '');
 
-  if (
-    name.length < 3 || name.length > 150 || !/^\S+@\S+\.\S+$/.test(email) ||
-    !isValidCpf(cpf) || phone.length < 10 || phone.length > 11 ||
-    !isValidPastDate(birthDate) || String(input.rg || '').trim().length < 4 ||
-    String(input.emergency_contact_name || '').trim().length < 3 || emergencyPhone.length < 10 ||
-    input.accepted_terms !== true || !input.signature_url
-  ) {
-    return NextResponse.json({ error: 'Revise os dados obrigatórios e o aceite dos termos' }, { status: 400 });
+  const validationError = validateRegistrationInput(input);
+  if (validationError) {
+    return NextResponse.json({
+      error: validationError.message,
+      field: validationError.field,
+      step: validationError.step,
+    }, { status: 400 });
   }
 
   const bucket = requireServerEnv('AWS_S3_BUCKET_NAME');
@@ -100,7 +99,7 @@ export async function POST(request: Request) {
   try {
     await signClientContracts({
       client,
-      signatureUrl: input.signature_url,
+      signatureUrl: String(input.signature_url || ''),
       request,
       types: ['responsibility', 'insurance'] satisfies ContractType[],
       source: 'registration',
@@ -127,23 +126,4 @@ function formatPhone(value: string) {
   return value.length === 11
     ? value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
     : value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-}
-
-function isValidPastDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T12:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date < new Date();
-}
-
-function isValidCpf(value: string) {
-  if (!/^\d{11}$/.test(value) || /^(\d)\1{10}$/.test(value)) return false;
-  const digit = (length: number) => {
-    const sum = value.slice(0, length).split('').reduce(
-      (total, number, index) => total + Number(number) * (length + 1 - index),
-      0,
-    );
-    const remainder = (sum * 10) % 11;
-    return remainder === 10 ? 0 : remainder;
-  };
-  return digit(9) === Number(value[9]) && digit(10) === Number(value[10]);
 }

@@ -10,6 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { calculateGrossPrice } from "@/lib/fees";
 
 function TrailCheckoutContent() {
   const router = useRouter();
@@ -249,7 +250,11 @@ function TrailCheckoutContent() {
   const pointsApplied = usePoints
     ? Math.min(pointsAvailable, Math.floor(Math.max(0, grossPrice - cashbackApplied) * 100))
     : 0;
-  const amountDue = Math.max(0, grossPrice - cashbackApplied - pointsApplied / 100);
+  const netAmountDue = Math.max(0, grossPrice - cashbackApplied - pointsApplied / 100);
+  const amountDue = netAmountDue <= 0
+    ? 0
+    : calculateGrossPrice(netAmountDue, paymentMethod, paymentMethod === "CREDIT_CARD" ? installments : 1);
+  const providerFee = Math.max(0, amountDue - netAmountDue);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
@@ -348,6 +353,12 @@ function TrailCheckoutContent() {
               <div className="flex justify-between text-amber-300">
                 <span>{pointsApplied} pontos utilizados</span>
                 <span>- {formatCurrency(pointsApplied / 100)}</span>
+              </div>
+            )}
+            {providerFee > 0 && (
+              <div className="flex justify-between text-slate-300">
+                <span>Tarifa Asaas repassada</span>
+                <span>+ {formatCurrency(providerFee)}</span>
               </div>
             )}
             <div className="flex justify-between font-black text-base pt-2 border-t border-white/10">

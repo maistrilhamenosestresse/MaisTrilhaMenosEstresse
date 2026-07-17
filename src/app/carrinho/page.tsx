@@ -56,7 +56,8 @@ export default function CarrinhoPage() {
     item.quantity > 1 && item.dependents?.some(dep => !dep.name || !dep.cpf || dep.cpf.length < 14 || !dep.phone || dep.phone.length < 14)
   );
 
-  const cartTotalGross = items.reduce((acc, item) => acc + (getLowestGrossPrice(item.price, item.taxa_gratis) * item.quantity), 0);
+  const cartNetTotal = getTotalPrice();
+  const cartTotalGross = getLowestGrossPrice(cartNetTotal, false);
 
   return (
     <div className="min-h-screen bg-[#0F1722] text-white font-sans pb-32 lg:pb-12">
@@ -133,8 +134,8 @@ export default function CarrinhoPage() {
                       </div>
                       
                       <div className="text-right min-w-[100px]">
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Subtotal</p>
-                        <p className="font-black text-white text-xl">R$ {(getLowestGrossPrice(item.price, item.taxa_gratis) * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Valor da trilha</p>
+                        <p className="font-black text-white text-xl">R$ {(item.price * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       </div>
                       
                       <button 
@@ -236,15 +237,15 @@ export default function CarrinhoPage() {
                 <h3 className="text-xl font-bold mb-6 hidden lg:block">Resumo da Compra</h3>
                 
                 <div className="hidden lg:flex justify-between items-center mb-4 text-gray-400 text-sm">
-                  <span>Subtotal ({getTotalQuantity()} itens)</span>
-                  <span>R$ {cartTotalGross.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>Valor das trilhas ({getTotalQuantity()} itens)</span>
+                  <span>R$ {cartNetTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
                 
                 <div className="hidden lg:block border-t border-white/10 my-4"></div>
 
                 <div className="flex items-center justify-between gap-8 mb-6">
                   <div>
-                    <span className="text-xs text-gray-400 uppercase tracking-widest font-bold block mb-1">Total a Pagar</span>
+                    <span className="text-xs text-gray-400 uppercase tracking-widest font-bold block mb-1">Total a partir de (Pix)</span>
                     <p className="text-2xl md:text-4xl font-black text-white leading-none">R$ {cartTotalGross.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="lg:hidden">

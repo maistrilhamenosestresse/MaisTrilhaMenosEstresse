@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createOrUpdateCustomer, createPayment, getPixQrCode } from '@/lib/asaas';
+import { calculateGrossPrice } from '@/lib/fees';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
@@ -84,12 +85,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forma de pagamento não aceita para uma das trilhas' }, { status: 400 });
   }
 
-  const total = reservations.reduce((sum, reservation) => {
+  const netTotal = reservations.reduce((sum, reservation) => {
     const agenda = agendas.find((item) => item.id === reservation.agenda_id);
     if (!agenda) return sum;
     return sum + Number(agenda.price);
   }, 0);
-  if (!Number.isFinite(total) || total <= 0) return NextResponse.json({ error: 'Preço inválido' }, { status: 400 });
+  if (!Number.isFinite(netTotal) || netTotal <= 0) return NextResponse.json({ error: 'Preço inválido' }, { status: 400 });
+
+  const originalValueUpdates = await Promise.all(reservations.map((reservation) => {
+    const agenda = agendas.find((item) => item.id === reservation.agenda_id);
+    return supabase
+      .from('reservas')
+      .update({ valor_original: Number(agenda?.price || 0) })
+      .eq('id', reservation.id)
+      .eq('status_pagamento', 'pendente');
+  }));
+  if (originalValueUpdates.some((result) => result.error)) {
+    return NextResponse.json({ error: 'Não foi possível registrar o valor da venda' }, { status: 500 });
+  }
 
   const postalCode = String(parsed.data.customer_data?.postalCode || '').replace(/\D/g, '');
   const addressNumber = String(parsed.data.customer_data?.addressNumber || '').trim();
@@ -102,13 +115,13 @@ export async function POST(request: Request) {
   let paymentCreated = false;
   let benefitId: string | null = null;
   try {
-    let paymentTotal = total;
+    let netAmountDue = netTotal;
     let benefitSummary: Record<string, unknown> | null = null;
     if (isAppCheckout) {
       const prepared = await supabase.rpc('prepare_app_trail_checkout', {
         p_reservation_ids: reservationIds,
         p_owner_id: principal.id,
-        p_gross_amount: total,
+        p_gross_amount: netTotal,
         p_use_cashback: parsed.data.use_cashback === true,
         p_use_points: parsed.data.use_points === true,
       });
@@ -117,7 +130,7 @@ export async function POST(request: Request) {
       }
       benefitSummary = prepared.data as Record<string, unknown>;
       benefitId = String(benefitSummary.benefit_id);
-      paymentTotal = Number(benefitSummary.amount_due || 0);
+      netAmountDue = Number(benefitSummary.amount_due || 0);
     }
 
     const claim = await supabase.rpc('claim_reservation_checkout', {
@@ -135,7 +148,7 @@ export async function POST(request: Request) {
       ? `TRILHA_APP:${benefitId}`
       : `TRILHA:${claim.data}`;
 
-    if (benefitId && paymentTotal <= 0) {
+    if (benefitId && netAmountDue <= 0) {
       const internalPaymentId = `INTERNAL:${benefitId}`;
       await processConfirmedAsaasPayment(supabase, {
         id: internalPaymentId,
@@ -152,6 +165,8 @@ export async function POST(request: Request) {
         benefits: benefitSummary,
       });
     }
+
+    const paymentTotal = calculateGrossPrice(netAmountDue, paymentMethod, installments);
 
     const customerId = await createOrUpdateCustomer({
       name: principal.full_name,
@@ -220,6 +235,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true, type: 'PIX', paymentId: payment.id,
         encodedImage: pix.encodedImage, payload: pix.payload, expirationDate: pix.expirationDate,
+        netAmount: netAmountDue, chargedAmount: paymentTotal,
         benefits: benefitSummary,
       });
     }
@@ -227,6 +243,7 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true, type: 'BOLETO', paymentId: payment.id,
         bankSlipUrl: payment.bankSlipUrl, invoiceUrl: payment.invoiceUrl,
+        netAmount: netAmountDue, chargedAmount: paymentTotal,
         benefits: benefitSummary,
       });
     }
@@ -235,6 +252,8 @@ export async function POST(request: Request) {
       type: 'CREDIT_CARD',
       paymentId: payment.id,
       status: payment.status,
+      netAmount: netAmountDue,
+      chargedAmount: paymentTotal,
       benefits: benefitSummary,
     });
   } catch (error: any) {

@@ -1,136 +1,137 @@
+export type AsaasPaymentMethod = 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'DEBIT_CARD';
+
+const DISCOUNT_EXPIRATION = new Date('2026-10-15T00:00:00-03:00').getTime();
+
+/**
+ * Tarifas da conta consultadas em /v3/myAccount/fees em 17/07/2026.
+ * Os valores promocionais expiram em 15/10/2026; depois disso o cálculo
+ * troca automaticamente para as tarifas padrão informadas pela própria Asaas.
+ */
 export const ASAAS_FEES = {
   PIX: {
-    fixed: 0.99, // R$ 0,99 por cobrança (preço promocional válido até 15/10/2026)
-    percent: 0,
-    anticipation_per_month: 0, // PIX cai em segundos, sem antecipação
+    standardFixed: 1.99,
+    discountedFixed: 0.99,
   },
   BOLETO: {
-    fixed: 0.99, // R$ 0,99 por boleto pago (preço promocional válido até 15/10/2026)
-    percent: 0,
-    anticipation_per_month: 0.0579, // 5,79% ao mês (padrão Asaas para antecipação de boleto)
+    standardFixed: 1.99,
+    discountedFixed: 0.99,
   },
   CREDIT_CARD: {
-    fixed: 0.49, // R$ 0,49 por transação (exceto à vista que não cobra)
-    rates: [
-      { maxInstallments: 1,  percent: 0.0199, anticipation_per_month: 0.0125 }, // 1,99% + antecipação 1,25%/mês (32 dias ~ 1 mês)
-      { maxInstallments: 6,  percent: 0.0249, anticipation_per_month: 0.0170 }, // 2,49% 2-6x + antecipação 1,7%/mês
-      { maxInstallments: 12, percent: 0.0299, anticipation_per_month: 0.0170 }, // 2,99% 7-12x + antecipação 1,7%/mês
-      { maxInstallments: 21, percent: 0.0329, anticipation_per_month: 0.0170 }, // 3,29% 13-21x + antecipação 1,7%/mês
-    ]
+    fixed: 0.49,
+    standardRates: [
+      { maxInstallments: 1, percent: 0.0299 },
+      { maxInstallments: 6, percent: 0.0349 },
+      { maxInstallments: 12, percent: 0.0399 },
+      { maxInstallments: 21, percent: 0.0429 },
+    ],
+    discountedRates: [
+      { maxInstallments: 1, percent: 0.0199 },
+      { maxInstallments: 6, percent: 0.0249 },
+      { maxInstallments: 12, percent: 0.0299 },
+      { maxInstallments: 21, percent: 0.0329 },
+    ],
   },
   DEBIT_CARD: {
-    fixed: 0.35,    // R$ 0,35 por transação
-    percent: 0.0189, // 1,89%
-    anticipation_per_month: 0, // Débito cai em 3 dias úteis, sem antecipação configurada
+    fixed: 0.35,
+    percent: 0.0189,
   },
-  // Notificações (Email+SMS, WhatsApp) — NÃO incluídas no repasse ao cliente
-  // São custo operacional absorvido pelo negócio.
-  NOTIFICATIONS: 0,
-  WITHDRAWAL_FEE: 0,
-};
-
+} as const;
 
 /**
- * Calcula a taxa de antecipação média.
+ * Retorna o menor valor em centavos que, depois da tarifa da Asaas,
+ * preserva o líquido definido pela empresa.
  */
-export function getAverageAnticipationRate(installments: number, anticipationRatePerMonth: number): number {
-  if (installments <= 1) return anticipationRatePerMonth;
-  const averageMonths = (installments + 1) / 2;
-  return anticipationRatePerMonth * averageMonths;
-}
+export function calculateGrossPrice(
+  netValue: number,
+  method: AsaasPaymentMethod,
+  installments = 1,
+  now = new Date(),
+) {
+  const normalizedNet = roundCurrency(netValue);
+  if (normalizedNet <= 0) return 0;
 
-/**
- * 1. MODO REPASSE (Atual): 
- * O lojista define que quer ganhar X líquido.
- * O sistema calcula o preço Bruto (Gross) a ser cobrado do cliente, embutindo as taxas.
- */
-export function calculateGrossPrice(netValue: number, method: 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'DEBIT_CARD', installments: number = 1): number {
-  if (netValue <= 0) return 0;
-  
-  let fixedFee = ASAAS_FEES.WITHDRAWAL_FEE + ASAAS_FEES.NOTIFICATIONS;
-  let percentFee = 0;
+  const { fixedFee, percentFee } = getFeeComponents(method, installments, now);
+  let grossCents = Math.max(
+    1,
+    Math.ceil((((normalizedNet + fixedFee) / (1 - percentFee)) * 100) - 1e-8),
+  );
 
-  if (method === 'PIX') {
-    fixedFee += ASAAS_FEES.PIX.fixed;
-    percentFee += ASAAS_FEES.PIX.percent;
-    percentFee += ASAAS_FEES.PIX.anticipation_per_month; 
-  } else if (method === 'BOLETO') {
-    // Boleto Parcelado (Carnê) multiplica as taxas fixas (R$ 1,99) pelo número de parcelas/boletos
-    fixedFee += (ASAAS_FEES.BOLETO.fixed * installments);
-    percentFee += ASAAS_FEES.BOLETO.percent;
-    percentFee += getAverageAnticipationRate(installments, ASAAS_FEES.BOLETO.anticipation_per_month); 
-  } else if (method === 'DEBIT_CARD') {
-    fixedFee += ASAAS_FEES.DEBIT_CARD.fixed;
-    percentFee += ASAAS_FEES.DEBIT_CARD.percent;
-    percentFee += ASAAS_FEES.DEBIT_CARD.anticipation_per_month;
-  } else if (method === 'CREDIT_CARD') {
-    fixedFee += ASAAS_FEES.CREDIT_CARD.fixed;
-    const tier = ASAAS_FEES.CREDIT_CARD.rates.find(t => installments <= t.maxInstallments) 
-                 || ASAAS_FEES.CREDIT_CARD.rates[ASAAS_FEES.CREDIT_CARD.rates.length - 1];
-    
-    // Na faixa promocional à vista, a Asaas não cobra o fixo de R$0.49
-    if (installments === 1) {
-      fixedFee -= ASAAS_FEES.CREDIT_CARD.fixed;
-    }
-
-    percentFee += tier.percent;
-    percentFee += getAverageAnticipationRate(installments, tier.anticipation_per_month);
+  while (
+    grossCents > 1 &&
+    calculateNetProfit((grossCents - 1) / 100, method, installments, now) >= normalizedNet
+  ) {
+    grossCents -= 1;
+  }
+  while (calculateNetProfit(grossCents / 100, method, installments, now) < normalizedNet) {
+    grossCents += 1;
   }
 
-  if (percentFee >= 1) throw new Error("Taxas excedem 100%.");
+  return grossCents / 100;
+}
 
-  const grossValue = (netValue + fixedFee) / (1 - percentFee);
-  return Math.ceil(grossValue);
+export function calculateNetProfit(
+  grossValue: number,
+  method: AsaasPaymentMethod,
+  installments = 1,
+  now = new Date(),
+) {
+  const normalizedGross = roundCurrency(grossValue);
+  if (normalizedGross <= 0) return 0;
+  const { fixedFee, percentFee } = getFeeComponents(method, installments, now);
+  const percentageAmount = roundCurrency(normalizedGross * percentFee);
+  return roundCurrency(normalizedGross - fixedFee - percentageAmount);
 }
 
 /**
- * 2. MODO TAXA GRÁTIS (Novo):
- * O lojista define o preço Bruto (Gross) (ex: R$ 490).
- * O cliente paga R$ 490, e o sistema calcula quanto Líquido o lojista vai receber.
+ * Preço mínimo exibido antes da escolha do método: Pix à vista.
+ * Se taxa_gratis for true, a organização optou por absorver a tarifa.
  */
-export function calculateNetProfit(grossValue: number, method: 'PIX' | 'BOLETO' | 'CREDIT_CARD' | 'DEBIT_CARD', installments: number = 1): number {
-  if (grossValue <= 0) return 0;
-  
-  let fixedFee = ASAAS_FEES.WITHDRAWAL_FEE + ASAAS_FEES.NOTIFICATIONS;
-  let percentFee = 0;
+export function getLowestGrossPrice(basePrice: number, taxa_gratis = false) {
+  return taxa_gratis
+    ? roundCurrency(basePrice)
+    : calculateGrossPrice(basePrice, 'PIX');
+}
+
+function getFeeComponents(
+  method: AsaasPaymentMethod,
+  installments: number,
+  now: Date,
+) {
+  const normalizedInstallments = Math.max(1, Math.trunc(installments || 1));
+  const discountActive = now.getTime() < DISCOUNT_EXPIRATION;
 
   if (method === 'PIX') {
-    fixedFee += ASAAS_FEES.PIX.fixed;
-    percentFee += ASAAS_FEES.PIX.percent;
-    percentFee += ASAAS_FEES.PIX.anticipation_per_month; 
-  } else if (method === 'BOLETO') {
-    fixedFee += (ASAAS_FEES.BOLETO.fixed * installments);
-    percentFee += ASAAS_FEES.BOLETO.percent;
-    percentFee += getAverageAnticipationRate(installments, ASAAS_FEES.BOLETO.anticipation_per_month); 
-  } else if (method === 'DEBIT_CARD') {
-    fixedFee += ASAAS_FEES.DEBIT_CARD.fixed;
-    percentFee += ASAAS_FEES.DEBIT_CARD.percent;
-    percentFee += ASAAS_FEES.DEBIT_CARD.anticipation_per_month;
-  } else if (method === 'CREDIT_CARD') {
-    fixedFee += ASAAS_FEES.CREDIT_CARD.fixed;
-    const tier = ASAAS_FEES.CREDIT_CARD.rates.find(t => installments <= t.maxInstallments) 
-                 || ASAAS_FEES.CREDIT_CARD.rates[ASAAS_FEES.CREDIT_CARD.rates.length - 1];
-                 
-    if (installments === 1) {
-      fixedFee -= ASAAS_FEES.CREDIT_CARD.fixed;
-    }
-    
-    percentFee += tier.percent;
-    percentFee += getAverageAnticipationRate(installments, tier.anticipation_per_month);
+    return {
+      fixedFee: discountActive
+        ? ASAAS_FEES.PIX.discountedFixed
+        : ASAAS_FEES.PIX.standardFixed,
+      percentFee: 0,
+    };
+  }
+  if (method === 'BOLETO') {
+    const feePerSlip = discountActive
+      ? ASAAS_FEES.BOLETO.discountedFixed
+      : ASAAS_FEES.BOLETO.standardFixed;
+    return { fixedFee: feePerSlip * normalizedInstallments, percentFee: 0 };
+  }
+  if (method === 'DEBIT_CARD') {
+    return {
+      fixedFee: ASAAS_FEES.DEBIT_CARD.fixed,
+      percentFee: ASAAS_FEES.DEBIT_CARD.percent,
+    };
   }
 
-  const feeAmount = (grossValue * percentFee) + fixedFee;
-  const netValue = grossValue - feeAmount;
-  return Number(netValue.toFixed(2));
+  const tiers = discountActive
+    ? ASAAS_FEES.CREDIT_CARD.discountedRates
+    : ASAAS_FEES.CREDIT_CARD.standardRates;
+  const tier = tiers.find((item) => normalizedInstallments <= item.maxInstallments)
+    || tiers[tiers.length - 1];
+  return {
+    fixedFee: ASAAS_FEES.CREDIT_CARD.fixed,
+    percentFee: tier.percent,
+  };
 }
 
-/**
- * Pega o menor preço Bruto (normalmente Pix à vista).
- * O boolean taxa_gratis determina se o preço já é o valor final (taxa absorvida) ou repassado.
- */
-export function getLowestGrossPrice(basePrice: number, taxa_gratis: boolean = false): number {
-  void taxa_gratis;
-  // O preço cadastrado é sempre o preço final exibido e cobrado do cliente.
-  // As taxas da Asaas são custo operacional e aparecem apenas nos relatórios.
-  return Number(basePrice.toFixed(2));
+function roundCurrency(value: number) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }

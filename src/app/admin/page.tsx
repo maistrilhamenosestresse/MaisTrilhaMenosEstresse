@@ -910,7 +910,7 @@ export default function AdminPage() {
         difficulty: data.difficulty,
         images: imageUrls, video_url: videoUrl, flyer_url: flyerUrl,
         accepted_payment_methods: acceptedPaymentMethods,
-        taxa_gratis: true
+        taxa_gratis: false
       };
 
       if (editingAgenda) {
@@ -2308,7 +2308,7 @@ export default function AdminPage() {
             reset();
             setEditingAgenda(null);
             setAcceptedPaymentMethods(['PIX', 'CREDIT_CARD']);
-            setValue("taxa_gratis", "true");
+            setValue("taxa_gratis", "false");
             setIsFormModalOpen(true);
           }}
           className="fixed bottom-24 right-5 md:bottom-8 md:right-8 bg-[#F17B37] text-white p-4 rounded-full shadow-[0_8px_30px_rgba(241,123,55,0.4)] hover:scale-105 active:scale-95 transition-all z-20 print:hidden flex items-center justify-center"
@@ -2430,10 +2430,10 @@ export default function AdminPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div><label className="block text-sm font-bold mb-1">Data</label><input type="date" {...register("date", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" /></div>
                     <div>
-                      <label className="block text-sm font-bold mb-1">Preço final cobrado</label>
+                      <label className="block text-sm font-bold mb-1">Valor líquido desejado</label>
                       <input {...register("price", { required: true })} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150,00" />
                       <p className="mt-1 text-[10px] leading-tight text-gray-500">
-                        O cliente pagará exatamente este valor. A taxa da Asaas será descontada do recebimento.
+                        Este é o valor que a empresa deve receber. A tarifa da Asaas será adicionada no checkout conforme Pix ou cartão.
                       </p>
                     </div>
                     <div><label className="block text-sm font-bold mb-1">Vagas</label><input type="number" {...register("max_capacity", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="15" /></div>
@@ -2482,10 +2482,10 @@ export default function AdminPage() {
 
                   <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                     <p className="flex items-center gap-2 text-sm font-bold text-emerald-800">
-                      <CreditCard className="h-4 w-4" /> Preço transparente
+                      <CreditCard className="h-4 w-4" /> Repasse automático das tarifas
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-emerald-700">
-                      O valor cadastrado é o valor exibido e cobrado. As taxas da Asaas são registradas apenas no controle financeiro.
+                      O cliente verá o total final antes de pagar. O sistema calcula a tarifa por forma de pagamento para preservar o valor líquido cadastrado.
                     </p>
                   </div>
                 </div>

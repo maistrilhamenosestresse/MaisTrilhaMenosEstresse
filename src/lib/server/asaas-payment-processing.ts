@@ -78,7 +78,7 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
     if (!processed) return 'duplicate';
     const { data: benefit, error: benefitError } = await supabase
       .from('trail_checkout_benefits')
-      .select('reservation_ids, owner_id')
+      .select('reservation_ids, owner_id, amount_due')
       .eq('id', benefitId)
       .single();
     if (benefitError || !benefit?.reservation_ids?.length) {
@@ -88,9 +88,10 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
       supabase,
       benefit.reservation_ids,
       paymentId,
-      paidValue,
+      Number(benefit.amount_due || 0),
       true,
       benefit.owner_id,
+      paidValue,
     );
   }
 
@@ -158,13 +159,26 @@ async function reservationIdsFromReference(supabase: SupabaseAdmin, reference: s
 
 async function processTrailPayment(supabase: SupabaseAdmin, reservationIds: string[], paymentId: string, paidValue: number, billingType?: string) {
   if (!reservationIds.length) throw new Error('Reservas ausentes no pagamento');
+  const { data: reservationValues, error: valueError } = await supabase
+    .from('reservas')
+    .select('valor_original')
+    .in('id', reservationIds);
+  if (valueError) throw valueError;
+  const configuredNetValue = (reservationValues || []).reduce(
+    (sum, reservation) => sum + Number(reservation.valor_original || 0),
+    0,
+  );
+  const saleValue = configuredNetValue > 0 ? configuredNetValue : paidValue;
+  if (paidValue + 0.01 < saleValue) {
+    throw new Error('Valor recebido abaixo do líquido configurado');
+  }
   const { data: processed, error } = await supabase.rpc('finalize_trail_payment', {
     p_reservation_ids: reservationIds, p_payment_id: paymentId,
-    p_paid_amount: paidValue, p_billing_type: billingType || 'ASAAS',
+    p_paid_amount: saleValue, p_billing_type: billingType || 'ASAAS',
   });
   if (error) throw error;
   if (!processed) return 'duplicate';
-  return completeTrailPayment(supabase, reservationIds, paymentId, paidValue, false);
+  return completeTrailPayment(supabase, reservationIds, paymentId, saleValue, false, undefined, paidValue);
 }
 
 async function completeTrailPayment(
@@ -174,6 +188,7 @@ async function completeTrailPayment(
   paidValue: number,
   rewardEligible: boolean,
   ownerId?: string,
+  customerChargedValue = paidValue,
 ) {
   const { data: reservations, error: reservationError } = await supabase.from('reservas')
     .select('*, clients!reservas_client_id_fkey(*), agendas(*)').in('id', reservationIds);
@@ -204,7 +219,7 @@ async function completeTrailPayment(
   if (process.env.WHATSAPP_ADMIN_NUMBER) {
     await sendWhatsAppText(
       process.env.WHATSAPP_ADMIN_NUMBER,
-      `✅ *NOVA VENDA CONFIRMADA (ASAAS)*\n\n👤 ${principal.clients.full_name}\n🎒 ${principal.agendas.title}\n🎟️ ${reservationIds.length} vaga(s)\n💰 R$ ${paidValue.toFixed(2)}`,
+      `✅ *NOVA VENDA CONFIRMADA (ASAAS)*\n\n👤 ${principal.clients.full_name}\n🎒 ${principal.agendas.title}\n🎟️ ${reservationIds.length} vaga(s)\n💰 Venda líquida: R$ ${paidValue.toFixed(2)}\n💳 Cobrado do cliente: R$ ${customerChargedValue.toFixed(2)}`,
     );
   }
   return 'completed';

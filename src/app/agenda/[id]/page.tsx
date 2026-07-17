@@ -117,7 +117,7 @@ export default function AgendaDetailsPage() {
         agenda.accepted_payment_methods.length > 0
           ? agenda.accepted_payment_methods
           : ['PIX'],
-      taxa_gratis: true,
+      taxa_gratis: false,
     });
     router.push('/carrinho');
   };

@@ -4,6 +4,9 @@ import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 import { signRegistrationNotification } from '@/lib/server/registration-notification';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
+import { validateRegistrationInput } from '@/lib/registration-validation';
+import { signClientContracts } from '@/lib/server/client-contracts';
+import type { ContractType } from '@/lib/contracts';
 
 type CompletionBody = {
   token?: string;
@@ -41,16 +44,17 @@ export async function POST(request: Request) {
   const input = parsed.data;
   const token = String(input.token || '');
   const cpf = String(input.cpf || '').replace(/\D/g, '');
-  const phone = String(input.phone || '').replace(/\D/g, '');
   const email = String(input.email || '').trim().toLowerCase();
-  if (
-    token.length < 32 || String(input.full_name || '').trim().length < 3 || !/^\S+@\S+\.\S+$/.test(email) ||
-    cpf.length !== 11 || phone.length < 10 || String(input.rg || '').trim().length < 4 ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(String(input.birth_date || '')) ||
-    String(input.emergency_contact_name || '').trim().length < 3 ||
-    String(input.emergency_contact_phone || '').replace(/\D/g, '').length < 10 || input.accepted_terms !== true
-  ) {
-    return NextResponse.json({ error: 'Revise os dados obrigatórios' }, { status: 400 });
+  if (token.length < 32) {
+    return NextResponse.json({ error: 'Convite inválido' }, { status: 400 });
+  }
+  const validationError = validateRegistrationInput(input);
+  if (validationError) {
+    return NextResponse.json({
+      error: validationError.message,
+      field: validationError.field,
+      step: validationError.step,
+    }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin();
@@ -85,6 +89,21 @@ export async function POST(request: Request) {
     accepted_terms_at: new Date().toISOString(),
   }).eq('id', invite.client_id).select('*').single();
   if (error) return NextResponse.json({ error: 'Não foi possível concluir o cadastro' }, { status: 400 });
+
+  try {
+    await signClientContracts({
+      client,
+      signatureUrl: String(input.signature_url || ''),
+      request,
+      types: ['responsibility', 'insurance'] satisfies ContractType[],
+      source: 'registration',
+    });
+  } catch (contractError: any) {
+    return NextResponse.json({
+      error: contractError.message || 'Não foi possível registrar os contratos assinados',
+    }, { status: 400 });
+  }
+
   await supabase.from('dependent_registration_invites').update({ used_at: new Date().toISOString() }).eq('id', invite.id).is('used_at', null);
   return NextResponse.json({ success: true, client, notificationToken: signRegistrationNotification(client.id) });
 }

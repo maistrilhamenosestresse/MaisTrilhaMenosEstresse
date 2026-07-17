@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { getLowestGrossPrice } from "@/lib/fees";
+import { calculateGrossPrice } from "@/lib/fees";
 import { useRouter } from "next/navigation";
 import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, CreditCard, QrCode, FileText } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
@@ -13,10 +13,10 @@ function CheckoutAuthContent() {
   const router = useRouter();
   const { items, clearCart, getTotalPrice } = useCartStore();
 
-  const cartTotalGross = items.reduce((acc, item) => acc + (getLowestGrossPrice(item.price, item.taxa_gratis) * item.quantity), 0);
+  const cartNetTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const calculateTotalWithMethod = (_method: 'PIX'|'BOLETO'|'CREDIT_CARD', _installments: number = 1) => {
-    return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const calculateTotalWithMethod = (method: 'PIX'|'BOLETO'|'CREDIT_CARD', installments: number = 1) => {
+    return calculateGrossPrice(cartNetTotal, method, installments);
   };
   
   const [step, setStep] = useState<'email' | 'otp' | 'cart' | 'edit' | 'payment' | 'success'>('email');
@@ -243,7 +243,7 @@ function CheckoutAuthContent() {
             expiryYear: `20${expiryYear}`,
             ccv: cardData.ccv
           } : undefined,
-          installments: cardData.installments
+          installments: paymentMethod === 'CREDIT_CARD' ? cardData.installments : 1
         })
       });
 
@@ -353,7 +353,7 @@ function CheckoutAuthContent() {
 
               <div className="flex justify-between items-center mb-4 text-gray-400 text-sm">
                 <span>Subtotal ({items.length} itens)</span>
-                <span>R$ {cartTotalGross.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>R$ {cartNetTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               
               <div className="border-t border-white/10 my-4"></div>
@@ -413,14 +413,14 @@ function CheckoutAuthContent() {
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-4 mt-2">
                   <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center justify-between">
                     <span className="text-sm text-white">Total no Boleto:</span>
-                    <span className="font-bold text-white text-lg">R$ {calculateTotalWithMethod('BOLETO', cardData.installments).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="font-bold text-white text-lg">R$ {calculateTotalWithMethod('BOLETO', 1).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </motion.div>
               )}
-              {(paymentMethod === 'CREDIT_CARD' || paymentMethod === 'BOLETO') && (
+              {paymentMethod === 'CREDIT_CARD' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-6">
                   <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">
-                    {paymentMethod === 'BOLETO' ? 'Parcelamento (Carnê)' : 'Parcelamento'}
+                    Parcelamento
                   </label>
                   <select value={cardData.installments} onChange={(e) => setCardData({...cardData, installments: Number(e.target.value)})} className="w-full p-3 bg-[#0F1722]/80 border border-white/10 rounded-xl outline-none focus:border-[#F17B37] text-sm text-white appearance-none">
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(num => (
