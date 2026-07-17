@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createOrUpdateCustomer, createPayment, getPixQrCode } from '@/lib/asaas';
-import { calculateGrossPrice } from '@/lib/fees';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
@@ -88,8 +87,7 @@ export async function POST(request: Request) {
   const total = reservations.reduce((sum, reservation) => {
     const agenda = agendas.find((item) => item.id === reservation.agenda_id);
     if (!agenda) return sum;
-    const price = Number(agenda.price);
-    return sum + (agenda.taxa_gratis ? price : calculateGrossPrice(price, paymentMethod, installments));
+    return sum + Number(agenda.price);
   }, 0);
   if (!Number.isFinite(total) || total <= 0) return NextResponse.json({ error: 'Preço inválido' }, { status: 400 });
 

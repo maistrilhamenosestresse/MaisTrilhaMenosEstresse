@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { NextResponse } from "next/server";
+import { getCurrentContractVersion, type ContractType } from "@/lib/contracts";
 import { requireAdminUser } from "@/lib/server/auth";
 import { generateContractPdf } from "@/lib/server/contract-pdf";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -31,12 +32,15 @@ export async function GET(request: Request) {
   }
   const { data: contracts, error } = await query;
   if (error) return NextResponse.json({ error: "Não foi possível carregar os contratos" }, { status: 500 });
-  if (!contracts?.length) {
-    return NextResponse.json({ error: "Nenhum contrato versionado foi assinado ainda" }, { status: 404 });
+  const currentContracts = (contracts || []).filter((contract) =>
+    contract.version === getCurrentContractVersion(contract.contract_type as ContractType)
+  );
+  if (!currentContracts.length) {
+    return NextResponse.json({ error: "Nenhum contrato da versão atual foi assinado ainda" }, { status: 404 });
   }
 
   const latest = new Map<string, any>();
-  for (const contract of contracts) {
+  for (const contract of currentContracts) {
     const key = `${contract.client_id}:${contract.contract_type}`;
     if (!latest.has(key)) latest.set(key, contract);
   }

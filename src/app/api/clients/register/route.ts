@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import type { ContractType } from '@/lib/contracts';
+import { signClientContracts } from '@/lib/server/client-contracts';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { requireServerEnv } from '@/lib/server/env';
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
     !isValidCpf(cpf) || phone.length < 10 || phone.length > 11 ||
     !isValidPastDate(birthDate) || String(input.rg || '').trim().length < 4 ||
     String(input.emergency_contact_name || '').trim().length < 3 || emergencyPhone.length < 10 ||
-    input.accepted_terms !== true
+    input.accepted_terms !== true || !input.signature_url
   ) {
     return NextResponse.json({ error: 'Revise os dados obrigatórios e o aceite dos termos' }, { status: 400 });
   }
@@ -90,9 +92,24 @@ export async function POST(request: Request) {
     accepted_terms_at: new Date().toISOString(),
   };
   const { data: client, error } = await supabase.from('clients').insert(payload)
-    .select('id, full_name, email, cpf, phone').single();
+    .select('*').single();
   if (error) {
     return NextResponse.json({ error: 'Não foi possível concluir o cadastro' }, { status: 400 });
+  }
+
+  try {
+    await signClientContracts({
+      client,
+      signatureUrl: input.signature_url,
+      request,
+      types: ['responsibility', 'insurance'] satisfies ContractType[],
+      source: 'registration',
+    });
+  } catch (contractError: any) {
+    await supabase.from('clients').delete().eq('id', client.id);
+    return NextResponse.json({
+      error: contractError.message || 'Não foi possível registrar os contratos assinados',
+    }, { status: 400 });
   }
 
   return NextResponse.json({

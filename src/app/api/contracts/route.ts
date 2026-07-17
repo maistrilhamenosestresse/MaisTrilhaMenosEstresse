@@ -1,12 +1,11 @@
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
-  buildContractSnapshot,
   getContractDefinition,
   isContractType,
   type ContractType,
 } from "@/lib/contracts";
 import { requireAuthenticatedUser } from "@/lib/server/auth";
+import { signClientContracts } from "@/lib/server/client-contracts";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { assertSameOrigin, readJsonBody } from "@/lib/server/request";
 
@@ -64,65 +63,24 @@ export async function POST(request: Request) {
   if (!isContractType(type)) {
     return NextResponse.json({ error: "Tipo de contrato inválido" }, { status: 400 });
   }
-  if (!isAllowedMediaUrl(signatureUrl)) {
-    return NextResponse.json({ error: "Assinatura inválida" }, { status: 400 });
-  }
-
   const client = await resolveClient(auth.user.id, auth.user.email);
   if (!client) return NextResponse.json({ error: "Cadastro não encontrado" }, { status: 404 });
-  if (!client.full_name || !client.cpf || !client.birth_date || !client.phone) {
+  try {
+    const contracts = await signClientContracts({
+      client,
+      signatureUrl,
+      request,
+      types: [type],
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      source: "app",
+    });
+    return NextResponse.json({ contract: contracts[0] });
+  } catch (error: any) {
     return NextResponse.json({
-      error: "Complete nome, CPF, nascimento e telefone antes de assinar.",
-    }, { status: 409 });
+      error: error.message || "Não foi possível registrar a assinatura",
+    }, { status: 400 });
   }
-
-  const snapshot = buildContractSnapshot(type, client);
-  const documentHash = createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
-  const requestHeaders = request.headers;
-  const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
-  const hashSecret = process.env.NEXTAUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "contract";
-  const ipHash = forwardedFor
-    ? createHash("sha256").update(`${hashSecret}:${forwardedFor}`).digest("hex")
-    : null;
-  const signedAt = new Date().toISOString();
-  const supabase = createSupabaseAdmin();
-  const { data: contract, error } = await supabase
-    .from("client_contracts")
-    .upsert({
-      client_id: client.id,
-      contract_type: type,
-      version: snapshot.version,
-      title: snapshot.title,
-      signature_url: signatureUrl,
-      document_snapshot: snapshot,
-      document_hash: documentHash,
-      signed_at: signedAt,
-      ip_hash: ipHash,
-      user_agent: requestHeaders.get("user-agent")?.slice(0, 500) || null,
-    }, { onConflict: "client_id,contract_type,version" })
-    .select("id, contract_type, version, title, signature_url, signed_at, document_hash")
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: "Não foi possível registrar a assinatura" }, { status: 500 });
-  }
-
-  if (type === "responsibility") {
-    await supabase.from("clients").update({
-      signature_url: signatureUrl,
-      accepted_terms_at: signedAt,
-    }).eq("id", client.id);
-  }
-  await supabase.from("audit_logs").insert({
-    actor_id: auth.user.id,
-    actor_email: auth.user.email,
-    action: "contract.signed",
-    resource_type: "client_contract",
-    resource_id: contract.id,
-    metadata: { contractType: type, version: snapshot.version, documentHash },
-  });
-
-  return NextResponse.json({ contract });
 }
 
 async function resolveClient(userId: string, email?: string) {
@@ -136,15 +94,4 @@ async function resolveClient(userId: string, email?: string) {
     data.auth_user_id = userId;
   }
   return data?.auth_user_id === userId ? data : null;
-}
-
-function isAllowedMediaUrl(value: string) {
-  try {
-    const url = new URL(value);
-    const bucket = process.env.AWS_S3_BUCKET_NAME;
-    const region = process.env.AWS_REGION || "us-east-1";
-    return !!bucket && url.protocol === "https:" && url.hostname === `${bucket}.s3.${region}.amazonaws.com`;
-  } catch {
-    return false;
-  }
 }

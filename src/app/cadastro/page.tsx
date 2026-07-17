@@ -4,13 +4,23 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { Camera, User, FileText, Calendar, Phone, HeartPulse, AlertTriangle, CheckCircle2, Loader2, ChevronRight, ShieldCheck, PenTool, Eraser } from "lucide-react";
-import SignatureCanvas from "react-signature-canvas";
 import { useSearchParams } from "next/navigation";
 
 import { Suspense } from "react";
 import { useCartStore } from "@/store/cartStore";
 import { Users } from "lucide-react";
 import imageCompression from 'browser-image-compression';
+import { ContractContent } from "@/components/contracts/ContractContent";
+import {
+  ResponsiveSignaturePad,
+  type ResponsiveSignaturePadHandle,
+} from "@/components/contracts/ResponsiveSignaturePad";
+import { getContractDefinition } from "@/lib/contracts";
+
+const REGISTRATION_CONTRACTS = [
+  getContractDefinition("responsibility"),
+  getContractDefinition("insurance"),
+];
 
 function CadastroContent() {
   const [step, setStep] = useState(1);
@@ -48,7 +58,7 @@ function CadastroContent() {
     }
   }, [agendaId]);
 
-  const sigCanvas = useRef<SignatureCanvas>(null);
+  const sigCanvas = useRef<ResponsiveSignaturePadHandle | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -253,7 +263,12 @@ function CadastroContent() {
             quantity: 1,
             dependents: [],
             availableSpots: agenda.max_capacity || 15,
-            acceptedPaymentMethods: ['PIX', 'CREDIT_CARD', 'BOLETO']
+            acceptedPaymentMethods:
+              Array.isArray(agenda.accepted_payment_methods) &&
+              agenda.accepted_payment_methods.length > 0
+                ? agenda.accepted_payment_methods
+                : ['PIX'],
+            taxa_gratis: true,
           });
         }
         
@@ -606,21 +621,14 @@ function CadastroContent() {
                   <p className="text-gray-400 text-sm mt-2">Seguro Atleta e Reconhecimento de Riscos</p>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-4 rounded-2xl max-h-64 overflow-y-auto text-xs text-gray-300 custom-scrollbar space-y-4">
-                  <h3 className="font-bold text-white text-sm">Resumo da Cobertura de Seguro:</h3>
-                  <ul className="list-disc pl-4 space-y-1">
-                    <li><strong>Morte Acidental (MA):</strong> Indenização integral em caso de morte acidental (R$ 30.000,00)</li>
-                    <li><strong>Invalidez Permanente (IPA):</strong> Invalidez decorrente de acidente (R$ 30.000,00)</li>
-                    <li><strong>DMHO:</strong> Despesas Médico Hospitalares e Odontológicas (R$ 3.000,00)</li>
-                    <li><strong>Cobertura de deslocamento:</strong> Garante a cobertura no trajeto até o local da atividade</li>
-                  </ul>
-                  <hr className="border-white/10" />
-                  <h3 className="font-bold text-white text-sm">TERMO DE RECONHECIMENTO DE RISCO E ISENÇÃO DE RESPONSABILIDADE</h3>
-                  <p>Declaro estar ciente de que a expedição é uma atividade de turismo de aventura e montanhismo, realizada em ambiente natural, estando sujeita a riscos inerentes que não podem ser totalmente eliminados.</p>
-                  <p>Declaro voluntariamente que gozo de boa saúde física e mental e que não possuo nenhuma contraindicação médica que me impeça de realizar esforços físicos de intensidade severa.</p>
-                  <p>Estou ciente de que é minha estrita obrigação portar e utilizar os equipamentos e vestuários recomendados.</p>
-                  <p>Ao assinar este termo de livre e espontânea vontade, assumo integralmente todos os riscos associados à expedição. Isento expressamente a organização Mais Trilha Menos Estresse de qualquer responsabilidade civil ou criminal.</p>
-                  <p>Autorizo a equipe a tomar todas as medidas cabíveis de primeiros socorros e, se necessário, acionar serviços oficiais de resgate.</p>
+                <div className="max-h-[48dvh] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-slate-100 p-4 custom-scrollbar">
+                  {REGISTRATION_CONTRACTS.map((definition) => (
+                    <ContractContent
+                      key={definition.type}
+                      definition={definition}
+                      className="rounded-2xl border border-gray-200 bg-white p-4"
+                    />
+                  ))}
                 </div>
 
                 <div className="bg-white/5 border border-white/10 p-4 rounded-2xl">
@@ -664,7 +672,10 @@ function CadastroContent() {
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
                       className="w-5 h-5 accent-[#F17B37] shrink-0"
                     />
-                    <span className="text-sm font-bold text-gray-300">Eu autorizo usar os dados para o seguro, entendo que é pela minha segurança e confirmo que todos os dados que foram preenchidos são verdadeiros.</span>
+                    <span className="text-sm font-bold text-gray-300">
+                      Li e compreendi o termo de responsabilidade e a autorização do seguro,
+                      confirmo que meus dados são verdadeiros e aceito assinar os dois documentos.
+                    </span>
                   </label>
                 </div>
 
@@ -745,22 +756,18 @@ function CadastroContent() {
             </div>
             
             {/* Área de Desenho (Quadro Branco) */}
-            <div className="flex-1 relative w-full p-4 md:p-8 flex flex-col touch-none">
-              <div className="flex-1 w-full bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden relative border-4 border-[#1a2332]">
+            <div className="flex-1 relative w-full p-4 md:p-8 flex items-center justify-center touch-none">
+              <div className="h-[328px] w-full max-w-4xl bg-white rounded-[2rem] shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden relative border-4 border-[#1a2332]">
                 
                 {/* Dica visual suave no fundo */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 select-none">
                   <span className="text-4xl md:text-6xl font-black text-gray-300 transform -rotate-12">Assine Aqui</span>
                 </div>
 
-                <SignatureCanvas 
+                <ResponsiveSignaturePad
                   ref={sigCanvas}
-                  canvasProps={{
-                    // As classes absolutas garantem que o canvas ocupe 100% sem recalcular errado no mobile
-                    className: 'w-full h-full absolute inset-0 cursor-crosshair touch-none z-10' 
-                  }}
-                  backgroundColor="transparent" // Fundo transparente para ver a marca d'água
-                  penColor="#0F1722" // Cor da caneta combinando com o tema escuro
+                  height={320}
+                  penColor="#0F1722"
                 />
 
                 {/* Botão Flutuante de Limpar */}
@@ -783,7 +790,7 @@ function CadastroContent() {
                 onClick={() => {
                   if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
                     // Pega a assinatura sem os espaços em branco extras
-                    setSignatureData(sigCanvas.current.getTrimmedCanvas().toDataURL("image/png"));
+                    setSignatureData(sigCanvas.current.toDataUrl());
                     setIsSignatureModalOpen(false);
                   } else {
                     alert("Por favor, faça a sua assinatura na área em branco antes de confirmar.");

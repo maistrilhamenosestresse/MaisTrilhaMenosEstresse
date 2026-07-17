@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import SignatureCanvas from "react-signature-canvas";
 import {
   AlertCircle,
   CheckCircle2,
@@ -16,6 +15,11 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ContractContent } from "@/components/contracts/ContractContent";
+import {
+  ResponsiveSignaturePad,
+  type ResponsiveSignaturePadHandle,
+} from "@/components/contracts/ResponsiveSignaturePad";
 import type { ContractDefinition, ContractType } from "@/lib/contracts";
 
 type SignedContract = {
@@ -28,7 +32,7 @@ type SignedContract = {
 
 export default function AppTermsPage() {
   const router = useRouter();
-  const signatureRef = useRef<SignatureCanvas | null>(null);
+  const signatureRef = useRef<ResponsiveSignaturePadHandle | null>(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
   const [definitions, setDefinitions] = useState<ContractDefinition[]>([]);
@@ -80,7 +84,7 @@ export default function AppTermsPage() {
     setSigning(true);
     setError("");
     try {
-      const dataUrl = signatureRef.current.getTrimmedCanvas().toDataURL("image/png");
+      const dataUrl = signatureRef.current.toDataUrl();
       const signatureBlob = await fetch(dataUrl).then((response) => response.blob());
       const formData = new FormData();
       formData.append("folder", "signatures");
@@ -235,21 +239,8 @@ export default function AppTermsPage() {
 
               {isExpanded && (
                 <div className="border-t border-gray-100 p-5">
-                  <p className="text-sm text-gray-600 leading-relaxed mb-5">{definition.intro}</p>
-                  <div className="space-y-5 md:max-h-[48dvh] md:overflow-y-auto md:pr-1 custom-scrollbar">
-                    {definition.sections.map((section) => (
-                      <div key={section.title}>
-                        <h3 className="font-black text-gray-800 text-sm mb-2">{section.title}</h3>
-                        <div className="space-y-2">
-                          {section.paragraphs.map((paragraph) => (
-                            <p key={paragraph} className="text-sm text-gray-600 leading-relaxed text-justify">
-                              {paragraph}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    <p className="font-bold text-sm text-gray-800">{definition.acceptance}</p>
+                  <div className="md:max-h-[48dvh] md:overflow-y-auto md:pr-1 custom-scrollbar">
+                    <ContractContent definition={definition} showVersion={false} />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
                     <button
@@ -303,14 +294,9 @@ export default function AppTermsPage() {
               </p>
 
               <div className="mt-5 rounded-2xl border-2 border-dashed border-gray-300 bg-white overflow-hidden">
-                <SignatureCanvas
+                <ResponsiveSignaturePad
                   ref={signatureRef}
-                  penColor="#111827"
-                  canvasProps={{
-                    className: "w-full h-44 bg-white touch-none",
-                    width: 800,
-                    height: 320,
-                  }}
+                  height={220}
                 />
               </div>
               <button

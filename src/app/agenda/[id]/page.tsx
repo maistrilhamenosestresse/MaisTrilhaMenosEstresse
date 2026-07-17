@@ -112,8 +112,12 @@ export default function AgendaDetailsPage() {
       quantity: 1,
       dependents: [],
       availableSpots: remaining,
-      acceptedPaymentMethods: agenda.accepted_payment_methods || ['PIX', 'CREDIT_CARD', 'BOLETO'],
-      taxa_gratis: agenda.taxa_gratis
+      acceptedPaymentMethods:
+        Array.isArray(agenda.accepted_payment_methods) &&
+        agenda.accepted_payment_methods.length > 0
+          ? agenda.accepted_payment_methods
+          : ['PIX'],
+      taxa_gratis: true,
     });
     router.push('/carrinho');
   };

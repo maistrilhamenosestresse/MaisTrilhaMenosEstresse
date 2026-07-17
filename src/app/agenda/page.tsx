@@ -202,7 +202,7 @@ export default function AgendaList() {
                         </div>
                         <div className="flex items-center gap-1.5 md:gap-3 text-xs md:text-sm text-gray-400">
                           <DollarSign className={`h-3 w-3 md:h-4 md:w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
-                          <span className="font-semibold text-white text-xs text-gray-400">a partir de</span> <span className="font-black text-white">R$ {getLowestGrossPrice(agenda.price, agenda.taxa_gratis).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span className="font-black text-white">R$ {getLowestGrossPrice(agenda.price, agenda.taxa_gratis).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 

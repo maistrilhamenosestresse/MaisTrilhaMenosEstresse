@@ -10,7 +10,6 @@ import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { calculateGrossPrice } from "@/lib/fees";
 
 function TrailCheckoutContent() {
   const router = useRouter();
@@ -24,7 +23,11 @@ function TrailCheckoutContent() {
   const [client, setClient] = useState<any>(null);
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"PIX" | "CREDIT_CARD">("PIX");
-  const [pixData, setPixData] = useState<{ encodedImage: string; payload: string } | null>(null);
+  const [pixData, setPixData] = useState<{
+    encodedImage: string;
+    payload: string;
+    paymentId: string;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [success, setSuccess] = useState(false);
   const [cardData, setCardData] = useState({
@@ -110,7 +113,11 @@ function TrailCheckoutContent() {
       if (!res.ok) throw new Error(data.error || "Erro no checkout");
 
       if (data.type === "PIX") {
-        setPixData({ encodedImage: data.encodedImage, payload: data.payload });
+        setPixData({
+          encodedImage: data.encodedImage,
+          payload: data.payload,
+          paymentId: data.paymentId,
+        });
       } else if (data.type === "CREDIT_CARD" || data.type === "INTERNAL") {
         setSuccess(true);
       }
@@ -128,6 +135,54 @@ function TrailCheckoutContent() {
       setTimeout(() => setCopied(false), 2500);
     }
   };
+
+  useEffect(() => {
+    if (!pixData?.paymentId || success) return;
+    let active = true;
+    let attempts = 0;
+    const checkPayment = async () => {
+      attempts += 1;
+      try {
+        const response = await fetch(
+          `/api/checkout-asaas/status?paymentId=${encodeURIComponent(pixData.paymentId)}`,
+          { cache: "no-store" },
+        );
+        const result = await response.json();
+        if (active && response.ok && result.confirmed) {
+          setSuccess(true);
+          setPixData(null);
+        }
+      } catch {
+        // Mantém a próxima tentativa automática.
+      }
+      if (attempts >= 300) active = false;
+    };
+    const initialTimer = window.setTimeout(checkPayment, 1500);
+    const interval = window.setInterval(() => {
+      if (active) checkPayment();
+    }, 3000);
+    return () => {
+      active = false;
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+    };
+  }, [pixData?.paymentId, success]);
+
+  const acceptedPaymentMethods = Array.isArray(agenda?.accepted_payment_methods) &&
+    agenda.accepted_payment_methods.length > 0
+    ? agenda.accepted_payment_methods
+    : ["PIX"];
+  const acceptsPix = acceptedPaymentMethods.includes("PIX");
+  const acceptsCard = acceptedPaymentMethods.includes("CREDIT_CARD");
+
+  useEffect(() => {
+    if (!agenda) return;
+    if (paymentMethod === "PIX" && !acceptsPix && acceptsCard) {
+      setPaymentMethod("CREDIT_CARD");
+    } else if (paymentMethod === "CREDIT_CARD" && !acceptsCard && acceptsPix) {
+      setPaymentMethod("PIX");
+    }
+  }, [agenda, paymentMethod, acceptsPix, acceptsCard]);
 
   const formatDate = (dateStr: string) => {
     try { return format(parseISO(dateStr), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR }); }
@@ -187,9 +242,7 @@ function TrailCheckoutContent() {
   }
 
   const price = Number(agenda?.price || 0);
-  const grossPrice = agenda?.taxa_gratis
-    ? price
-    : calculateGrossPrice(price, paymentMethod, paymentMethod === "CREDIT_CARD" ? installments : 1);
+  const grossPrice = price;
   const cashbackAvailable = Math.max(0, Number(client?.cashback_saldo || 0));
   const pointsAvailable = Math.max(0, Number(client?.pontos || 0));
   const cashbackApplied = useCashback ? Math.min(cashbackAvailable, grossPrice) : 0;
@@ -318,8 +371,9 @@ function TrailCheckoutContent() {
               <h3 className="font-bold text-gray-700 text-sm">
                 {amountDue > 0 ? "Forma de Pagamento" : "Pagamento coberto pelos benefícios"}
               </h3>
-              {amountDue > 0 && (
+              {amountDue > 0 && (acceptsPix || acceptsCard) && (
               <div className="grid grid-cols-2 gap-3">
+                {acceptsPix && (
                 <button
                   onClick={() => setPaymentMethod("PIX")}
                   className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
@@ -336,6 +390,8 @@ function TrailCheckoutContent() {
                     Aprovação imediata
                   </span>
                 </button>
+                )}
+                {acceptsCard && (
                 <button
                   onClick={() => setPaymentMethod("CREDIT_CARD")}
                   className={`p-4 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
@@ -352,7 +408,14 @@ function TrailCheckoutContent() {
                     Até 12x
                   </span>
                 </button>
+                )}
               </div>
+              )}
+
+              {amountDue > 0 && !acceptsPix && !acceptsCard && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
+                  Esta trilha não possui uma forma de pagamento disponível no aplicativo.
+                </div>
               )}
 
               {/* Formulário de Cartão */}
@@ -450,7 +513,7 @@ function TrailCheckoutContent() {
 
               <button
                 onClick={handleCheckout}
-                disabled={processing}
+                disabled={processing || (amountDue > 0 && !acceptsPix && !acceptsCard)}
                 className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-60 text-base"
               >
                 {processing ? (
@@ -484,8 +547,11 @@ function TrailCheckoutContent() {
               </div>
               <h3 className="font-black text-gray-800 text-lg mb-1">Escaneie o QR Code</h3>
               <p className="text-sm text-gray-500 mb-5 font-medium">
-                Sua vaga será confirmada assim que o Pix for pago.
+                Sua vaga será confirmada automaticamente assim que o Pix for pago.
               </p>
+              <div className="mb-4 flex items-center gap-2 text-xs font-bold text-amber-600">
+                <Loader2 className="h-4 w-4 animate-spin" /> Aguardando confirmação da Asaas
+              </div>
               <button
                 onClick={handleCopy}
                 className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2 border border-purple-200 mb-3"

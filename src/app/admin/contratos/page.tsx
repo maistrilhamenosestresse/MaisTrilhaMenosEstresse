@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, Printer, FileDown, ShieldCheck, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, FileDown, Search, Loader2 } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
 
 export default function ContratosAdminPage() {
@@ -37,6 +36,9 @@ export default function ContratosAdminPage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Falha ao carregar contratos');
         setClients(result.clients || []);
+        const requestedClientId = new URLSearchParams(window.location.search).get("clientId");
+        const requestedClient = (result.clients || []).find((client: any) => client.id === requestedClientId);
+        if (requestedClient) setSearchTerm(requestedClient.full_name);
       } catch (err) {
         console.error("Erro ao carregar clientes para contratos:", err);
       } finally {
@@ -46,153 +48,24 @@ export default function ContratosAdminPage() {
     fetchData();
   }, []);
 
-  const handleManualSign = async (client: any) => {
-    if (!(await requirePin(`Assinar Manualmente ${client.full_name}`))) return;
-
-    try {
-      const { error } = await supabase.from('clients').update({ 
-        signature_url: 'ASSINATURA MANUAL - ' + new Date().toISOString() 
-      }).eq('id', client.id);
-      
-      if (error) throw error;
-      
-      setClients(clients.map(c => c.id === client.id ? { ...c, signature_url: 'ASSINATURA MANUAL - ' + new Date().toISOString() } : c));
-      alert(`Contrato de ${client.full_name} marcado como assinado manualmente!`);
-    } catch {
-      alert('Erro ao marcar contrato como assinado.');
-    }
-  };
-
   const handleCobrarWhatsApp = async (client: any) => {
     if (!(await requirePin(`Cobrar ${client.full_name} no WhatsApp`))) return;
+    try {
+      const response = await fetch("/api/admin/contracts/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: client.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Não foi possível gerar o link");
 
-    const link = `https://www.maistrilhasmenosestresse.com/app/termos`;
-    const text = `Oi ${client.full_name.split(' ')[0]}, atualizamos o termo de responsabilidade e a autorização do seguro da Mais Trilha. Entre no app, leia e *assine os dois documentos atualizados*, por favor: 👇\n${link}`;
-    window.open(`https://wa.me/55${client.phone?.replace(/[^0-9]/g, '') || ''}?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const executePrintWindow = (htmlContent: string, title: string) => {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>${title}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; color: #333; line-height: 1.5; }
-              .page-break { page-break-after: always; }
-              .contract-container { max-width: 800px; margin: 0 auto; text-align: justify; font-size: 14px; }
-              .header { text-align: center; margin-bottom: 30px; }
-              .header h1 { font-size: 24px; margin-bottom: 5px; text-transform: uppercase; }
-              .header p { font-weight: bold; color: #666; }
-              .client-box { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-              .client-box p { margin: 5px 0; }
-              h3 { font-size: 16px; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; }
-              .signature-area { margin-top: 50px; text-align: center; border-top: 2px dashed #ccc; padding-top: 30px; }
-              .signature-image { max-height: 100px; object-fit: contain; margin-bottom: 10px; }
-              .manual-sig { font-weight: bold; padding: 10px; border: 1px solid #4ade80; background: #f0fdf4; color: #166534; display: inline-block; border-radius: 8px; margin-bottom: 10px; }
-              .line { width: 300px; height: 1px; background: #000; margin: 10px auto; }
-              .footer-text { font-size: 11px; color: #888; margin-top: 15px; }
-            </style>
-          </head>
-          <body>
-            ${htmlContent}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 500);
-    } else {
-      alert("Por favor, permita pop-ups para imprimir o documento.");
+      const firstName = client.full_name.split(" ")[0];
+      const text = `Oi ${firstName}, atualizamos o termo de responsabilidade e a autorização do seguro da Mais Trilha. Leia e assine os dois documentos neste link individual e seguro, por favor:\n\n${result.signingUrl}`;
+      const number = formatWhatsAppNumber(client.phone);
+      window.open(`https://wa.me/${number}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    } catch (error: any) {
+      alert(error.message || "Não foi possível preparar a cobrança de assinatura.");
     }
-  };
-
-  const getAge = (birthDate: string) => {
-    if (!birthDate) return 'N/A';
-    const ageDifMs = Date.now() - new Date(birthDate).getTime();
-    const ageDate = new Date(ageDifMs);
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-  };
-
-  const generateContractHTML = (client: any) => {
-    let signatureHTML = `
-      <div style="height: 100px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #ef4444; border: 2px dashed #fca5a5; background: #fef2f2; border-radius: 8px; width: 300px; margin: 0 auto 10px auto;">
-        NÃO ASSINADO
-      </div>
-    `;
-
-    if (client.signature_url) {
-      if (client.signature_url.startsWith('ASSINATURA MANUAL')) {
-        signatureHTML = `<div class="manual-sig">${client.signature_url}</div>`;
-      } else {
-        signatureHTML = `<img src="${client.signature_url}" class="signature-image" alt="Assinatura" />`;
-      }
-    }
-
-    return `
-      <div class="contract-container">
-        <div class="header">
-          <h1>TERMO DE RESPONSABILIDADE E CONTRATO GERAL</h1>
-          <p>MAIS TRILHA MENOS ESTRESSE</p>
-        </div>
-
-        <p style="margin-bottom: 15px;">Pelo presente instrumento particular, de um lado, <strong>MAIS TRILHA MENOS ESTRESSE</strong>, empresa prestadora de serviços turísticos, e de outro lado:</p>
-
-        <div class="client-box">
-          <p><strong>NOME DO CONTRATANTE:</strong> ${client.full_name}</p>
-          <p><strong>CPF:</strong> ${client.cpf} &nbsp;&nbsp;&nbsp; <strong>RG:</strong> ${client.rg || 'Não informado'}</p>
-          <p><strong>DATA DE NASCIMENTO:</strong> ${client.birth_date ? new Date(client.birth_date).toLocaleDateString('pt-BR') : 'Não informado'} (${getAge(client.birth_date)} anos)</p>
-          <p><strong>CONTATO:</strong> ${client.phone}</p>
-          <p><strong>CONTATO DE EMERGÊNCIA:</strong> ${client.emergency_contact_phone || 'Não informado'}</p>
-        </div>
-
-        <p style="margin-bottom: 15px;">Têm justo e contratado o presente, que se regerá pelas seguintes cláusulas e condições descritas abaixo para qualquer viagem, trilha ou evento fornecido pela Agência.</p>
-
-        <h3>1. Do Objeto e dos Riscos Inerentes</h3>
-        <p style="margin-bottom: 15px;">O CONTRATANTE declara ter ciência de que as atividades de ecoturismo e turismo de aventura envolvem riscos à integridade física, como lesões, torções, fraturas, picadas de insetos e animais peçonhentos, alterações climáticas bruscas, além dos riscos inerentes a ambientes naturais remotos de difícil acesso ou resgate.</p>
-
-        <h3>2. Das Declarações de Saúde</h3>
-        <p style="margin-bottom: 15px;">O CONTRATANTE declara estar em perfeitas condições físicas e de saúde mental compatíveis para participar das atividades. Qualquer problema de saúde (ex: asma, diabetes, hipertensão, alergias crônicas) ou uso de medicação controlada foi previamente informado no cadastro da agência. A omissão destas informações isenta a contratada de quaisquer responsabilidades advindas do fato.</p>
-
-        <h3>3. Condições de Cancelamento e Reembolso</h3>
-        <p style="margin-bottom: 15px;">O cancelamento por parte do CONTRATANTE segue a deliberação normativa da Embratur nº 161/85. Caso o contratante não compareça (No-Show) no horário de embarque ou abandone a viagem após iniciada, perderá o valor integral pago, sem direito a qualquer tipo de restituição ou crédito para viagens futuras. A contratada reserva-se o direito de alterar ou cancelar a viagem caso o número mínimo de participantes não seja atingido, garantindo o reembolso integral.</p>
-
-        <h3>4. Do Comportamento e Orientações</h3>
-        <p style="margin-bottom: 15px;">O CONTRATANTE se compromete a seguir as orientações dos guias e condutores em todos os momentos, não ultrapassar o líder do grupo ou ficar atrás do guia "fecha", respeitar as normas ambientais (não jogar lixo na trilha, não alimentar animais silvestres) e zelar pelo bom convívio com os demais participantes. O não cumprimento das regras de segurança pode acarretar no imediato desligamento do passageiro, sem direito a reembolso.</p>
-
-        <h3>5. Direito de Imagem</h3>
-        <p style="margin-bottom: 25px;">O CONTRATANTE autoriza o uso gratuito de sua imagem e voz captadas durante as viagens, em fotografias e vídeos, para fins de divulgação, marketing e publicidade da MAIS TRILHA MENOS ESTRESSE em redes sociais e websites, por prazo indeterminado.</p>
-
-        <div class="signature-area">
-          <p style="font-size: 10px; color: #888; font-weight: bold; margin-bottom: 15px;">ASSINATURA DIGITAL DO CONTRATANTE</p>
-          ${signatureHTML}
-          <div class="line"></div>
-          <p style="font-weight: bold; margin-top: 5px;">${client.full_name}</p>
-          <p style="font-size: 12px; color: #666; margin-top: 2px;">CPF: ${client.cpf}</p>
-          <p class="footer-text">Documento validado eletronicamente na plataforma Mais Trilha Menos Estresse.<br/>Tem validade jurídica conforme MP nº 2.200-2/2001 e Código Civil Brasileiro.</p>
-        </div>
-      </div>
-    `;
-  };
-
-  const handlePrintAll = async () => {
-    if (!(await requirePin('Baixar Todos os Contratos'))) return;
-    const signedClients = clients.filter(c => c.signature_url);
-    if (signedClients.length === 0) {
-      alert("Nenhum contrato assinado encontrado para impressão.");
-      return;
-    }
-
-    const fullHTML = signedClients.map((client, idx) => 
-      `<div class="${idx !== signedClients.length - 1 ? 'page-break' : ''}">
-        ${generateContractHTML(client)}
-      </div>`
-    ).join('');
-
-    executePrintWindow(fullHTML, "Todos os Contratos Assinados");
   };
 
   const handleDownloadVersionedContracts = async (clientId?: string) => {
@@ -221,11 +94,6 @@ export default function ContratosAdminPage() {
     }
   };
 
-  const handlePrintSingle = async (client: any) => {
-    const html = generateContractHTML(client);
-    executePrintWindow(html, `Contrato - ${client.full_name}`);
-  };
-  
   const normalizeString = (str: string) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
   
   const filteredClients = clients.filter(c => 
@@ -278,20 +146,14 @@ export default function ContratosAdminPage() {
             </div>
           </div>
           
-          <div className="w-full md:w-auto flex flex-col sm:flex-row gap-2">
+          <div className="w-full md:w-auto">
             <button
               onClick={() => handleDownloadVersionedContracts()}
               disabled={isDownloadingAll}
               className="w-full md:w-auto bg-[#F17B37] text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#d6672c] transition shadow-lg disabled:opacity-60"
             >
               {isDownloadingAll ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileDown className="h-5 w-5" />}
-              Baixar PDFs em ZIP
-            </button>
-            <button
-              onClick={handlePrintAll}
-              className="w-full md:w-auto bg-white border border-gray-200 text-gray-700 px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition"
-            >
-              <Printer className="h-5 w-5" /> Imprimir legados
+              Baixar todos os contratos atuais
             </button>
           </div>
         </div>
@@ -377,33 +239,19 @@ export default function ContratosAdminPage() {
 
               <div className="flex gap-2 mt-2 border-t border-gray-100 pt-4">
                 {hasCurrentDocuments(client) ? (
-                  <>
-                    <button 
+                  <button
                       onClick={() => handleDownloadVersionedContracts(client.id)}
-                      className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 border border-gray-200"
+                      className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 border border-gray-200"
                     >
-                      <FileDown className="w-4 h-4" /> Baixar ZIP
+                      <FileDown className="w-4 h-4" /> Baixar os dois contratos em ZIP
                     </button>
-                    <button 
-                      onClick={() => handlePrintSingle(client)}
-                      className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 border border-emerald-200"
-                    >
-                      <Printer className="w-4 h-4" /> Imprimir
-                    </button>
-                  </>
                 ) : (
-                  <div className="flex flex-col gap-2 w-full">
-                    <button 
-                      onClick={() => handleManualSign(client)}
-                      className="w-full bg-orange-100 hover:bg-orange-200 text-orange-700 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-orange-200"
-                    >
-                      <ShieldCheck className="w-4 h-4" /> Dar Baixa Manualmente
-                    </button>
+                  <div className="w-full">
                     <button 
                       onClick={() => handleCobrarWhatsApp(client)}
                       className="w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-[#25D366]/30"
                     >
-                      <Send className="w-4 h-4" /> Cobrar via WhatsApp
+                      <Send className="w-4 h-4" /> Gerar link e cobrar via WhatsApp
                     </button>
                   </div>
                 )}
@@ -427,4 +275,10 @@ export default function ContratosAdminPage() {
       />
     </main>
   );
+}
+
+function formatWhatsAppNumber(value: string) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length >= 12) return digits;
+  return `55${digits}`;
 }

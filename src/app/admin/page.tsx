@@ -19,7 +19,7 @@ import { ReservationPaymentEditor } from "@/components/admin/ReservationPaymentE
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from 'recharts';
-import { calculateGrossPrice, calculateNetProfit } from "@/lib/fees";
+import { calculateNetProfit } from "@/lib/fees";
 import imageCompression from 'browser-image-compression';
 import { uploadMediaToAws } from '@/lib/upload-media-client';
 
@@ -52,8 +52,7 @@ export default function AdminPage() {
   const [agendas, setAgendas] = useState<any[]>([]);
   const [globalViews, setGlobalViews] = useState<number>(0);
   const [clients, setClients] = useState<any[]>([]);
-  const [acceptedPaymentMethods, setAcceptedPaymentMethods] = useState<string[]>(['PIX', 'CREDIT_CARD', 'BOLETO']);
-  const [hideFeePreview, setHideFeePreview] = useState<boolean>(false);
+  const [acceptedPaymentMethods, setAcceptedPaymentMethods] = useState<string[]>(['PIX', 'CREDIT_CARD']);
   
   const getReservaNetProfit = (reserva: any, agenda: any) => {
     if (!agenda || !agenda.price) return 0;
@@ -64,9 +63,6 @@ export default function AdminPage() {
       return calculateNetProfit(Number(agenda.price), method, 1);
     }
   };
-
-  const watchPrice = watch("price");
-  const watchTaxaGratis = watch("taxa_gratis");
 
   const [selectedPhotosAgendaId, setSelectedPhotosAgendaId] = useState<string | null>(null);
 
@@ -527,23 +523,6 @@ export default function AdminPage() {
     } catch (err: any) { alert("Erro ao editar cliente."); }
   };
 
-  const handleResendContract = async (client: any) => {
-    try {
-      const res = await fetch("/api/send-client-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client }),
-      });
-      if (res.ok) alert("Contrato reenviado com sucesso para " + client.email);
-      else {
-        const errorData = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
-        alert("Falha ao reenviar o contrato: " + errorData.error);
-      }
-    } catch (e) {
-      alert("Erro ao reenviar contrato.");
-    }
-  };
-
   // --- Funções de Reservas e Finanças ---
   useEffect(() => {
     if (agendas.length > 0 && !selectedAgendaId) {
@@ -704,9 +683,15 @@ export default function AdminPage() {
     setValue("taxa_gratis", agenda.taxa_gratis ? 'true' : 'false');
     
     // Configura os checks do payment methods baseados na agenda editada
-    if (agenda.accepted_payment_methods) {
-      setAcceptedPaymentMethods(agenda.accepted_payment_methods);
-    }
+    setAcceptedPaymentMethods(
+      Array.isArray(agenda.accepted_payment_methods) && agenda.accepted_payment_methods.length
+        ? Array.from(new Set<string>(
+            (agenda.accepted_payment_methods as unknown[]).filter(
+              (method: unknown): method is string => typeof method === 'string',
+            ),
+          ))
+        : ['PIX'],
+    );
     
     setActiveTab('geral');
     setIsFormModalOpen(true);
@@ -747,7 +732,7 @@ export default function AdminPage() {
 
   const cancelEdit = () => {
     setEditingAgenda(null); reset(); setIsFormModalOpen(false);
-    setAcceptedPaymentMethods(['PIX', 'CREDIT_CARD', 'BOLETO']);
+    setAcceptedPaymentMethods(['PIX', 'CREDIT_CARD']);
   };
 
   const startRecording = async (type: 'meeting_point' | 'description' | 'assistant') => {
@@ -864,6 +849,10 @@ export default function AdminPage() {
   };
 
   const onSubmit = async (data: AgendaForm) => {
+    if (acceptedPaymentMethods.length === 0) {
+      alert("Selecione pelo menos uma forma de pagamento.");
+      return;
+    }
     setIsLoading(true);
     try {
       let imageUrls: string[] = editingAgenda ? editingAgenda.images || [] : [];
@@ -921,7 +910,7 @@ export default function AdminPage() {
         difficulty: data.difficulty,
         images: imageUrls, video_url: videoUrl, flyer_url: flyerUrl,
         accepted_payment_methods: acceptedPaymentMethods,
-        taxa_gratis: data.taxa_gratis === 'true'
+        taxa_gratis: true
       };
 
       if (editingAgenda) {
@@ -1501,8 +1490,7 @@ export default function AdminPage() {
 
                                   <div className="flex items-center gap-2 pt-2 flex-wrap">
                                     <button onClick={() => loadClientTrails(client.id)} className="flex-1 bg-green-50 border border-green-200 text-green-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-100 transition shadow-sm" title="Ver Histórico de Trilhas"><MapPin className="h-4 w-4"/> Trilhas</button>
-                                    <a href={`/termo/${client.id}`} target="_blank" className="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-50 transition shadow-sm"><FileText className="h-4 w-4"/> Ver Termo</a>
-                                    <button onClick={() => handleResendContract(client)} className="flex-1 bg-orange-50 border border-orange-200 text-orange-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-100 transition shadow-sm" title="Reenviar Contrato para o E-mail"><Send className="h-4 w-4"/> Reenviar Contrato</button>
+                                    <a href={`/admin/contratos?clientId=${client.id}`} className="flex-1 bg-orange-50 border border-orange-200 text-orange-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-100 transition shadow-sm"><FileText className="h-4 w-4"/> Contratos atuais</a>
                                     <button onClick={() => setEditingClient(client)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition" title="Editar"><Edit2 className="h-4 w-4"/></button>
                                     <button onClick={() => handleDeleteClient(client.id)} className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition" title="Excluir"><Trash2 className="h-4 w-4"/></button>
                                   </div>
@@ -2316,7 +2304,13 @@ export default function AdminPage() {
       {/* 3. BOTÃO FLUTUANTE (FAB) PARA NOVA TRILHA */}
       {mainTab === 'trilhas' && (
         <button 
-          onClick={() => { reset(); setEditingAgenda(null); setIsFormModalOpen(true); }}
+          onClick={() => {
+            reset();
+            setEditingAgenda(null);
+            setAcceptedPaymentMethods(['PIX', 'CREDIT_CARD']);
+            setValue("taxa_gratis", "true");
+            setIsFormModalOpen(true);
+          }}
           className="fixed bottom-24 right-5 md:bottom-8 md:right-8 bg-[#F17B37] text-white p-4 rounded-full shadow-[0_8px_30px_rgba(241,123,55,0.4)] hover:scale-105 active:scale-95 transition-all z-20 print:hidden flex items-center justify-center"
         >
           <Plus className="h-7 w-7" />
@@ -2433,44 +2427,19 @@ export default function AdminPage() {
               <div className={activeTab === 'geral' ? 'block' : 'hidden'}>
                 <div className="space-y-4 max-w-2xl mx-auto">
                   <div><label className="block text-sm font-bold mb-1">Título</label><input {...register("title", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="Ex: Serra do Cipó" /></div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div><label className="block text-sm font-bold mb-1">Data</label><input type="date" {...register("date", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" /></div>
-                    <div className="relative"><label className="block text-sm font-bold mb-1">Valor (Líquido)</label><input {...register("price", { required: true })} onFocus={() => setHideFeePreview(false)} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150.00" />
-{watchPrice && !isNaN(parseFloat(watchPrice.replace(',', '.'))) && !hideFeePreview && watchTaxaGratis !== 'true' && (
-  <div className="absolute top-full mt-2 left-0 w-72 z-50 bg-white shadow-2xl border border-orange-100 rounded-xl p-4 text-sm animate-in fade-in slide-in-from-top-2">
-    <div className="flex justify-between items-center border-b border-orange-100 pb-2 mb-3">
-      <p className="font-bold text-[#F17B37] flex items-center gap-2"><DollarSign className="w-4 h-4"/> Preço Final no Site</p>
-      <button type="button" onClick={() => setHideFeePreview(true)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4"/></button>
-    </div>
-    <p className="text-[10px] text-gray-500 mb-3 leading-tight">O sistema cobrará estes valores automaticamente. Você receberá o valor líquido digitado.</p>
-    <div className="space-y-2">
-      <div className="flex justify-between items-center text-gray-600"><span>PIX</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'PIX'))}</span></div>
-      <div className="flex justify-between items-center text-gray-600"><span>Boleto (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'BOLETO'))}</span></div>
-      <div className="flex justify-between items-center text-gray-600"><span>Boleto Parcelado (12x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'BOLETO', 12))}</span></div>
-      <div className="flex justify-between items-center text-gray-600"><span>Cartão (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'CREDIT_CARD', 1))}</span></div>
-      <div className="flex justify-between items-center text-gray-600"><span>Cartão (12x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateGrossPrice(parseFloat(watchPrice.replace(',', '.')), 'CREDIT_CARD', 12))}</span></div>
-    </div>
-  </div>
-)}
-{watchPrice && !isNaN(parseFloat(watchPrice.replace(',', '.'))) && !hideFeePreview && watchTaxaGratis === 'true' && (
-  <div className="absolute top-full mt-2 left-0 w-72 z-50 bg-white shadow-2xl border border-green-100 rounded-xl p-4 text-sm animate-in fade-in slide-in-from-top-2">
-    <div className="flex justify-between items-center border-b border-green-100 pb-2 mb-3">
-      <p className="font-bold text-green-600 flex items-center gap-2"><DollarSign className="w-4 h-4"/> Seu Lucro Líquido</p>
-      <button type="button" onClick={() => setHideFeePreview(true)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4"/></button>
-    </div>
-    <p className="text-[10px] text-gray-500 mb-3 leading-tight">O cliente paga o valor Fixo acima. Este será o seu lucro real descontando as taxas Asaas.</p>
-    <div className="space-y-2">
-      <div className="flex justify-between items-center text-gray-600"><span>PIX</span><span className="font-bold text-gray-800">{formatCurrency(calculateNetProfit(parseFloat(watchPrice.replace(',', '.')), 'PIX'))}</span></div>
-      <div className="flex justify-between items-center text-gray-600"><span>Boleto (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateNetProfit(parseFloat(watchPrice.replace(',', '.')), 'BOLETO'))}</span></div>
-      <div className="flex justify-between items-center text-gray-600"><span>Cartão (1x)</span><span className="font-bold text-gray-800">{formatCurrency(calculateNetProfit(parseFloat(watchPrice.replace(',', '.')), 'CREDIT_CARD', 1))}</span></div>
-    </div>
-  </div>
-)}
-</div>
+                    <div>
+                      <label className="block text-sm font-bold mb-1">Preço final cobrado</label>
+                      <input {...register("price", { required: true })} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150,00" />
+                      <p className="mt-1 text-[10px] leading-tight text-gray-500">
+                        O cliente pagará exatamente este valor. A taxa da Asaas será descontada do recebimento.
+                      </p>
+                    </div>
                     <div><label className="block text-sm font-bold mb-1">Vagas</label><input type="number" {...register("max_capacity", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="15" /></div>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div><label className="block text-sm font-bold mb-1">Duração (h)</label><input type="number" step="0.5" {...register("duration_hours")} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="4.5" /></div>
                     <div><label className="block text-sm font-bold mb-1">Distância (km)</label><input type="number" step="0.1" {...register("distance_km")} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="12" /></div>
                     <div>
@@ -2511,38 +2480,13 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* REPASSE OU TAXA GRÁTIS */}
-                  <div className="mt-4 p-4 border border-gray-200 rounded-2xl bg-gray-50/50">
-                    <label className="block text-sm font-bold mb-3 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-[#F17B37]"/> Repasse de Taxas Asaas
-                    </label>
-                    <div className="flex flex-col gap-3">
-                      <label className="flex items-start gap-3 cursor-pointer bg-white p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
-                        <input 
-                          type="radio" 
-                          value="false"
-                          {...register("taxa_gratis")}
-                          className="w-5 h-5 mt-0.5 text-[#F17B37] focus:ring-[#F17B37]"
-                        />
-                        <div>
-                          <p className="text-sm font-bold text-gray-800">Repassar taxas para o Cliente (Recomendado)</p>
-                          <p className="text-xs text-gray-500 mt-0.5">O cliente pagará um valor maior para cobrir as taxas do Asaas, e você receberá exatamente o valor digitado acima.</p>
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-3 cursor-pointer bg-white p-4 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
-                        <input 
-                          type="radio" 
-                          value="true"
-                          {...register("taxa_gratis")}
-                          className="w-5 h-5 mt-0.5 text-green-600 focus:ring-green-600"
-                        />
-                        <div>
-                          <p className="text-sm font-bold text-gray-800">Taxa Grátis para o Cliente</p>
-                          <p className="text-xs text-gray-500 mt-0.5">O cliente pagará exatamente o valor digitado acima. O Asaas descontará as taxas e você receberá um lucro líquido menor.</p>
-                        </div>
-                      </label>
-                    </div>
+                  <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="flex items-center gap-2 text-sm font-bold text-emerald-800">
+                      <CreditCard className="h-4 w-4" /> Preço transparente
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-emerald-700">
+                      O valor cadastrado é o valor exibido e cobrado. As taxas da Asaas são registradas apenas no controle financeiro.
+                    </p>
                   </div>
                 </div>
               </div>

@@ -134,7 +134,7 @@ export default function CarrinhoPage() {
                       
                       <div className="text-right min-w-[100px]">
                         <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Subtotal</p>
-                        <p className="font-black text-white text-xl"><span className="text-xs font-normal text-gray-400 mr-2">a partir de</span>R$ {(getLowestGrossPrice(item.price, item.taxa_gratis) * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="font-black text-white text-xl">R$ {(getLowestGrossPrice(item.price, item.taxa_gratis) * item.quantity).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                       </div>
                       
                       <button 

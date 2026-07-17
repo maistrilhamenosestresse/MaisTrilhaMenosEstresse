@@ -129,9 +129,8 @@ export function calculateNetProfit(grossValue: number, method: 'PIX' | 'BOLETO' 
  * O boolean taxa_gratis determina se o preço já é o valor final (taxa absorvida) ou repassado.
  */
 export function getLowestGrossPrice(basePrice: number, taxa_gratis: boolean = false): number {
-  if (taxa_gratis) {
-    return Number(basePrice.toFixed(2)); // O cliente paga exatamente o valor base
-  }
-  // Se for repasse, calcula o gross via PIX para achar o menor preço de vitrine
-  return calculateGrossPrice(basePrice, 'PIX', 1);
+  void taxa_gratis;
+  // O preço cadastrado é sempre o preço final exibido e cobrado do cliente.
+  // As taxas da Asaas são custo operacional e aparecem apenas nos relatórios.
+  return Number(basePrice.toFixed(2));
 }

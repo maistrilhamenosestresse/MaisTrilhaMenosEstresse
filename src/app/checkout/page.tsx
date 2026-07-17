@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
-import { calculateGrossPrice, getLowestGrossPrice } from "@/lib/fees";
+import { getLowestGrossPrice } from "@/lib/fees";
 import { useRouter } from "next/navigation";
 import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, CreditCard, QrCode, FileText } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
@@ -15,14 +15,8 @@ function CheckoutAuthContent() {
 
   const cartTotalGross = items.reduce((acc, item) => acc + (getLowestGrossPrice(item.price, item.taxa_gratis) * item.quantity), 0);
 
-  const calculateTotalWithMethod = (method: 'PIX'|'BOLETO'|'CREDIT_CARD', installments: number = 1) => {
-    return items.reduce((acc, item) => {
-      if (item.taxa_gratis) {
-        return acc + (item.price * item.quantity);
-      } else {
-        return acc + (calculateGrossPrice(item.price, method, installments) * item.quantity);
-      }
-    }, 0);
+  const calculateTotalWithMethod = (_method: 'PIX'|'BOLETO'|'CREDIT_CARD', _installments: number = 1) => {
+    return items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   };
   
   const [step, setStep] = useState<'email' | 'otp' | 'cart' | 'edit' | 'payment' | 'success'>('email');
@@ -35,12 +29,32 @@ function CheckoutAuthContent() {
   
   // Payment State
   const [paymentMethod, setPaymentMethod] = useState<'CREDIT_CARD' | 'PIX' | 'BOLETO'>('PIX');
+  const [livePaymentMethods, setLivePaymentMethods] = useState<Record<string, string[]>>({});
   
   // Calculate allowed payment methods (intersection of all items in cart)
-  const allowedMethods = items.reduce((acc, item) => {
-    if (!item.acceptedPaymentMethods || item.acceptedPaymentMethods.length === 0) return acc;
-    return acc.filter(method => item.acceptedPaymentMethods!.includes(method));
-  }, ['PIX', 'CREDIT_CARD', 'BOLETO']);
+  const allowedMethods = useMemo(() => items.reduce<string[]>((acc, item) => {
+    const methods = livePaymentMethods[item.agendaId] || item.acceptedPaymentMethods || ['PIX'];
+    const normalized = methods.length > 0 ? methods : ['PIX'];
+    return acc.filter((method) => normalized.includes(method));
+  }, ['PIX', 'CREDIT_CARD', 'BOLETO']), [items, livePaymentMethods]);
+
+  useEffect(() => {
+    const agendaIds = [...new Set(items.map((item) => item.agendaId))];
+    if (!agendaIds.length) return;
+    supabase
+      .from('agendas')
+      .select('id, accepted_payment_methods')
+      .in('id', agendaIds)
+      .then(({ data }) => {
+        const current = Object.fromEntries((data || []).map((agenda: any) => [
+          agenda.id,
+          Array.isArray(agenda.accepted_payment_methods) && agenda.accepted_payment_methods.length
+            ? agenda.accepted_payment_methods
+            : ['PIX'],
+        ]));
+        setLivePaymentMethods(current);
+      });
+  }, [items]);
 
   useEffect(() => {
     if (!allowedMethods.includes(paymentMethod) && allowedMethods.length > 0) {
@@ -49,6 +63,41 @@ function CheckoutAuthContent() {
   }, [allowedMethods, paymentMethod]);
   const [cardData, setCardData] = useState({ holderName: '', number: '', expiry: '', ccv: '', installments: 1 });
   const [paymentResult, setPaymentResult] = useState<any>(null);
+
+  useEffect(() => {
+    if (paymentResult?.type !== 'PIX' || !paymentResult.paymentId || paymentResult.confirmed) return;
+    let active = true;
+    let attempts = 0;
+    const checkPayment = async () => {
+      attempts += 1;
+      try {
+        const response = await fetch(
+          `/api/checkout-asaas/status?paymentId=${encodeURIComponent(paymentResult.paymentId)}`,
+          { cache: 'no-store' },
+        );
+        const result = await response.json();
+        if (active && response.ok) {
+          setPaymentResult((current: any) => ({
+            ...current,
+            status: result.status,
+            confirmed: result.confirmed,
+          }));
+        }
+      } catch {
+        // A próxima tentativa mantém a confirmação automática ativa.
+      }
+      if (attempts >= 300) active = false;
+    };
+    const initialTimer = window.setTimeout(checkPayment, 1500);
+    const interval = window.setInterval(() => {
+      if (active) checkPayment();
+    }, 3000);
+    return () => {
+      active = false;
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+    };
+  }, [paymentResult?.type, paymentResult?.paymentId, paymentResult?.confirmed]);
 
   useEffect(() => {
     if (items.length === 0 && step !== 'success') {
@@ -436,19 +485,32 @@ function CheckoutAuthContent() {
             <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-3xl backdrop-blur-md shadow-2xl relative w-full text-center">
               
               {paymentResult.type === 'PIX' && (
-                <>
-                  <div className="w-16 h-16 bg-[#25D366]/20 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4"><QrCode className="h-8 w-8" /></div>
-                  <h1 className="text-2xl font-bold mb-2">Pague via PIX</h1>
-                  <p className="text-gray-400 text-sm mb-6">Escaneie o QR Code abaixo ou copie o código Pix Copia e Cola para garantir sua vaga.</p>
-                  
-                  <div className="bg-white p-4 rounded-2xl w-fit mx-auto mb-6">
-                    <img src={`data:image/png;base64,${paymentResult.encodedImage}`} alt="QR Code PIX" className="w-48 h-48" />
-                  </div>
-                  
-                  <button onClick={() => { navigator.clipboard.writeText(paymentResult.payload); alert("Código Copiado!") }} className="w-full bg-[#25D366] text-white p-4 rounded-2xl font-bold mb-4 hover:bg-[#1fae52]">
-                    Copiar Código PIX
-                  </button>
-                </>
+                paymentResult.confirmed ? (
+                  <>
+                    <div className="w-20 h-20 bg-[#25D366]/20 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle2 className="h-10 w-10" />
+                    </div>
+                    <h1 className="text-3xl font-extrabold mb-2">Pix realizado com sucesso!</h1>
+                    <p className="text-gray-300 text-sm mb-6">
+                      Pagamento confirmado pela Asaas. Sua vaga já está garantida.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-[#25D366]/20 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-4"><QrCode className="h-8 w-8" /></div>
+                    <h1 className="text-2xl font-bold mb-2">Pague via PIX</h1>
+                    <p className="text-gray-400 text-sm mb-4">Escaneie o QR Code ou copie o código. Esta tela confirmará o pagamento automaticamente.</p>
+                    <div className="mb-4 flex items-center justify-center gap-2 text-xs font-bold text-amber-300">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Aguardando confirmação da Asaas
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl w-fit mx-auto mb-6">
+                      <img src={`data:image/png;base64,${paymentResult.encodedImage}`} alt="QR Code PIX" className="w-48 h-48" />
+                    </div>
+                    <button onClick={() => { navigator.clipboard.writeText(paymentResult.payload); alert("Código Copiado!") }} className="w-full bg-[#25D366] text-white p-4 rounded-2xl font-bold mb-4 hover:bg-[#1fae52]">
+                      Copiar Código PIX
+                    </button>
+                  </>
+                )
               )}
 
               {paymentResult.type === 'BOLETO' && (

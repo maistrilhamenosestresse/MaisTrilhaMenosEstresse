@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getContractDefinition } from '@/lib/contracts';
 import { requireAuthenticatedUser } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { getAdminEmails } from '@/lib/server/env';
@@ -19,5 +20,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const isOwner = client.auth_user_id === auth.user.id || (!!email && client.email?.toLowerCase() === email);
   if (!isAdmin && !isOwner) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-  return NextResponse.json({ client });
+  const { data: contracts } = await createSupabaseAdmin()
+    .from('client_contracts')
+    .select('id, contract_type, version, title, signature_url, signed_at, document_hash, document_snapshot')
+    .eq('client_id', id)
+    .order('signed_at', { ascending: false });
+
+  return NextResponse.json({
+    client,
+    definitions: [
+      getContractDefinition('responsibility'),
+      getContractDefinition('insurance'),
+    ],
+    contracts: contracts || [],
+  });
 }

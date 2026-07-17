@@ -73,7 +73,7 @@ export async function POST(request: Request) {
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contato Emergência:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.emergency_contact_name} (${client.emergency_contact_phone})</td></tr>
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Notas de Saúde:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; color: #d93025; font-weight: bold;">${client.health_notes}</td></tr>
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Uso de Imagem:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.image_authorization ? 'AUTORIZADO' : 'NÃO AUTORIZADO'}</td></tr>
-                ${client.id ? `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Termo Assinado:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="${origin}/termo/${client.id}" style="color: #113a5d; font-weight: bold;">Acessar e Imprimir PDF</a></td></tr>` : ''}
+                ${client.id ? `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contratos atuais:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="${origin}/termo/${client.id}" style="color: #113a5d; font-weight: bold;">Acessar os dois documentos</a></td></tr>` : ''}
               </table>
             </div>
           </div>
@@ -104,13 +104,13 @@ export async function POST(request: Request) {
               
               <div style="padding: 30px 20px; color: #333; line-height: 1.6;">
                 <p>Olá <strong>${firstName}</strong>,</p>
-                <p>Parabéns! Nós recebemos o seu cadastro e a sua assinatura do <strong>Termo de Responsabilidade e Assunção de Riscos</strong>.</p>
+                <p>Recebemos seu cadastro e as assinaturas do <strong>Termo de Responsabilidade</strong> e da <strong>Autorização do Seguro</strong>.</p>
                 
                 <div style="background-color: #f9f9f9; padding: 20px; border-left: 4px solid #F17B37; margin: 20px 0;">
-                  <h3 style="margin-top: 0; color: #113a5d;">Cópia do Seu Contrato de Autorização</h3>
-                  <p style="margin-bottom: 0;">Você pode acessar, salvar ou imprimir uma cópia do seu termo assinado digitalmente a qualquer momento clicando no botão abaixo:</p>
+                  <h3 style="margin-top: 0; color: #113a5d;">Seus documentos atuais</h3>
+                  <p style="margin-bottom: 0;">Acesse as duas versões assinadas digitalmente pelo botão abaixo:</p>
                   <br/>
-                  <a href="${termoUrl}" style="background-color: #113a5d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar Meu Contrato Assinado</a>
+                  <a href="${termoUrl}" style="background-color: #113a5d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Acessar meus contratos assinados</a>
                 </div>
 
                 <h3 style="color: #113a5d; margin-top: 30px;">Resumo do Seguro Aventura Ativo 🛡️</h3>
