@@ -22,28 +22,55 @@ export async function requireAuthenticatedUser(): Promise<AuthSuccess | AuthFail
   return { user };
 }
 
+export async function requireAuthenticatedRequest(request: Request): Promise<AuthSuccess | AuthFailure> {
+  const authorization = request.headers.get("authorization") || "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (!bearer) return requireAuthenticatedUser();
+
+  const { data: { user }, error } = await createSupabaseAdmin().auth.getUser(bearer);
+  if (error || !user) {
+    return {
+      response: NextResponse.json({ error: "Autenticação obrigatória" }, { status: 401 }),
+    };
+  }
+  return { user };
+}
+
 export async function requireAdminUser(): Promise<AuthSuccess | AuthFailure> {
   const auth = await requireAuthenticatedUser();
   if (auth.response) return auth;
 
-  const email = auth.user.email?.toLowerCase();
-  const metadataRole = auth.user.app_metadata?.role;
-  const { data: profile } = await createSupabaseAdmin()
-    .from("profiles")
-    .select("role")
-    .eq("id", auth.user.id)
-    .maybeSingle();
-  const isAdmin = profile?.role === "admin" ||
-    metadataRole === "admin" ||
-    (!!email && getAdminEmails().includes(email));
-
-  if (!isAdmin) {
+  if (!(await isAdminUser(auth.user))) {
     return {
       response: NextResponse.json({ error: "Acesso administrativo negado" }, { status: 403 }),
     };
   }
 
   return auth;
+}
+
+export async function requireAdminRequest(request: Request): Promise<AuthSuccess | AuthFailure> {
+  const auth = await requireAuthenticatedRequest(request);
+  if (auth.response) return auth;
+  if (!(await isAdminUser(auth.user))) {
+    return {
+      response: NextResponse.json({ error: "Acesso administrativo negado" }, { status: 403 }),
+    };
+  }
+  return auth;
+}
+
+export async function isAdminUser(user: User) {
+  const email = user.email?.toLowerCase();
+  const metadataRole = user.app_metadata?.role;
+  const { data: profile } = await createSupabaseAdmin()
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  return profile?.role === "admin" ||
+    metadataRole === "admin" ||
+    (!!email && getAdminEmails().includes(email));
 }
 
 export async function requireAgendaCustomer(agendaId: string): Promise<AuthSuccess | AuthFailure> {

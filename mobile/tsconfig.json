@@ -1,0 +1,16 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "types": ["node", "react", "react-native"],
+    "paths": {
+      "@/*": ["src/*"],
+      "@trail-core": ["../packages/trail-core/src/index.ts"],
+      "@trail-core/*": ["../packages/trail-core/src/*"]
+    }
+  },
+  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", "modules/**/*.ts", "tests/**/*.ts"]
+}
