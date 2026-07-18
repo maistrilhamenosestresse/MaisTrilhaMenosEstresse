@@ -28,12 +28,19 @@ for (const requiredPath of [
   'src/app/api/checkout-infinitepay/status/route.ts',
   'src/app/api/cron/asaas-reconcile/route.ts',
   'src/app/api/cron/backup/route.ts',
+  'src/app/api/cron/trail-reminders/route.ts',
+  'src/app/api/push/subscription/route.ts',
+  'src/app/api/admin/push/send/route.ts',
   'src/lib/server/infinitepay.ts',
   'src/lib/server/infinitepay-payment-processing.ts',
+  'src/lib/server/push-notifications.ts',
+  'src/app/manifest.ts',
+  'public/sw.js',
   'src/proxy.ts',
   'supabase/migrations/202607160001_security_and_finance_foundation.sql',
   'supabase/migrations/202607180002_asaas_only_and_backup_hardening.sql',
   'supabase/migrations/202607180003_hybrid_infinitepay_asaas.sql',
+  'supabase/migrations/202607180004_web_push_notifications.sql',
 ]) {
   try { await readFile(path.join(root, requiredPath)); } catch { failures.push(`arquivo obrigatório ausente: ${requiredPath}`); }
 }

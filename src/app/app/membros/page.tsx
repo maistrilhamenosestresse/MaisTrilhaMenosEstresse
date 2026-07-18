@@ -38,15 +38,26 @@ export default function MembrosPage() {
           return;
         }
 
+        const adminResponse = await fetch('/api/auth/admin-eligibility', {
+          cache: 'no-store',
+        });
+        const hasAdministrativeAccess = adminResponse.ok;
+
         // Buscar dados do cliente pelo email
         const { data: client } = await supabase
           .from('clients')
           .select('id, full_name, email, pontos, cashback_saldo, membro_vip, photo_url')
           .eq('email', user.email)
-          .single();
+          .maybeSingle();
 
         if (!client) {
-          setAccessStatus('denied');
+          setClientData({
+            email: user.email,
+            full_name: user.user_metadata?.full_name || 'Administrador',
+            pontos: 0,
+            cashback_saldo: 0,
+          });
+          setAccessStatus(hasAdministrativeAccess ? 'granted' : 'denied');
           setIsLoading(false);
           return;
         }
@@ -64,7 +75,7 @@ export default function MembrosPage() {
         setTrailCount(trails);
 
         // Acesso automático após 3 trilhas pagas ou por autorização manual.
-        const hasAccess = hasMemberAccess(trails, client.membro_vip === true);
+        const hasAccess = hasAdministrativeAccess || hasMemberAccess(trails, client.membro_vip === true);
         setAccessStatus(hasAccess ? 'granted' : 'denied');
 
       } catch (e) {

@@ -12,6 +12,7 @@ export default function AppLoginPage() {
   const [token, setToken] = useState("");
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
+  const [administrativeAccess, setAdministrativeAccess] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const router = useRouter();
 
@@ -42,6 +43,7 @@ export default function AppLoginPage() {
     }
 
     const eligibility = await eligibilityResponse.json();
+    setAdministrativeAccess(eligibility.administrativeAccess === true);
     if (!eligibility.registered) {
       setMessage({ type: "error", text: "Não encontramos uma compra vinculada a este e-mail. Confira o endereço digitado." });
       setLoading(false);
@@ -116,12 +118,14 @@ export default function AppLoginPage() {
       setLoading(false);
     } else if (data?.session) {
       setMessage({ type: "success", text: "Tudo pronto! Entrando nas suas aventuras..." });
-      const profileResponse = await fetch('/api/clients/me', { cache: 'no-store' });
-      if (!profileResponse.ok) {
-        await supabase.auth.signOut();
-        setMessage({ type: 'error', text: 'Seu cadastro não pôde ser vinculado ao acesso. Fale com o suporte.' });
-        setLoading(false);
-        return;
+      if (!administrativeAccess) {
+        const profileResponse = await fetch('/api/clients/me', { cache: 'no-store' });
+        if (!profileResponse.ok) {
+          await supabase.auth.signOut();
+          setMessage({ type: 'error', text: 'Seu cadastro não pôde ser vinculado ao acesso. Fale com o suporte.' });
+          setLoading(false);
+          return;
+        }
       }
       router.push("/app");
     }
@@ -234,7 +238,10 @@ export default function AppLoginPage() {
                 
                 <button 
                   type="button" 
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    setAdministrativeAccess(false);
+                    setStep(1);
+                  }}
                   className="w-full py-2 text-xs font-bold text-gray-400 transition-colors hover:text-[#D96224]"
                 >
                   Usar outro e-mail

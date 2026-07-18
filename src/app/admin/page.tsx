@@ -1033,6 +1033,15 @@ export default function AdminPage() {
               Gamificação
             </button>
 
+            <button
+              type="button"
+              onClick={() => window.location.assign('/admin/notificacoes')}
+              className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 font-bold text-gray-500 transition-all hover:bg-[#E7EEF6] hover:text-[#0B2540]"
+            >
+              <Send className="h-5 w-5" />
+              Notificações do app
+            </button>
+
             <button 
               onClick={() => setMainTab('assistente')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'assistente' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
@@ -1123,6 +1132,15 @@ export default function AdminPage() {
               title="Acessar Página de Agendas Pública"
             >
               <ExternalLink className="h-5 w-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => window.location.assign('/admin/notificacoes')}
+              className="hidden items-center gap-1.5 rounded-lg bg-[#E7EEF6] px-3 py-1.5 text-xs font-bold text-[#0B2540] transition-colors hover:bg-blue-100 md:flex"
+              title="Enviar notificação para o app"
+            >
+              <Send className="h-4 w-4" /> Avisar clientes
             </button>
 
             {/* NOTIFICAÇÕES */}
@@ -2347,6 +2365,7 @@ export default function AdminPage() {
                   <button onClick={() => { setMainTab('financas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><DollarSign className="h-5 w-5" /> Finanças</button>
                   <button onClick={() => { setMainTab('loja'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'loja' ? 'bg-blue-50 text-blue-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><Gift className="h-5 w-5" /> Loja Virtual</button>
                   <button onClick={() => { setMainTab('gamificacao'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'gamificacao' ? 'bg-purple-50 text-purple-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><Trophy className="h-5 w-5" /> Gamificação</button>
+                  <button type="button" onClick={() => window.location.assign('/admin/notificacoes')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold text-gray-500 transition-all hover:bg-blue-50 hover:text-[#0B2540]"><Send className="h-5 w-5" /> Notificações do app</button>
                   <button onClick={() => { setMainTab('assistente'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'assistente' ? 'bg-amber-50 text-amber-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><TrendingUp className="h-5 w-5" /> CFO Assistente</button>
                 </div>
               </motion.div>

@@ -3,6 +3,7 @@ import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 import { hasMemberAccess, REQUIRED_PAID_TRAILS } from '@/lib/member-access';
+import { getAdminEmails } from '@/lib/server/env';
 
 export async function POST(request: Request) {
   const rateLimit = await enforceRateLimit(request, 'client-eligibility', 10, 600);
@@ -14,6 +15,15 @@ export async function POST(request: Request) {
   const email = parsed.data.email?.trim().toLowerCase();
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ registered: false, eligible: false, requiredPaidTrails: REQUIRED_PAID_TRAILS });
+  }
+
+  if (getAdminEmails().includes(email)) {
+    return NextResponse.json({
+      registered: true,
+      eligible: true,
+      administrativeAccess: true,
+      requiredPaidTrails: REQUIRED_PAID_TRAILS,
+    });
   }
 
   const supabase = createSupabaseAdmin();
@@ -46,6 +56,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     registered: true,
     eligible: hasMemberAccess(count || 0, client.membro_vip === true),
+    administrativeAccess: false,
     requiredPaidTrails: REQUIRED_PAID_TRAILS,
   });
 }

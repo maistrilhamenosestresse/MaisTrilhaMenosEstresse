@@ -10,6 +10,7 @@ Plataforma em Next.js 16 com site público, checkout, app móvel do cliente, pai
 - **AWS S3/Rekognition:** imagens, vídeos, fotos de trilhas, assinaturas e reconhecimento facial.
 - **Backup:** exportação lógica diária do Supabase, usuários de Auth, manifesto e espelho incremental das mídias para um bucket AWS separado.
 - **App do cliente:** todas as rotas `/app` são bloqueadas no servidor para navegadores desktop e exigem autenticação, exceto `/app/login`.
+- **PWA e notificações:** app instalável com Web Push para Android, desktop e iPhone/iPad 16.4+ quando adicionado à Tela de Início.
 
 ## Configuração
 
@@ -22,6 +23,7 @@ Copie `.env.example` para `.env.local` e preencha todas as variáveis. Em produ�
 - `CRON_SECRET`, `RATE_LIMIT_SECRET` e `REGISTRATION_SIGNING_SECRET`
 - credenciais Supabase e AWS
 - `NEXT_PUBLIC_BASE_URL` e `NEXT_PUBLIC_SITE_URL` com `https://www.maistrilhasmenosestresse.com`
+- `WEB_PUSH_VAPID_SUBJECT`, `WEB_PUSH_VAPID_PUBLIC_KEY` e `WEB_PUSH_VAPID_PRIVATE_KEY`
 
 Nunca envie `.env.local`, dumps ou backups para o Git. Como versões antigas continham dados e credenciais, rotacione as chaves Supabase, AWS, Asaas, Gmail, GitHub, WhatsApp e os segredos de sessão antes do deploy.
 
@@ -39,6 +41,14 @@ Nunca envie `.env.local`, dumps ou backups para o Git. Como versões antigas con
 10. Acione `POST /api/admin/backup` autenticado como administrador e depois `POST /api/admin/backup/verify`. Confirme os dois registros no bucket e no Supabase.
 
 Aplicar o código antes da migration fará endpoints públicos retornarem `503`, pois o rate limit e as transações financeiras dependem das novas funções SQL.
+
+## Aplicativo instalável e notificações
+
+- Android: abra o app no navegador, toque em **Instalar app** e depois em **Ativar notificações**.
+- iPhone/iPad 16.4 ou superior: use **Compartilhar > Adicionar à Tela de Início**, abra pelo novo ícone e ative as notificações dentro do app.
+- O usuário escolhe entre novidades de trilhas, lembretes de reservas e benefícios, podendo desativar o aparelho a qualquer momento.
+- Administradores enviam campanhas em `/admin/notificacoes`.
+- O cron `/api/cron/trail-reminders` envia um lembrete às 09:30 no dia anterior às trilhas pagas.
 
 ## Comandos
 

@@ -27,6 +27,9 @@ const requiredVariables = [
   'ASAAS_API_KEY',
   'ASAAS_WEBHOOK_TOKEN',
   'INFINITEPAY_HANDLE',
+  'WEB_PUSH_VAPID_SUBJECT',
+  'WEB_PUSH_VAPID_PUBLIC_KEY',
+  'WEB_PUSH_VAPID_PRIVATE_KEY',
   'AWS_ACCESS_KEY_ID',
   'AWS_SECRET_ACCESS_KEY',
   'AWS_S3_BUCKET_NAME',
@@ -42,7 +45,7 @@ for (const name of requiredVariables) {
 
 if (!allowSandbox) checkProductionUrls();
 
-const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET'];
+const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET', 'WEB_PUSH_VAPID_PRIVATE_KEY'];
 const configuredSecrets = [];
 for (const name of secretNames) {
   const value = process.env[name]?.trim();
@@ -73,6 +76,7 @@ await checkSupabase();
 await checkAws();
 await checkAsaas();
 checkInfinitePay();
+checkWebPush();
 finish();
 
 async function checkSupabase() {
@@ -96,7 +100,7 @@ async function checkSupabase() {
       'points_transactions', 'content_documents', 'asaas_webhook_events',
       'asaas_payments', 'audit_logs', 'backup_runs', 'dependent_registration_invites',
       'backup_restore_tests', 'api_rate_limits', 'pedidos_loja',
-      'infinitepay_checkouts',
+      'infinitepay_checkouts', 'push_subscriptions', 'push_campaigns',
     ];
     const rpcs = [
       'consume_api_rate_limit', 'redeem_campaign_coupon', 'create_pending_reservation_batch',
@@ -274,6 +278,25 @@ function checkInfinitePay() {
   } catch (error) {
     failures.push(`InfinitePay mal configurada: ${safeMessage(error)}`);
   }
+}
+
+function checkWebPush() {
+  const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY?.trim() || '';
+  const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim() || '';
+  const subject = process.env.WEB_PUSH_VAPID_SUBJECT?.trim() || '';
+  if (!/^[A-Za-z0-9_-]{80,100}$/.test(publicKey)) {
+    failures.push('WEB_PUSH_VAPID_PUBLIC_KEY inválida');
+    return;
+  }
+  if (!/^[A-Za-z0-9_-]{40,60}$/.test(privateKey)) {
+    failures.push('WEB_PUSH_VAPID_PRIVATE_KEY inválida');
+    return;
+  }
+  if (!/^mailto:[^@\s]+@[^@\s]+\.[^@\s]+$/.test(subject) && !/^https:\/\//.test(subject)) {
+    failures.push('WEB_PUSH_VAPID_SUBJECT inválido');
+    return;
+  }
+  successes.push('Web Push: chaves VAPID e estrutura de inscrições configuradas');
 }
 
 function checkProductionUrls() {

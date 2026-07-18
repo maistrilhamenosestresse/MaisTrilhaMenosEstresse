@@ -1,4 +1,19 @@
 {
+  "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/birthdays",
@@ -15,6 +30,10 @@
     {
       "path": "/api/cron/asaas-reconcile",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/trail-reminders",
+      "schedule": "30 9 * * *"
     }
   ]
 }

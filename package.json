@@ -17,7 +17,8 @@
     "backup:setup-bucket": "node scripts/setup-backup-bucket.mjs",
     "db:migrate": "node scripts/apply-supabase-migration.mjs",
     "readiness:check": "node scripts/verify-production-readiness.mjs",
-    "readiness:test": "node scripts/verify-production-readiness.mjs --allow-sandbox"
+    "readiness:test": "node scripts/verify-production-readiness.mjs --allow-sandbox",
+    "push:setup": "node scripts/setup-web-push.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1087.0",
@@ -48,6 +49,7 @@
     "recharts": "^3.9.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
+    "web-push": "^3.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -59,6 +61,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-signature-canvas": "^1.0.7",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",

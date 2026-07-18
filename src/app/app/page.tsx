@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { PwaEngagementCard } from "@/components/app/PwaEngagementCard";
 
 type FeaturedProduct = {
   id: string;
@@ -183,6 +184,8 @@ export default function PwaDashboard() {
 
       {/* Seção Loja / Benefícios */}
       <div className="mt-8 flex-1 space-y-7 px-4 pb-8 sm:px-6">
+        <PwaEngagementCard compact />
+
         <div>
           <div className="flex justify-between items-end mb-4">
             <div>

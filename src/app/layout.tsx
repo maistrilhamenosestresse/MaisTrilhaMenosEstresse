@@ -5,6 +5,7 @@ import VisualEditorBridge from "@/components/VisualEditorBridge";
 import { Navigation } from "@/components/Navigation";
 import { Toaster } from "sonner";
 import Script from "next/script";
+import PwaRuntime from "@/components/PwaRuntime";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,13 +46,20 @@ export const metadata: Metadata = {
     shortcut: logoUrl,
     apple: logoUrl,
   },
-  manifest: '/manifest.json'
+  manifest: '/manifest.webmanifest',
+  applicationName: 'Mais Trilha Menos Estresse',
+  appleWebApp: {
+    capable: true,
+    title: 'Mais Trilha',
+    statusBarStyle: 'black-translucent',
+  },
 };
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#071829',
 };
 
 export default function RootLayout({
@@ -123,23 +131,7 @@ export default function RootLayout({
 
         <Navigation />
         {children}
-        <Script
-          id="service-worker-registration"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                  }, function(err) {
-                    console.log('ServiceWorker registration failed: ', err);
-                  });
-                });
-              }
-            `,
-          }}
-        />
+        <PwaRuntime />
         <VisualEditorBridge />
         <Toaster theme="dark" position="bottom-right" />
       </body>

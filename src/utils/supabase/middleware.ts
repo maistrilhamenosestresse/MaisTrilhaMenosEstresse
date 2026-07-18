@@ -57,7 +57,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isAppRoute) {
+  if (user && isAppRoute && isAdmin) {
+    if (isAppLogin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/app'
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+  } else if (user && isAppRoute) {
     const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('id, membro_vip')
