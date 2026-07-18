@@ -6,10 +6,15 @@ import {
   type ContractType,
 } from "@/lib/contracts";
 import { requireServerEnv } from "@/lib/server/env";
+import { sendSignedContractsEmail } from "@/lib/server/contract-email";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type SignClientContractsInput = {
-  client: Record<string, any>;
+  client: Record<string, any> & {
+    id: string;
+    full_name: string;
+    email?: string | null;
+  };
   signatureUrl: string;
   request: Request;
   types: ContractType[];
@@ -84,6 +89,15 @@ export async function signClientContracts({
       },
     })),
   );
+
+  const contractIds = (contracts || []).map((contract) => contract.id);
+  if (client.email && contractIds.length) {
+    try {
+      await sendSignedContractsEmail(client, contractIds);
+    } catch (emailError) {
+      console.error("Contratos assinados, mas o envio das cópias por e-mail falhou:", emailError);
+    }
+  }
 
   return contracts || [];
 }

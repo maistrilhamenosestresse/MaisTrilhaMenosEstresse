@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import {
   CheckCircle2,
   Eraser,
+  Download,
   FileSignature,
   Loader2,
   ShieldCheck,
@@ -25,6 +26,7 @@ export default function ContractInvitePage() {
   const [client, setClient] = useState<{ full_name: string; cpf_masked: string } | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [current, setCurrent] = useState({ responsibility: false, insurance: false });
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function ContractInvitePage() {
         if (!response.ok) throw new Error(result.error || "Não foi possível abrir o link");
         setDefinitions(result.definitions || []);
         setClient(result.client || null);
+        setCurrent(result.current || { responsibility: false, insurance: false });
       } catch (loadError: any) {
         setError(loadError.message || "Não foi possível abrir o link");
       } finally {
@@ -75,6 +78,7 @@ export default function ContractInvitePage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Falha ao registrar a assinatura");
+      setCurrent({ responsibility: true, insurance: true });
       setCompleted(true);
     } catch (signError: any) {
       setError(signError.message || "Não foi possível assinar os documentos");
@@ -99,8 +103,10 @@ export default function ContractInvitePage() {
           <h1 className="mt-5 text-2xl font-black text-gray-900">Documentos assinados</h1>
           <p className="mt-3 text-sm leading-relaxed text-gray-600">
             Obrigado, {client?.full_name?.split(" ")[0]}. O termo de responsabilidade e a
-            autorização do seguro foram registrados com sucesso.
+            autorização do seguro foram registrados com sucesso. Enviamos as cópias em PDF
+            para o e-mail do cadastro.
           </p>
+          <ContractDownloadButtons token={token} />
         </div>
       </main>
     );
@@ -129,20 +135,31 @@ export default function ContractInvitePage() {
       </header>
 
       <div className="mx-auto max-w-2xl space-y-5 px-4 pt-5">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Atualizamos o contrato. Leia os dois documentos abaixo e assine uma vez para
-          confirmar ambos.
-        </div>
+        {!current.responsibility || !current.insurance ? (
+          <>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              Atualizamos o contrato. Leia os dois documentos abaixo e assine uma vez para
+              confirmar ambos.
+            </div>
 
-        {definitions.map((definition) => (
-          <ContractContent
-            key={definition.type}
-            definition={definition}
-            className="rounded-[1.75rem] border border-gray-200 bg-white p-5 shadow-sm"
-          />
-        ))}
+            {definitions.map((definition) => (
+              <ContractContent
+                key={definition.type}
+                definition={definition}
+                className="rounded-[1.75rem] border border-gray-200 bg-white p-5 shadow-sm"
+              />
+            ))}
+          </>
+        ) : null}
 
-        {error && definitions.length === 0 ? (
+        {current.responsibility && current.insurance ? (
+          <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
+            <h2 className="mt-3 font-black text-emerald-950">Seus contratos estão atualizados</h2>
+            <p className="mt-1 text-sm text-emerald-800">Baixe suas cópias assinadas abaixo.</p>
+            <ContractDownloadButtons token={token} />
+          </section>
+        ) : error && definitions.length === 0 ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm font-bold text-red-700">
             {error}
           </div>
@@ -194,5 +211,24 @@ export default function ContractInvitePage() {
         ) : null}
       </div>
     </main>
+  );
+}
+
+function ContractDownloadButtons({ token }: { token: string }) {
+  return (
+    <div className="mt-5 grid gap-2">
+      <a
+        href={`/api/contracts/invite/${encodeURIComponent(token)}/responsibility/pdf`}
+        className="flex items-center justify-center gap-2 rounded-2xl bg-[#0B2540] px-4 py-3 text-sm font-black text-white"
+      >
+        <Download className="h-4 w-4" /> Baixar termo de responsabilidade
+      </a>
+      <a
+        href={`/api/contracts/invite/${encodeURIComponent(token)}/insurance/pdf`}
+        className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white"
+      >
+        <Download className="h-4 w-4" /> Baixar contrato do seguro
+      </a>
+    </div>
   );
 }

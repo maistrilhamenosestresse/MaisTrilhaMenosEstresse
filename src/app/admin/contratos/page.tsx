@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, FileDown, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, FileSignature, CheckCircle2, XCircle, Send, FileDown, Search, Loader2, Copy, ClipboardCheck } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
 
 export default function ContratosAdminPage() {
@@ -13,6 +13,7 @@ export default function ContratosAdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<'assinados' | 'pendentes'>('pendentes');
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [groupLinkCopied, setGroupLinkCopied] = useState(false);
   
   // PIN Security
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -94,6 +95,13 @@ export default function ContratosAdminPage() {
     }
   };
 
+  const copyGroupContractLink = async () => {
+    const link = `${window.location.origin}/contratos`;
+    await navigator.clipboard.writeText(link);
+    setGroupLinkCopied(true);
+    window.setTimeout(() => setGroupLinkCopied(false), 2500);
+  };
+
   const normalizeString = (str: string) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() : "";
   
   const filteredClients = clients.filter(c => 
@@ -146,11 +154,19 @@ export default function ContratosAdminPage() {
             </div>
           </div>
           
-          <div className="w-full md:w-auto">
+          <div className="grid w-full gap-2 md:w-auto">
+            <button
+              type="button"
+              onClick={copyGroupContractLink}
+              className="w-full rounded-xl border border-[#0B2540] bg-white px-5 py-3 text-sm font-bold text-[#0B2540] transition hover:bg-blue-50 flex items-center justify-center gap-2"
+            >
+              {groupLinkCopied ? <ClipboardCheck className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
+              {groupLinkCopied ? "Link geral copiado" : "Copiar link para o grupo"}
+            </button>
             <button
               onClick={() => handleDownloadVersionedContracts()}
               disabled={isDownloadingAll}
-              className="w-full md:w-auto bg-[#F17B37] text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#d6672c] transition shadow-lg disabled:opacity-60"
+              className="w-full bg-[#F17B37] text-white px-5 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#d6672c] transition shadow-lg disabled:opacity-60"
             >
               {isDownloadingAll ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileDown className="h-5 w-5" />}
               Baixar todos os contratos atuais

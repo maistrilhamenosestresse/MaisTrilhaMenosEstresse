@@ -33,6 +33,9 @@ jobs:
           ANDROID_SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           test -n "$ANDROID_SDK_PATH"
           test -d "$ANDROID_SDK_PATH"
+          if [ ! -e "$ANDROID_SDK_PATH/bin" ] && [ -d "$ANDROID_SDK_PATH/cmdline-tools/latest/bin" ]; then
+            ln -s "$ANDROID_SDK_PATH/cmdline-tools/latest/bin" "$ANDROID_SDK_PATH/bin"
+          fi
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           npm install --global @bubblewrap/cli@1.24.1
           mkdir -p "$HOME/.bubblewrap"

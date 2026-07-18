@@ -1,13 +1,15 @@
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   getContractDefinition,
   getCurrentContractVersion,
 } from "@/lib/contracts";
 import { signClientContracts } from "@/lib/server/client-contracts";
+import {
+  ContractInviteError,
+  resolveContractInvite,
+} from "@/lib/server/contract-invites";
 import { enforceRateLimit } from "@/lib/server/rate-limit";
 import { assertSameOrigin, readJsonBody } from "@/lib/server/request";
-import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 type InviteSignBody = {
   signature_url?: string;
@@ -21,8 +23,12 @@ export async function GET(
   if (rateLimit) return rateLimit;
 
   const { token } = await context.params;
-  const resolved = await resolveInvite(token);
-  if (resolved.response) return resolved.response;
+  let resolved;
+  try {
+    resolved = await resolveContractInvite(token);
+  } catch (error) {
+    return inviteErrorResponse(error);
+  }
 
   const { client, invite, supabase } = resolved;
   const { data: contracts } = await supabase
@@ -66,8 +72,12 @@ export async function POST(
   if (rateLimit) return rateLimit;
 
   const { token } = await context.params;
-  const resolved = await resolveInvite(token);
-  if (resolved.response) return resolved.response;
+  let resolved;
+  try {
+    resolved = await resolveContractInvite(token, { requireUnused: true });
+  } catch (error) {
+    return inviteErrorResponse(error);
+  }
 
   const parsed = await readJsonBody<InviteSignBody>(request, 20_000);
   if (parsed.response) return parsed.response;
@@ -95,41 +105,12 @@ export async function POST(
   }
 }
 
-async function resolveInvite(tokenValue: string) {
-  const token = String(tokenValue || "");
-  if (!/^[A-Za-z0-9_-]{40,60}$/.test(token)) {
-    return {
-      response: NextResponse.json({ error: "Link inválido" }, { status: 400 }),
-    } as const;
+function inviteErrorResponse(error: unknown) {
+  if (error instanceof ContractInviteError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
   }
-
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  const supabase = createSupabaseAdmin();
-  const { data: invite } = await supabase
-    .from("contract_signing_invites")
-    .select("id, client_id, expires_at, used_at")
-    .eq("token_hash", tokenHash)
-    .maybeSingle();
-  if (!invite || invite.used_at || new Date(invite.expires_at).getTime() <= Date.now()) {
-    return {
-      response: NextResponse.json({
-        error: "Este link expirou ou já foi utilizado. Solicite um novo link.",
-      }, { status: 410 }),
-    } as const;
-  }
-
-  const { data: client } = await supabase
-    .from("clients")
-    .select("*")
-    .eq("id", invite.client_id)
-    .maybeSingle();
-  if (!client) {
-    return {
-      response: NextResponse.json({ error: "Cadastro não encontrado" }, { status: 404 }),
-    } as const;
-  }
-
-  return { invite, client, supabase, response: null } as const;
+  console.error("Falha ao validar convite de contrato:", error);
+  return NextResponse.json({ error: "Não foi possível validar este acesso" }, { status: 500 });
 }
 
 function maskCpf(value: string) {
