@@ -8,7 +8,7 @@ const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  owner: "maistrilha",
+  owner: "maistrilhas-team",
   name: isGuide ? "Mais Trilha Guia" : "Mais Trilha",
   slug: "maistrilha",
   version: "1.0.0",
