@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { getAdminEmails } from "@/lib/server/env";
@@ -10,6 +11,16 @@ type AuthSuccess = { user: User; response?: never };
 type AuthFailure = { user?: never; response: NextResponse };
 
 export async function requireAuthenticatedUser(): Promise<AuthSuccess | AuthFailure> {
+  const authorization = (await headers()).get("authorization") || "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (bearer) {
+    const { data: { user }, error } = await createSupabaseAdmin().auth.getUser(bearer);
+    if (!error && user) return { user };
+    return {
+      response: NextResponse.json({ error: "Autenticação obrigatória" }, { status: 401 }),
+    };
+  }
+
   const supabase = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
 

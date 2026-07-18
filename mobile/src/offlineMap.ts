@@ -1,5 +1,5 @@
-import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { setState } from "./storage";
+import { runtimeCapabilities } from "./runtimeCapabilities";
 
 type Bounds = [number, number, number, number];
 
@@ -11,6 +11,10 @@ export async function downloadOfflineMap(input: {
   maxZoom?: number;
   onProgress?: (percentage: number) => void;
 }) {
+  if (!runtimeCapabilities.nativeOfflineMaps) {
+    throw new Error("O mapa offline real exige o aplicativo nativo. Neste teste do iPhone ele está simulado.");
+  }
+  const { OfflineManager } = require("@maplibre/maplibre-react-native") as typeof import("@maplibre/maplibre-react-native");
   const pack = await OfflineManager.createPack(
     {
       mapStyle: input.mapStyle,

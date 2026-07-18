@@ -50,5 +50,6 @@ next-env.d.ts
 backup_*.json
 *.dump
 .media-migration-complete.json
+/create_test_user.js
 
 .vercel

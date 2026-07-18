@@ -23,7 +23,10 @@
     "mobile:env": "node scripts/sync-mobile-env.mjs",
     "mobile:typecheck": "npm --prefix mobile run typecheck",
     "mobile:test": "npm --prefix mobile run test",
-    "mobile:prebuild:android": "npm --prefix mobile run prebuild -- --platform android --clean"
+    "mobile:prebuild:android": "npm --prefix mobile run prebuild -- --platform android --clean",
+    "mobile:guide:web": "npm --prefix mobile run start:guide:web",
+    "mobile:participant:android": "npm --prefix mobile run build:participant:android",
+    "mobile:guide:android": "npm --prefix mobile run build:guide:android"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1087.0",

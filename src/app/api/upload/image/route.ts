@@ -19,7 +19,7 @@ const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
 const FOLDER_RULES = {
   'cadastro-docs': { prefix: 'cadastro-docs', auth: 'same-origin' },
-  signatures: { prefix: 'signatures', auth: 'same-origin' },
+  signatures: { prefix: 'signatures', auth: 'user' },
   'app-profiles': { prefix: 'app-profiles', auth: 'user' },
   'media-images': { prefix: `media/images/${new Date().toISOString().slice(0, 10)}`, auth: 'admin' },
 } as const;

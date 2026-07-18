@@ -1,4 +1,4 @@
-import { EventEmitter, requireNativeModule } from "expo-modules-core";
+import { requireOptionalNativeModule } from "expo-modules-core";
 
 export type NearbyStatusEvent = {
   state: "starting" | "running" | "stopped" | "error";
@@ -17,23 +17,48 @@ type StartOptions = {
   endpointName: string;
 };
 
-const module = requireNativeModule("NearbyMesh");
-const emitter = new EventEmitter(module) as any;
+type NearbyNativeModule = {
+  start(options: StartOptions): Promise<void>;
+  stop(): Promise<void>;
+  broadcast(data: string): Promise<number>;
+  addListener(eventName: "onStatus", listener: (event: NearbyStatusEvent) => void): { remove(): void };
+  addListener(eventName: "onMessage", listener: (event: NearbyMessageEvent) => void): { remove(): void };
+};
+
+const nativeModule = requireOptionalNativeModule<NearbyNativeModule>("NearbyMesh");
+const simulatedStatusListeners = new Set<(event: NearbyStatusEvent) => void>();
+
+function simulatedSubscription(remove: () => void) {
+  return { remove };
+}
 
 export const NearbyMesh = {
-  start(options: StartOptions): Promise<void> {
-    return module.start(options);
+  async start(options: StartOptions): Promise<void> {
+    if (nativeModule) return nativeModule.start(options);
+    setTimeout(() => {
+      for (const listener of simulatedStatusListeners) {
+        listener({
+          state: "running",
+          peers: 0,
+          detail: "Demonstração no iPhone — rede Bluetooth simulada",
+        });
+      }
+    }, 0);
   },
-  stop(): Promise<void> {
-    return module.stop();
+  async stop(): Promise<void> {
+    if (nativeModule) return nativeModule.stop();
   },
-  broadcast(data: string): Promise<number> {
-    return module.broadcast(data);
+  async broadcast(data: string): Promise<number> {
+    if (nativeModule) return nativeModule.broadcast(data);
+    return 0;
   },
   onStatus(listener: (event: NearbyStatusEvent) => void) {
-    return emitter.addListener("onStatus", listener);
+    if (nativeModule) return nativeModule.addListener("onStatus", listener);
+    simulatedStatusListeners.add(listener);
+    return simulatedSubscription(() => simulatedStatusListeners.delete(listener));
   },
   onMessage(listener: (event: NearbyMessageEvent) => void) {
-    return emitter.addListener("onMessage", listener);
+    if (nativeModule) return nativeModule.addListener("onMessage", listener);
+    return simulatedSubscription(() => undefined);
   },
 };

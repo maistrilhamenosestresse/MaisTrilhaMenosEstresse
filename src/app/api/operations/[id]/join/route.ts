@@ -56,11 +56,30 @@ export async function POST(
   }
 
   const admin = await isAdminUser(auth.user);
+  const identity = await memberIdentity(auth.user);
+  if (!admin) {
+    if (!identity.client?.id) {
+      return NextResponse.json({ error: "Cadastro de participante não encontrado" }, { status: 403 });
+    }
+    const { data: paidReservation } = await supabase
+      .from("reservas")
+      .select("id")
+      .eq("client_id", identity.client.id)
+      .eq("agenda_id", operation.agenda_id)
+      .eq("status_pagamento", "pago")
+      .limit(1)
+      .maybeSingle();
+    if (!paidReservation) {
+      return NextResponse.json(
+        { error: "Esta operação é exclusiva para participantes com reserva paga nesta trilha" },
+        { status: 403 },
+      );
+    }
+  }
   const requestedRole = String(parsed.data.role || "participant");
   const role = admin && ["guide", "assistant_guide", "sweeper"].includes(requestedRole)
     ? requestedRole
     : "participant";
-  const identity = await memberIdentity(auth.user);
   const { data: existing } = await supabase
     .from("trail_operation_members")
     .select("id")

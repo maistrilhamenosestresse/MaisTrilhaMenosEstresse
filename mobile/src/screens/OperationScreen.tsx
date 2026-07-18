@@ -28,6 +28,8 @@ import { TrailMap } from "../components/TrailMap";
 import { StatusPill } from "../components/StatusPill";
 import { createInviteCode } from "../invite";
 import { shareOperationInvite } from "./HomeScreen";
+import { demoModeMessage, isExpoGo } from "../runtimeCapabilities";
+import { initializeSafetyNotifications, notifySafetyAlert } from "../notifications";
 
 export function OperationScreen({
   session,
@@ -55,12 +57,31 @@ export function OperationScreen({
   const [reportVisible, setReportVisible] = useState(false);
   const [mapProgress, setMapProgress] = useState<number | null>(null);
   const runtimeRef = useRef<TrailMeshRuntime | null>(null);
+  const notifiedUrgentRef = useRef(new Set<string>());
   const isGuide = ["guide", "assistant_guide", "sweeper"].includes(active.member.role);
 
   const refresh = async () => {
     try {
       const result = await getOperation(session, String(active.operation.id));
       setDetails(result);
+      if (isGuide) {
+        const urgentMembers = ((result.members || []) as OperationMember[])
+          .filter((member) => ["sos", "help_requested", "rest_requested"].includes(member.last_status));
+        const nextUrgentKeys = new Set<string>();
+        for (const member of urgentMembers) {
+          const key = `${member.id}:${member.last_status}`;
+          nextUrgentKeys.add(key);
+          if (!notifiedUrgentRef.current.has(key)) {
+            void notifySafetyAlert({
+              title: member.last_status === "sos" ? "SOS na trilha" : "Participante precisa de atenção",
+              body: `${member.display_name}: ${memberStatusLabel(member.last_status)}`,
+              operationId: String(active.operation.id),
+              memberId: member.id,
+            });
+          }
+        }
+        notifiedUrgentRef.current = nextUrgentKeys;
+      }
       if (result.currentMember) {
         const memberDirectory = Object.fromEntries(
           (result.members || [])
@@ -90,6 +111,7 @@ export function OperationScreen({
     let mounted = true;
     const start = async () => {
       try {
+        await initializeSafetyNotifications();
         await requestTrailPermissions();
         await startTrailLocation(Number(active.operation.settings?.location_interval_seconds || 15));
         const runtime = new TrailMeshRuntime(active, session);
@@ -224,6 +246,13 @@ export function OperationScreen({
       </View>
 
       <StatusPill peers={mesh.peers} online={mesh.online} relayed={mesh.relayed} />
+
+      {isExpoGo ? (
+        <View style={styles.demoNotice}>
+          <Text style={styles.demoNoticeTitle}>Teste no iPhone</Text>
+          <Text style={styles.demoNoticeText}>{demoModeMessage}</Text>
+        </View>
+      ) : null}
 
       {urgent.length ? (
         <View style={styles.alertCard}>
@@ -437,6 +466,9 @@ const styles = StyleSheet.create({
   alertCard: { backgroundColor: "#FFF0F0", borderWidth: 1, borderColor: "#F4B8B8", borderRadius: 22, padding: 16 },
   alertTitle: { color: colors.danger, fontSize: 16, fontWeight: "900" },
   alertText: { color: "#752323", marginTop: 6, fontWeight: "700" },
+  demoNotice: { backgroundColor: "#EAF3FB", borderWidth: 1, borderColor: "#B8D5EC", borderRadius: 20, padding: 15 },
+  demoNoticeTitle: { color: colors.navy950, fontSize: 15, fontWeight: "900" },
+  demoNoticeText: { color: colors.navy800, fontSize: 12, lineHeight: 18, marginTop: 4 },
   mapActions: { flexDirection: "row", gap: 8 },
   secondaryButton: { flex: 1, borderWidth: 1, borderColor: colors.navy900, borderRadius: 16, padding: 13, alignItems: "center" },
   secondaryText: { color: colors.navy900, fontWeight: "900", textAlign: "center", fontSize: 12 },

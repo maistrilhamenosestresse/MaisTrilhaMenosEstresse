@@ -5,6 +5,7 @@ import * as TaskManager from "expo-task-manager";
 import { createTrailMessage, distanceToRouteMeters } from "@maistrilha/trail-core";
 import { signTrailMessage } from "./crypto";
 import { getActiveOperation, getState, saveMeshMessage, setActiveOperation, setState } from "./storage";
+import { runtimeCapabilities } from "./runtimeCapabilities";
 
 export const LOCATION_TASK = "mais-trilha-background-location";
 
@@ -61,6 +62,7 @@ TaskManager.defineTask(LOCATION_TASK, async ({ data, error }) => {
 });
 
 export async function startTrailLocation(intervalSeconds = 15) {
+  if (!runtimeCapabilities.backgroundLocation) return;
   const running = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK);
   if (running) return;
   await Location.startLocationUpdatesAsync(LOCATION_TASK, {
@@ -82,6 +84,7 @@ export async function startTrailLocation(intervalSeconds = 15) {
 }
 
 export async function stopTrailLocation() {
+  if (!runtimeCapabilities.backgroundLocation) return;
   if (await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK)) {
     await Location.stopLocationUpdatesAsync(LOCATION_TASK);
   }

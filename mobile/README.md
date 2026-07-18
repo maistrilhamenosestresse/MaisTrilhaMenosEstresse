@@ -1,23 +1,40 @@
-# Mais Trilha — Operações offline
+# Aplicativos Android Mais Trilha
 
-Aplicativo nativo compartilhado em duas versões:
+Este projeto gera dois aplicativos Android independentes a partir da mesma base:
 
-- **Mais Trilha**: participante, com mapa, localização do grupo, descanso, ajuda, SOS e relatórios.
-- **Mais Trilha Guia**: guia, com controle da operação, situação dos participantes, bateria, último contato e tratamento de alertas.
+## 1. Mais Trilha — cliente
 
-O painel web em `/admin/operacoes` cria e acompanha as operações.
+Pacote Android: `com.maistrilhasmenosestresse.app`
 
-## Como a conexão offline funciona
+O APK do cliente contém:
 
-Os aparelhos formam uma rede local usando Bluetooth e Wi‑Fi Direct/Nearby Connections. As mensagens podem saltar entre telefones:
+- telas Android nativas para toda a experiência da Área do Aventureiro;
+- login por código enviado ao e-mail, sem senha;
+- trilhas, carrinho, checkout, carteira, pontos, loja, ranking, álbuns, perfil e contratos;
+- área nativa de Segurança da Trilha;
+- GPS em primeiro e segundo plano;
+- pedidos de descanso, ajuda e SOS;
+- mapa operacional e pacote de mapa offline;
+- comunicação entre aparelhos próximos pelo Google Nearby Connections;
+- mensagens assinadas, criptografadas e retransmitidas entre os aparelhos do grupo;
+- fila local em SQLite para sincronizar quando a internet voltar.
 
-```text
-Participante A  →  Participante B  →  Participante C  →  Guia
-```
+O APK não incorpora o site e não usa WebView. O domínio oficial fornece apenas as APIs seguras de dados e pagamentos. Interface, navegação, mapa, contratos, álbum, GPS em segundo plano, Bluetooth/Nearby, SQLite e notificações são executados pela camada nativa.
 
-Cada mensagem é assinada, criptografada, tem identificador único, prazo de validade e limite de saltos. Mensagens de SOS têm prioridade sobre localização comum. Quando algum aparelho recupera internet, os eventos pendentes são sincronizados com o servidor.
+## 2. Mais Trilha Guia
 
-Isso exige uma corrente física de aparelhos dentro do alcance uns dos outros. Se houver um trecho sem nenhum telefone intermediário, o painel mostra a última posição e o horário do último contato. Bluetooth/Wi‑Fi não substitui rádio, LoRa ou comunicador por satélite em áreas remotas.
+Pacote Android: `com.maistrilhasmenosestresse.guia`
+
+O APK do guia contém:
+
+- criação e controle de operações;
+- convite do grupo por código e QR Code;
+- mapa com participantes e rota;
+- status, bateria e último contato de cada integrante;
+- alertas locais para SOS, ajuda e descanso;
+- relatórios de ocorrência;
+- comunicação Nearby e retransmissão em malha;
+- sincronização com o servidor quando houver internet.
 
 ## Preparação local
 
@@ -25,52 +42,23 @@ Na raiz do projeto:
 
 ```powershell
 npm run mobile:env
-cd mobile
-npm install
-npm run typecheck
-npm run test
+npm run mobile:typecheck
+npm run mobile:test
 ```
 
-O script copia para `mobile/.env.local` somente valores públicos necessários ao aplicativo. Chaves administrativas, AWS, Gmail, banco e service role nunca entram no binário.
+O comando `mobile:env` cria `mobile/.env.local` apenas com variáveis públicas necessárias ao aplicativo. Esse arquivo é ignorado pelo Git.
 
-O recurso de rede mesh usa código nativo e não funciona no Expo Go. Use um development build:
+## Gerar APKs de teste
 
 ```powershell
-npm run prebuild -- --platform android --clean
-npm run android
+npm run mobile:participant:android
+npm run mobile:guide:android
 ```
 
-No Windows é necessário instalar o Android Studio/JDK e configurar `JAVA_HOME`.
+Os perfis `preview` e `guide-preview` geram APKs instaláveis diretamente. Os perfis de produção geram artefatos para distribuição oficial.
 
-## Builds
+## Limite técnico importante
 
-Depois de autenticar o EAS e definir `EXPO_PUBLIC_EAS_PROJECT_ID`:
+A rede de aparelhos usa Google Nearby Connections com estratégia `P2P_CLUSTER`. Ela permite saltos entre celulares quando o aplicativo está ativo e cada aparelho recebeu o mesmo convite criptográfico. GPS e fila offline continuam no dispositivo; sincronização com o painel depende de algum aparelho do grupo voltar a ter internet.
 
-```powershell
-npm run build:participant:android
-npm run build:guide:android
-npm run build:participant:ios
-npm run build:guide:ios
-```
-
-Os perfis `preview` geram APKs Android para teste interno. As versões iOS precisam de uma conta Apple Developer e são compiladas no EAS.
-
-## Teste obrigatório antes de uma trilha real
-
-1. Crie uma operação no painel e faça o check-in.
-2. Conecte ao menos três celulares com o QR Code da operação.
-3. Desligue dados móveis e Wi‑Fi com internet, mantendo Bluetooth e Wi‑Fi dos aparelhos ligados.
-4. Afaste A do guia, mantendo A perto de B e B perto de C/guia.
-5. Envie descanso, ajuda e SOS a partir de A.
-6. Confirme que o guia recebe os eventos por múltiplos saltos.
-7. Interrompa a corrente e confirme que aparece “último contato”.
-8. Reconecte a corrente e confirme a sincronização.
-9. Baixe o mapa offline antes da saída e teste com o aparelho em modo avião.
-10. Valide consumo de bateria durante uma caminhada piloto com a duração prevista.
-
-## Limites importantes
-
-- O mapa e o GPS continuam disponíveis sem internet quando o pacote da trilha foi baixado antes.
-- No Android, o rastreamento usa serviço em primeiro plano.
-- No iPhone, o sistema pode suspender descoberta Bluetooth em segundo plano; a localização autorizada continua, mas a retransmissão mesh é “melhor esforço”. Durante a operação, mantenha o app aberto quando possível.
-- Para segurança de vida em locais sem cobertura e com grandes distâncias, mantenha o protocolo operacional com rádio/LoRa/satélite e pontos de reagrupamento.
+iPhone permanece preparado no projeto, mas a distribuição física em iPhone exige uma conta Apple Developer. O foco atual de validação é Android.
