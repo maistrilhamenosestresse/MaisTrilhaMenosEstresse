@@ -3,11 +3,14 @@ import type { ExpoConfig, ConfigContext } from "expo/config";
 const variant = process.env.APP_VARIANT === "guide" ? "guide" : "participant";
 const isGuide = variant === "guide";
 const serviceId = "com.maistrilhasmenosestresse.mesh.v1";
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ||
+  "6b55e7d9-f68b-42b1-93ba-964e2c68f7b4";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
+  owner: "maistrilha",
   name: isGuide ? "Mais Trilha Guia" : "Mais Trilha",
-  slug: isGuide ? "mais-trilha-guia" : "mais-trilha-participante",
+  slug: "maistrilha",
   version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "light",
@@ -82,7 +85,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     nearbyServiceId: serviceId,
     eas: {
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID
+      projectId: easProjectId
     }
   }
 });

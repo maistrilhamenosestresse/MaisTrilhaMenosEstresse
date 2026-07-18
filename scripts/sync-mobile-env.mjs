@@ -30,7 +30,7 @@ const output = [
   `EXPO_PUBLIC_SUPABASE_ANON_KEY=${required("NEXT_PUBLIC_SUPABASE_ANON_KEY")}`,
   values.get("EXPO_PUBLIC_EAS_PROJECT_ID")
     ? `EXPO_PUBLIC_EAS_PROJECT_ID=${values.get("EXPO_PUBLIC_EAS_PROJECT_ID")}`
-    : "# EXPO_PUBLIC_EAS_PROJECT_ID=",
+    : "EXPO_PUBLIC_EAS_PROJECT_ID=6b55e7d9-f68b-42b1-93ba-964e2c68f7b4",
   "",
 ].join("\n");
 
