@@ -30,10 +30,13 @@ jobs:
       - name: Preparar Android e Bubblewrap
         shell: bash
         run: |
+          ANDROID_SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          test -n "$ANDROID_SDK_PATH"
+          test -d "$ANDROID_SDK_PATH"
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
           npm install --global @bubblewrap/cli@1.24.1
           mkdir -p "$HOME/.bubblewrap"
-          printf '{"jdkPath":"%s","androidSdkPath":"%s"}\n' "$JAVA_HOME" "$ANDROID_SDK_ROOT" > "$HOME/.bubblewrap/config.json"
+          printf '{"jdkPath":"%s","androidSdkPath":"%s"}\n' "$JAVA_HOME" "$ANDROID_SDK_PATH" > "$HOME/.bubblewrap/config.json"
 
       - name: Restaurar chave de assinatura
         shell: bash
