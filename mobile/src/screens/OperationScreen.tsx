@@ -14,7 +14,7 @@ import * as Battery from "expo-battery";
 import * as Crypto from "expo-crypto";
 import type { Session } from "@supabase/supabase-js";
 import QRCode from "react-native-qrcode-svg";
-import { createTrailMessage, type MemberStatus, type TrailEventType } from "@trail-core";
+import { createTrailMessage, type MemberStatus, type TrailEventType } from "@maistrilha/trail-core";
 import { getOperation, submitReport, updateOperation } from "../api";
 import { signTrailMessage } from "../crypto";
 import { currentPosition, startTrailLocation, stopTrailLocation } from "../location";

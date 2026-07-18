@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
-import type { EncryptedTrailEnvelope, TrailMeshMessage } from "@trail-core";
-import { assertTrailMessage, prepareMessageForRelay } from "@trail-core";
+import type { EncryptedTrailEnvelope, TrailMeshMessage } from "@maistrilha/trail-core";
+import { assertTrailMessage, prepareMessageForRelay } from "@maistrilha/trail-core";
 import { appConfig } from "./config";
 import { decryptMeshMessage, encryptMeshMessage, verifyTrailMessage } from "./crypto";
 import {

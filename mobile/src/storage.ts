@@ -1,6 +1,6 @@
 import * as SQLite from "expo-sqlite";
 import type { ActiveOperation } from "./types";
-import type { TrailMeshMessage } from "@trail-core";
+import type { TrailMeshMessage } from "@maistrilha/trail-core";
 
 let databasePromise: ReturnType<typeof SQLite.openDatabaseAsync> | null = null;
 

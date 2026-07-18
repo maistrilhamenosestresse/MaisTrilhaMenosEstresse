@@ -1,4 +1,4 @@
-import type { MemberStatus, TrailMeshMessage } from "@trail-core";
+import type { MemberStatus, TrailMeshMessage } from "@maistrilha/trail-core";
 
 export type MobileSession = {
   accessToken: string;

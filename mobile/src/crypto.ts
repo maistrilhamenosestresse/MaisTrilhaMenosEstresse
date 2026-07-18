@@ -10,7 +10,7 @@ import {
   trailMessageSigningPayload,
   type EncryptedTrailEnvelope,
   type TrailMeshMessage,
-} from "@trail-core";
+} from "@maistrilha/trail-core";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

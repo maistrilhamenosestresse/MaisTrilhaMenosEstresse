@@ -8,8 +8,8 @@
     "types": ["node", "react", "react-native"],
     "paths": {
       "@/*": ["src/*"],
-      "@trail-core": ["../packages/trail-core/src/index.ts"],
-      "@trail-core/*": ["../packages/trail-core/src/*"]
+      "@maistrilha/trail-core": ["../packages/trail-core/src/index.ts"],
+      "@maistrilha/trail-core/*": ["../packages/trail-core/src/*"]
     }
   },
   "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", "modules/**/*.ts", "tests/**/*.ts"]

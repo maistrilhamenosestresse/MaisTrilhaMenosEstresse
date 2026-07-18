@@ -1,4 +1,4 @@
-import type { TrailJoinPackage } from "@trail-core";
+import type { TrailJoinPackage } from "@maistrilha/trail-core";
 
 function encodeBase64Url(value: string) {
   return btoa(unescape(encodeURIComponent(value)))

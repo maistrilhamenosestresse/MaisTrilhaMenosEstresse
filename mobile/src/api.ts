@@ -1,5 +1,5 @@
 import type { Session } from "@supabase/supabase-js";
-import type { TrailMeshMessage } from "@trail-core";
+import type { TrailMeshMessage } from "@maistrilha/trail-core";
 import { appConfig } from "./config";
 
 async function apiRequest<T>(

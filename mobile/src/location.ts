@@ -2,7 +2,7 @@ import * as Battery from "expo-battery";
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
-import { createTrailMessage, distanceToRouteMeters } from "@trail-core";
+import { createTrailMessage, distanceToRouteMeters } from "@maistrilha/trail-core";
 import { signTrailMessage } from "./crypto";
 import { getActiveOperation, getState, saveMeshMessage, setActiveOperation, setState } from "./storage";
 
