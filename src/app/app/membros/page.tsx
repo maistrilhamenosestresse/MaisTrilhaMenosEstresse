@@ -97,7 +97,7 @@ export default function MembrosPage() {
           </div>
           <h1 className="text-3xl font-black text-white mb-4 tracking-tight">Área Exclusiva</h1>
           <p className="text-gray-400 mb-8 leading-relaxed">
-            A Área de Membros da Mais Trilha foi desenvolvida exclusivamente para o seu celular, garantindo a melhor experiência com seus bônus, álbuns de fotos e cashback.
+            A Área de Membros da Mais Trilha foi desenvolvida exclusivamente para o seu celular, garantindo a melhor experiência com seus bônus, álbuns de fotos e saldo de benefícios.
           </p>
           <div className="bg-[#F17B37] text-white p-4 rounded-xl font-bold animate-pulse shadow-[0_0_20px_rgba(241,123,55,0.4)]">
             Logue no celular para ter acesso à área de membros
@@ -149,7 +149,7 @@ export default function MembrosPage() {
             onClick={() => router.push('/app')}
             className="w-full bg-[#F17B37] text-white py-3 rounded-xl font-black hover:bg-orange-500 transition"
           >
-            Voltar ao App
+            Voltar ao aplicativo
           </button>
         </div>
       </div>
@@ -158,9 +158,9 @@ export default function MembrosPage() {
 
   // --- MOBILE VIEW com acesso GRANTED ---
   return (
-    <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24">
+    <div className="mt-app-page flex min-h-full flex-col pb-24">
       {/* App Header */}
-      <header className="bg-[#0F1722] text-white px-6 pt-12 pb-8 rounded-b-3xl shadow-lg relative overflow-hidden">
+      <header className="relative overflow-hidden rounded-b-[2.25rem] bg-[linear-gradient(145deg,#061526,#0B2540)] px-5 pb-8 pt-[max(2.25rem,env(safe-area-inset-top))] text-white shadow-lg sm:px-6">
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#F17B37] rounded-full mix-blend-multiply filter blur-3xl opacity-20 translate-x-1/3 -translate-y-1/2"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-x-1/2 translate-y-1/3"></div>
         
@@ -184,17 +184,17 @@ export default function MembrosPage() {
         
         {/* Gamification Cards */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+          <div className="mt-surface flex flex-col items-center justify-center rounded-2xl p-4 text-center">
             <div className="bg-orange-50 text-[#F17B37] p-3 rounded-full mb-3">
               <Coins className="h-6 w-6" />
             </div>
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Saldo Cashback</p>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Saldo de benefícios</p>
             <p className="text-xl font-black text-gray-800">
               R$ {Number(clientData?.cashback_saldo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
           
-          <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+          <div className="mt-surface flex flex-col items-center justify-center rounded-2xl p-4 text-center">
             <div className="bg-amber-50 text-amber-500 p-3 rounded-full mb-3">
               <Award className="h-6 w-6" />
             </div>
@@ -205,7 +205,7 @@ export default function MembrosPage() {
         </div>
 
         {/* Trail Progress */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+        <div className="mt-surface rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="font-black text-gray-800 text-sm">Trilhas Realizadas</p>
             <span className="text-xs font-bold text-[#F17B37] bg-orange-50 px-2 py-1 rounded-full">{trailCount} trilha{trailCount !== 1 ? 's' : ''}</span>
@@ -216,7 +216,7 @@ export default function MembrosPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mt-2">
+        <div className="mt-surface mt-2 overflow-hidden rounded-3xl">
           <div className="p-5 border-b border-gray-50">
             <h2 className="font-black text-gray-800 text-lg mb-1">Serviços Exclusivos</h2>
             <p className="text-xs text-gray-500">Use seus pontos e acesse suas memórias.</p>
@@ -238,12 +238,12 @@ export default function MembrosPage() {
 
             <button onClick={() => router.push('/app/loja')} className="w-full p-5 flex items-center justify-between hover:bg-gray-50 transition text-left">
               <div className="flex items-center gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-3 rounded-xl text-white shadow-md">
+                <div className="rounded-xl bg-gradient-to-br from-[#0B2540] to-blue-700 p-3 text-white shadow-md">
                   <MapPin className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-800">Loja de Aluguel VIP</h3>
-                  <p className="text-xs text-gray-500">Use seus pontos e cashback na loja</p>
+                  <p className="text-xs text-gray-500">Use seus pontos e seu saldo na loja</p>
                 </div>
               </div>
               <ArrowRight className="h-5 w-5 text-gray-400" />

@@ -12,6 +12,7 @@ for (const [label, pattern] of [
   ['fallback inseguro da service role', /SUPABASE_SERVICE_ROLE_KEY\s*\|\|/],
   ['fallback inseguro de bucket AWS', /AWS_S3_BUCKET_NAME\s*\|\|/],
   ['PIN padrão 1234', /(?:pin|senha)[^\n]{0,30}1234/i],
+  ['NextAuth legado no runtime', /next-auth|getServerSession|authOptions/],
 ]) {
   if (pattern.test(source)) failures.push(label);
 }
@@ -27,9 +28,12 @@ for (const requiredPath of [
   'src/app/api/checkout-infinitepay/status/route.ts',
   'src/app/api/cron/asaas-reconcile/route.ts',
   'src/app/api/cron/backup/route.ts',
+  'src/lib/server/infinitepay.ts',
+  'src/lib/server/infinitepay-payment-processing.ts',
   'src/proxy.ts',
   'supabase/migrations/202607160001_security_and_finance_foundation.sql',
-  'supabase/migrations/202607180001_infinitepay_hybrid_checkout.sql',
+  'supabase/migrations/202607180002_asaas_only_and_backup_hardening.sql',
+  'supabase/migrations/202607180003_hybrid_infinitepay_asaas.sql',
 ]) {
   try { await readFile(path.join(root, requiredPath)); } catch { failures.push(`arquivo obrigatório ausente: ${requiredPath}`); }
 }
@@ -40,6 +44,9 @@ for (const forbiddenPath of [
   'fix_supabase_final.sql',
   'fix_supabase_flyer.sql',
   'src/app/api/admin/migrate/route.ts',
+  'src/app/api/auth/[...nextauth]/route.ts',
+  'src/app/api/upload/presigned-url/route.ts',
+  'src/app/gerenciador/WebIDEClient.tsx',
 ]) {
   try {
     await readFile(path.join(root, forbiddenPath));

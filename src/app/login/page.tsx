@@ -17,19 +17,6 @@ export default function LoginPage() {
     setLoading(true);
     setMessage(null);
 
-    // E-mails autorizados para acessar o painel de administrador
-    const ALLOWED_EMAILS = [
-      "niveamariamagalhaes28@gmail.com",
-      "wellingtonf.social@gmail.com",
-      "maistrilhamenosestresse@gmail.com"
-    ];
-
-    if (!ALLOWED_EMAILS.includes(email.toLowerCase().trim())) {
-      setMessage({ type: "error", text: "Acesso Negado: Seu e-mail não tem permissão de administrador." });
-      setLoading(false);
-      return;
-    }
-
     const supabase = createClient();
     
     const { error } = await supabase.auth.signInWithOtp({
@@ -85,6 +72,13 @@ export default function LoginPage() {
       setMessage({ type: "error", text: `Código inválido ou expirado. Tente pedir um novo código.` });
       setLoading(false);
     } else if (data?.session) {
+      const access = await fetch("/api/auth/admin-eligibility", { cache: "no-store" });
+      if (!access.ok) {
+        await supabase.auth.signOut();
+        setMessage({ type: "error", text: "Acesso negado: esta conta não possui perfil administrativo." });
+        setLoading(false);
+        return;
+      }
       setMessage({ type: "success", text: "Autenticado com sucesso! Redirecionando..." });
       router.push("/admin");
     }

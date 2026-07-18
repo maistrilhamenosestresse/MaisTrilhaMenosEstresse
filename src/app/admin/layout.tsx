@@ -25,8 +25,7 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  // SECURITY: A proteção de rota agora é feita exclusivamente pelo src/middleware.ts usando Supabase Auth.
-  // Removemos o next-auth daqui para evitar o loop infinito de redirecionamento (ERR_TOO_MANY_REDIRECTS).
-  
+  // A proteção otimista de rota usa o Proxy; cada API administrativa revalida
+  // autenticação e autorização no servidor com Supabase Auth.
   return <>{children}</>;
 }

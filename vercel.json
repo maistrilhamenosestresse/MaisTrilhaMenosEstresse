@@ -9,6 +9,10 @@
       "schedule": "30 3 * * *"
     },
     {
+      "path": "/api/cron/backup-verify",
+      "schedule": "30 4 * * 0"
+    },
+    {
       "path": "/api/cron/asaas-reconcile",
       "schedule": "0 5 * * *"
     }

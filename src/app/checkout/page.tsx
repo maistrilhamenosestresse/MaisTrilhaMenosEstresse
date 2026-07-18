@@ -5,9 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { calculateGrossPrice } from "@/lib/fees";
 import { useRouter } from "next/navigation";
-import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, QrCode, FileText } from "lucide-react";
+import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, QrCode, FileText, CreditCard } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import Image from "next/image";
+import {
+  AsaasPaymentStatus,
+  type AsaasPaymentResult,
+} from "@/components/payments/AsaasPaymentStatus";
 
 function CheckoutAuthContent() {
   const router = useRouter();
@@ -15,11 +19,8 @@ function CheckoutAuthContent() {
 
   const cartNetTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const calculateTotalWithMethod = (method: 'INFINITEPAY' | 'BOLETO') => {
-    return method === 'BOLETO'
-      ? calculateGrossPrice(cartNetTotal, 'BOLETO', 1)
-      : cartNetTotal;
-  };
+  const calculateTotalWithMethod = (method: 'INFINITEPAY' | 'BOLETO') =>
+    method === 'BOLETO' ? calculateGrossPrice(cartNetTotal, 'BOLETO', 1) : cartNetTotal;
   
   const [step, setStep] = useState<'email' | 'otp' | 'cart' | 'edit' | 'payment' | 'success'>('email');
   const [email, setEmail] = useState('');
@@ -39,12 +40,15 @@ function CheckoutAuthContent() {
     const normalized = methods.length > 0 ? methods : ['PIX'];
     return acc.filter((method) => normalized.includes(method));
   }, ['PIX', 'CREDIT_CARD', 'BOLETO']), [items, livePaymentMethods]);
-  const allowedMethods = useMemo<Array<'INFINITEPAY' | 'BOLETO'>>(() => [
-    ...(acceptedLegacyMethods.some((method) => ['PIX', 'CREDIT_CARD'].includes(method))
-      ? ['INFINITEPAY' as const]
-      : []),
-    ...(acceptedLegacyMethods.includes('BOLETO') ? ['BOLETO' as const] : []),
-  ], [acceptedLegacyMethods]);
+  const allowedMethods = useMemo<Array<'INFINITEPAY' | 'BOLETO'>>(
+    () => [
+      ...(acceptedLegacyMethods.some((method) => method === 'PIX' || method === 'CREDIT_CARD')
+        ? ['INFINITEPAY' as const]
+        : []),
+      ...(acceptedLegacyMethods.includes('BOLETO') ? ['BOLETO' as const] : []),
+    ],
+    [acceptedLegacyMethods],
+  );
 
   useEffect(() => {
     const agendaIds = [...new Set(items.map((item) => item.agendaId))];
@@ -70,6 +74,7 @@ function CheckoutAuthContent() {
     }
   }, [allowedMethods, paymentMethod]);
   const [paymentResult, setPaymentResult] = useState<any>(null);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   useEffect(() => {
     if (items.length === 0 && step !== 'success') {
@@ -208,17 +213,26 @@ function CheckoutAuthContent() {
       const resCheckout = await reqCheckout.json();
       
       if (resCheckout.success) {
-        if (resCheckout.type === 'INFINITEPAY' && resCheckout.redirectUrl) {
+        if (resCheckout.provider === "INFINITEPAY" && resCheckout.redirectUrl && resCheckout.orderNsu) {
+          window.sessionStorage.setItem(
+            `infinitepay:${resCheckout.orderNsu}:returnTo`,
+            "/",
+          );
           window.sessionStorage.setItem(
             `infinitepay:${resCheckout.orderNsu}:invitations`,
             JSON.stringify(reservaJson.invitations || []),
           );
-          window.sessionStorage.setItem(`infinitepay:${resCheckout.orderNsu}:returnTo`, "/");
           clearCart();
           window.location.assign(resCheckout.redirectUrl);
           return;
         }
-        setPaymentResult({ ...resCheckout, invitations: reservaJson.invitations || [] });
+        if (resCheckout.provider !== "ASAAS" || !resCheckout.paymentId) {
+          throw new Error("Resposta inválida do Asaas.");
+        }
+        setPaymentResult({
+          ...resCheckout,
+          invitations: reservaJson.invitations || [],
+        } as AsaasPaymentResult & { invitations: any[] });
         clearCart();
         setStep('success');
       } else {
@@ -320,7 +334,7 @@ function CheckoutAuthContent() {
 
               <div className="flex justify-between items-center mb-6">
                 <span className="font-bold text-gray-300">
-                  Total ({paymentMethod === 'INFINITEPAY' ? 'Pix ou cartão' : 'Boleto'})
+                  Total ({paymentMethod === 'INFINITEPAY' ? 'Pix ou cartão' : 'boleto'})
                 </span>
                 <span className="text-2xl font-black text-[#25D366]">
                   R$ {calculateTotalWithMethod(paymentMethod).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -351,42 +365,38 @@ function CheckoutAuthContent() {
                 <p className="text-gray-400 text-sm">Escolha como deseja pagar.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {allowedMethods.includes('INFINITEPAY') && (
-                  <button onClick={() => setPaymentMethod('INFINITEPAY')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'INFINITEPAY' ? 'bg-[#25D366]/20 border-[#25D366] text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
-                    <QrCode className="w-6 h-6" />
+                  <button onClick={() => setPaymentMethod('INFINITEPAY')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'INFINITEPAY' ? 'bg-[#0B2540] border-blue-300 text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
+                    <span className="flex items-center gap-2">
+                      <QrCode className="w-6 h-6" />
+                      <CreditCard className="w-6 h-6" />
+                    </span>
                     <span className="text-xs font-bold">Pix ou cartão</span>
-                    <span className="text-[10px] text-gray-400">InfinitePay</span>
+                    <span className="text-[10px] opacity-70">InfinitePay · cartão em até 12x</span>
                   </button>
                 )}
                 {allowedMethods.includes('BOLETO') && (
-                  <button onClick={() => setPaymentMethod('BOLETO')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'BOLETO' ? 'bg-white/20 border-white text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
+                  <button onClick={() => setPaymentMethod('BOLETO')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'BOLETO' ? 'bg-[#0B2540] border-blue-300 text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
                     <FileText className="w-6 h-6" />
                     <span className="text-xs font-bold">Boleto</span>
                   </button>
                 )}
               </div>
 
-              {paymentMethod === 'BOLETO' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-4 mt-2">
-                  <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center justify-between">
-                    <span className="text-sm text-white">Total no Boleto:</span>
-                    <span className="font-bold text-white text-lg">R$ {calculateTotalWithMethod('BOLETO').toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-2">Boleto processado com segurança pelo Asaas.</p>
-                </motion.div>
-              )}
-              {paymentMethod === 'INFINITEPAY' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-6">
-                  <div className="bg-[#25D366]/10 p-4 rounded-xl border border-[#25D366]/20 flex items-center justify-between">
-                    <span className="text-sm text-[#25D366]">Valor da compra:</span>
-                    <span className="font-bold text-[#25D366] text-lg">R$ {cartNetTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-2">
-                    Você escolherá Pix ou cartão em até 12x na tela segura da InfinitePay. Os dados do cartão não passam pelo nosso servidor.
-                  </p>
-                </motion.div>
-              )}
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-6">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center justify-between">
+                  <span className="text-sm text-white">Total da cobrança:</span>
+                  <span className="font-bold text-white text-lg">
+                    R$ {calculateTotalWithMethod(paymentMethod).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">
+                  {paymentMethod === 'INFINITEPAY'
+                    ? 'Você escolherá Pix ou cartão no checkout seguro da InfinitePay.'
+                    : 'O boleto será emitido e confirmado pelo Asaas.'}
+                </p>
+              </motion.div>
 
               <button onClick={processPayment} disabled={isLoading} className="w-full bg-[#F17B37] text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition shadow-[0_0_20px_rgba(241,123,55,0.3)] disabled:opacity-50">
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="h-5 w-5" /> Finalizar Pedido</>}
@@ -398,18 +408,12 @@ function CheckoutAuthContent() {
           {step === 'success' && paymentResult && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-3xl backdrop-blur-md shadow-2xl relative w-full text-center">
               
-              {paymentResult.type === 'BOLETO' && (
-                <>
-                  <div className="w-16 h-16 bg-white/20 text-white rounded-full flex items-center justify-center mx-auto mb-4"><FileText className="h-8 w-8" /></div>
-                  <h1 className="text-2xl font-bold mb-2">Boleto Gerado!</h1>
-                  <p className="text-gray-400 text-sm mb-6">Seu boleto foi gerado com sucesso. Clique abaixo para visualizar e imprimir.</p>
-                  <a href={paymentResult.bankSlipUrl} target="_blank" className="block w-full bg-white text-black p-4 rounded-2xl font-bold mb-4 hover:bg-gray-200 text-center">
-                    Visualizar Boleto
-                  </a>
-                </>
-              )}
+              <AsaasPaymentStatus
+                payment={paymentResult as AsaasPaymentResult}
+                onConfirmed={() => setPaymentConfirmed(true)}
+              />
 
-              {paymentResult.invitations?.length > 0 && (
+              {paymentConfirmed && paymentResult.invitations?.length > 0 && (
                 <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4 mb-6 text-left">
                   <h2 className="font-bold text-orange-300 mb-2">Cadastro dos acompanhantes</h2>
                   <p className="text-xs text-gray-300 mb-3">Envie cada link à pessoa correspondente. O convite expira em 14 dias.</p>

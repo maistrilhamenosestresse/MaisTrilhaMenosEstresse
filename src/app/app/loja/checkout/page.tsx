@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, QrCode, CheckCircle2, Loader2, Wallet, CreditCard, ShieldCheck } from "lucide-react";
+import { ChevronLeft, QrCode, CheckCircle2, Loader2, Wallet, CreditCard, FileText } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { calculateGrossPrice } from "@/lib/fees";
+import {
+  AsaasPaymentStatus,
+  type AsaasPaymentResult,
+} from "@/components/payments/AsaasPaymentStatus";
 
 export default function LojaCheckoutPage() {
   const router = useRouter();
@@ -17,6 +22,8 @@ export default function LojaCheckoutPage() {
   
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"infinitepay" | "boleto">("infinitepay");
+  const [paymentResult, setPaymentResult] = useState<AsaasPaymentResult | null>(null);
 
   const [formaEntrega, setFormaEntrega] = useState<"retirada" | "correios" | "entrega_trilha">("retirada");
   const [deliveryInfo, setDeliveryInfo] = useState("");
@@ -56,7 +63,7 @@ export default function LojaCheckoutPage() {
       const payload: any = { 
         produtoId: product.id, 
         clientId: client.id,
-        method: faltante > 0 ? 'infinitepay' : 'cashback',
+        method: faltante > 0 ? paymentMethod : 'cashback',
         forma_entrega: formaEntrega,
         delivery_info: deliveryInfo
       };
@@ -69,16 +76,20 @@ export default function LojaCheckoutPage() {
       
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error || "Erro no checkout");
+      if (!res.ok) throw new Error(data.error || "Erro no pagamento");
       
       if (data.type === 'CASHBACK_FULL') {
         setSuccess(true);
-      } else if (data.type === 'INFINITEPAY' && data.redirectUrl) {
+      } else if (data.provider === "INFINITEPAY" && data.redirectUrl && data.orderNsu) {
         window.sessionStorage.setItem(
           `infinitepay:${data.orderNsu}:returnTo`,
-          '/app/loja',
+          "/app/loja",
         );
         window.location.assign(data.redirectUrl);
+      } else if (data.provider === "ASAAS" && data.paymentId) {
+        setPaymentResult(data as AsaasPaymentResult);
+      } else {
+        throw new Error("Resposta inválida do provedor de pagamento");
       }
     } catch (err: any) {
       alert("Erro ao processar compra: " + err.message);
@@ -89,15 +100,15 @@ export default function LojaCheckoutPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="mt-app-page flex min-h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D96224]" />
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-center">
+      <div className="mt-app-page flex min-h-full items-center justify-center p-6 text-center">
         <p className="text-gray-500">Produto não encontrado. Volte para a loja.</p>
       </div>
     );
@@ -115,12 +126,38 @@ export default function LojaCheckoutPage() {
   const abatimentoPontos = Math.min(pontosEmReais, restanteAposCashback);
   const totalAbatimento = abatimentoCashback + abatimentoPontos;
   const faltante = Math.max(0, price - totalAbatimento);
-  const abatimento = totalAbatimento; // alias
+  const chargedAmount = faltante <= 0
+    ? 0
+    : paymentMethod === "boleto"
+      ? calculateGrossPrice(faltante, "BOLETO", 1)
+      : faltante;
+
+  if (paymentResult) {
+    return (
+      <div className="mt-app-page min-h-full p-4 pb-28 sm:p-6">
+        <button
+          type="button"
+          onClick={() => setPaymentResult(null)}
+          className="mb-4 flex items-center gap-2 text-sm font-bold text-[#0B2540]"
+        >
+          <ChevronLeft className="h-5 w-5" />
+          Voltar
+        </button>
+        <AsaasPaymentStatus
+          payment={paymentResult}
+          onConfirmed={() => {
+            setPaymentResult(null);
+            setSuccess(true);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col relative pb-24">
+    <div className="mt-app-page relative flex min-h-full flex-col pb-24">
       {/* Header */}
-      <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-gray-100 sticky top-0 z-50">
+      <div className="mt-app-header sticky top-0 z-50 flex items-center gap-4 border-b px-4 py-3">
         <button onClick={() => router.back()} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors">
           <ChevronLeft className="w-6 h-6 text-gray-700" />
         </button>
@@ -136,35 +173,35 @@ export default function LojaCheckoutPage() {
           <p className="text-gray-500 mb-8">Seu pedido foi pago integralmente com saldo e pontos.</p>
           <button
             onClick={() => router.push('/app/loja')}
-            className="w-full max-w-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-colors"
+            className="w-full max-w-xs rounded-2xl bg-[#0B2540] py-4 font-bold text-white transition-colors hover:bg-[#061B30]"
           >
             Voltar para Loja
           </button>
         </div>
       ) : (
-        <div className="p-6 space-y-6">
+        <div className="space-y-5 p-4 sm:p-6">
           {/* Produto Resumo */}
-          <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex gap-4 items-center">
+          <div className="mt-surface flex items-center gap-4 rounded-3xl p-4">
             <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden shrink-0">
               <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
             </div>
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase">{product.category}</p>
               <h3 className="font-bold text-gray-800 text-sm leading-tight">{product.name}</h3>
-              <p className="text-lg font-black text-blue-600">{formatCurrency(price)}</p>
+              <p className="text-lg font-black text-[#D96224]">{formatCurrency(price)}</p>
             </div>
           </div>
 
           {/* Saldo / Abatimento */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-3">
+          <div className="mt-surface space-y-3 rounded-3xl p-5 sm:p-6">
             <h3 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
-              <Wallet className="w-5 h-5 text-purple-500" /> Meus Saldos MaisTrilha
+              <Wallet className="w-5 h-5 text-[#0B2540]" /> Meus saldos MaisTrilha
             </h3>
             
             {/* Cashback Saldo (Dinheiro Real) */}
             <div className="flex justify-between items-center text-sm bg-green-50 px-3 py-2 rounded-xl">
               <div>
-                <span className="text-green-800 font-bold">💳 Saldo Cashback</span>
+                <span className="text-green-800 font-bold">💳 Saldo disponível</span>
                 <p className="text-xs text-green-600">Dinheiro real (recarga PIX)</p>
               </div>
               <span className="font-bold text-green-800">{formatCurrency(saldo)}</span>
@@ -188,7 +225,7 @@ export default function LojaCheckoutPage() {
             
             {abatimentoCashback > 0 && (
               <div className="flex justify-between items-center text-sm text-green-700 font-bold">
-                <span>- Saldo Cashback:</span>
+                <span>- Saldo utilizado:</span>
                 <span>- {formatCurrency(abatimentoCashback)}</span>
               </div>
             )}
@@ -201,31 +238,31 @@ export default function LojaCheckoutPage() {
             
             <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
               <span className="text-gray-800 font-bold">Total a Pagar:</span>
-              <span className="font-black text-xl text-blue-600">{formatCurrency(faltante)}</span>
+              <span className="text-xl font-black text-[#D96224]">{formatCurrency(faltante)}</span>
             </div>
           </div>
 
           {/* Forma de Entrega */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
+          <div className="mt-surface space-y-4 rounded-3xl p-5 sm:p-6">
             <h3 className="font-bold text-gray-800 text-sm">Opções de Entrega</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button 
                 onClick={() => setFormaEntrega("retirada")}
-                className={`p-3 rounded-2xl border-2 text-left transition-all ${formaEntrega === 'retirada' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-100 bg-white text-gray-500'}`}
+                className={`p-3 rounded-2xl border-2 text-left transition-all ${formaEntrega === 'retirada' ? 'border-[#F17B37] bg-[#FFF0E6] text-[#B84D18]' : 'border-gray-100 bg-white text-gray-500'}`}
               >
                 <span className="block font-bold text-sm mb-1">Retirar na Loja</span>
                 <span className="block text-[10px] opacity-80">Grátis</span>
               </button>
               <button 
                 onClick={() => setFormaEntrega("entrega_trilha")}
-                className={`p-3 rounded-2xl border-2 text-left transition-all ${formaEntrega === 'entrega_trilha' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-100 bg-white text-gray-500'}`}
+                className={`p-3 rounded-2xl border-2 text-left transition-all ${formaEntrega === 'entrega_trilha' ? 'border-[#F17B37] bg-[#FFF0E6] text-[#B84D18]' : 'border-gray-100 bg-white text-gray-500'}`}
               >
                 <span className="block font-bold text-sm mb-1">Entrega na Trilha</span>
                 <span className="block text-[10px] opacity-80">Combinar local</span>
               </button>
               <button 
                 onClick={() => setFormaEntrega("correios")}
-                className={`p-3 rounded-2xl border-2 text-left transition-all ${formaEntrega === 'correios' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-100 bg-white text-gray-500'}`}
+                className={`p-3 rounded-2xl border-2 text-left transition-all ${formaEntrega === 'correios' ? 'border-[#F17B37] bg-[#FFF0E6] text-[#B84D18]' : 'border-gray-100 bg-white text-gray-500'}`}
               >
                 <span className="block font-bold text-sm mb-1">Correios</span>
                 <span className="block text-[10px] opacity-80">A calcular envios</span>
@@ -250,18 +287,53 @@ export default function LojaCheckoutPage() {
           {faltante > 0 && (
             <div className="space-y-4">
               <h3 className="font-bold text-gray-800 text-sm mb-2">Forma de Pagamento</h3>
-              <div className="bg-white rounded-3xl border-2 border-blue-200 p-5">
-                <div className="flex items-center gap-3">
-                  <QrCode className="w-5 h-5" />
-                  <div>
-                    <p className="font-black text-gray-800">Pix ou cartão</p>
-                    <p className="text-xs text-gray-500">Pagamento seguro na InfinitePay, cartão em até 12x.</p>
-                  </div>
-                  <CreditCard className="w-6 h-6 text-blue-600 ml-auto" />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    value: "infinitepay" as const,
+                    label: "Pix ou cartão",
+                    detail: "InfinitePay · cartão em até 12x",
+                    icon: (
+                      <span className="flex items-center gap-1">
+                        <QrCode className="h-5 w-5" />
+                        <CreditCard className="h-5 w-5" />
+                      </span>
+                    ),
+                  },
+                  {
+                    value: "boleto" as const,
+                    label: "Boleto",
+                    detail: "Asaas",
+                    icon: <FileText className="h-5 w-5" />,
+                  },
+                ].map((option) => (
+                  <button
+                    type="button"
+                    key={option.value}
+                    onClick={() => setPaymentMethod(option.value)}
+                    className={`rounded-2xl border p-3 text-left ${
+                      paymentMethod === option.value
+                        ? "border-[#0B2540] bg-[#E7EEF6] text-[#0B2540]"
+                        : "border-gray-200 bg-white text-gray-600"
+                    }`}
+                  >
+                    {option.icon}
+                    <span className="mt-2 block text-xs font-black">{option.label}</span>
+                    <span className="mt-1 block text-[10px] opacity-70">{option.detail}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-2xl bg-[#071829] p-4 text-white">
+                <div className="flex justify-between text-sm">
+                  <span>
+                    Total {paymentMethod === "boleto" ? "no boleto Asaas" : "na InfinitePay"}
+                  </span>
+                  <strong>{formatCurrency(chargedAmount)}</strong>
                 </div>
-                <p className="text-[11px] text-gray-500 mt-4 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  Os dados do cartão não passam pelo nosso servidor.
+                <p className="mt-2 text-[11px] text-blue-100/70">
+                  {paymentMethod === "boleto"
+                    ? "O boleto inclui a tarifa necessária para preservar o valor líquido do pedido."
+                    : "Na próxima etapa você escolhe Pix ou cartão no checkout seguro da InfinitePay."}
                 </p>
               </div>
             </div>
@@ -270,10 +342,16 @@ export default function LojaCheckoutPage() {
           <button
             onClick={handleCheckout}
             disabled={processing}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-md transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-4 font-bold text-white shadow-md transition-colors hover:bg-[#061B30] disabled:opacity-50"
           >
             {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-            {processing ? "Preparando checkout..." : faltante > 0 ? "Continuar para InfinitePay" : "Concluir Compra com Saldo"}
+            {processing
+              ? "Preparando pagamento..."
+              : faltante > 0
+                ? paymentMethod === "boleto"
+                  ? "Gerar boleto no Asaas"
+                  : "Continuar na InfinitePay"
+                : "Concluir compra com saldo"}
           </button>
         </div>
       )}

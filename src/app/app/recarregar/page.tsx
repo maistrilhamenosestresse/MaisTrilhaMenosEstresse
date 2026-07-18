@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, QrCode, CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { ChevronLeft, CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -34,14 +34,14 @@ export default function PwaRecarregar() {
       const res = await fetch('/api/checkout-asaas/recarregar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amount.replace(',', '.'), clientId, method: 'infinitepay' })
+        body: JSON.stringify({ amount: amount.replace(',', '.'), clientId, method: "infinitepay" })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Falha ao criar checkout");
-      if (data.type !== 'INFINITEPAY' || !data.redirectUrl) {
-        throw new Error("Resposta inválida do checkout");
+      if (!res.ok) throw new Error(data.error || "Falha ao preparar o pagamento");
+      if (data.provider !== "INFINITEPAY" || !data.redirectUrl) {
+        throw new Error("Resposta inválida do pagamento");
       }
-      window.sessionStorage.setItem(`infinitepay:${data.orderNsu}:returnTo`, '/app/extratos');
+      window.sessionStorage.setItem(`infinitepay:${data.orderNsu}:returnTo`, "/app/extratos");
       window.location.assign(data.redirectUrl);
     } catch (err: any) {
       alert("Erro ao preparar recarga: " + err.message);
@@ -50,19 +50,20 @@ export default function PwaRecarregar() {
     }
   };
 
+  const netAmount = Number(amount.replace(",", "."));
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col relative">
+    <div className="mt-app-page relative flex min-h-full flex-col">
       
       {/* Seamless Transition Overlay: Comes from the previous page's expansion */}
       <motion.div 
         initial={{ opacity: 1 }}
         animate={{ opacity: 0 }}
         transition={{ duration: 1.0, ease: "easeInOut" }} // Fade-out relaxado revelando a tela montada
-        className="fixed inset-0 bg-purple-600 z-[100] pointer-events-none"
+        className="pointer-events-none fixed inset-0 z-[100] bg-[#F17B37]"
       />
 
       {/* Header Fixo */}
-      <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-gray-100 sticky top-0 z-50">
+      <div className="mt-app-header sticky top-0 z-50 flex items-center gap-4 border-b px-4 py-3">
         <button 
           onClick={() => router.back()}
           className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors"
@@ -72,7 +73,7 @@ export default function PwaRecarregar() {
         <h1 className="font-black text-gray-800 text-lg">Recarregar Saldo</h1>
       </div>
 
-      <div className="px-6 py-8 flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 px-4 py-8 pb-24 sm:px-6">
         <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 text-center">Valor da Recarga</p>
         <div className="flex items-center justify-center gap-2 mb-8">
           <span className="text-2xl font-black text-gray-400">R$</span>
@@ -87,17 +88,24 @@ export default function PwaRecarregar() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm"
+          className="mt-surface rounded-3xl p-6"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center">
-              <QrCode className="w-6 h-6 text-purple-600" />
+          <div className="grid grid-cols-1 gap-3">
+            <div className="rounded-2xl border border-[#0B2540] bg-[#E7EEF6] p-4 text-left text-[#0B2540]">
+              <CreditCard className="h-5 w-5" />
+              <span className="mt-2 block text-sm font-black">Pix ou cartão</span>
+              <span className="text-[11px]">InfinitePay · cartão em até 12x</span>
             </div>
-            <div>
-              <p className="font-black text-gray-800">Pix ou cartão</p>
-              <p className="text-xs text-gray-500">Escolha no checkout seguro da InfinitePay.</p>
+          </div>
+          <div className="mt-4 rounded-2xl bg-[#071829] p-4 text-white">
+            <div className="flex justify-between text-sm">
+              <span>Saldo que será creditado</span>
+              <strong>{formatCurrency(Number.isFinite(netAmount) ? netAmount : 0)}</strong>
             </div>
-            <CreditCard className="w-6 h-6 text-purple-500 ml-auto" />
+            <div className="mt-2 flex justify-between border-t border-white/10 pt-2">
+              <span className="font-bold">Valor da recarga</span>
+              <strong>{formatCurrency(Number.isFinite(netAmount) ? netAmount : 0)}</strong>
+            </div>
           </div>
           <p className="text-[11px] text-gray-500 mt-4 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -106,13 +114,20 @@ export default function PwaRecarregar() {
           <button
             onClick={handleCheckout}
             disabled={processing}
-            className="w-full mt-5 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-4 font-bold text-white transition-colors hover:bg-[#061B30] disabled:opacity-50"
           >
             {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-            {processing ? "Preparando checkout..." : "Continuar para InfinitePay"}
+            {processing ? "Preparando pagamento..." : "Continuar na InfinitePay"}
           </button>
         </motion.div>
       </div>
     </div>
   );
+}
+
+function formatCurrency(value: number) {
+  return Number(value || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }

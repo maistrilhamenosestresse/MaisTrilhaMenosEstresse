@@ -36,7 +36,7 @@ export async function signClientContracts({
 
   const signedAt = new Date().toISOString();
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
-  const hashSecret = process.env.NEXTAUTH_SECRET || requireServerEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const hashSecret = requireServerEnv("REGISTRATION_SIGNING_SECRET");
   const ipHash = forwardedFor
     ? createHash("sha256").update(`${hashSecret}:${forwardedFor}`).digest("hex")
     : null;

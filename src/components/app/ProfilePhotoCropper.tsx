@@ -125,7 +125,7 @@ export function ProfilePhotoCropper({ file, onCancel, onConfirm }: ProfilePhotoC
       <div className="w-full max-w-sm bg-white rounded-[2rem] overflow-hidden shadow-2xl">
         <header className="p-5 flex items-center justify-between border-b border-gray-100">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600">Foto de perfil</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D96224]">Foto de perfil</p>
             <h2 className="font-black text-gray-900">Ajuste antes de enviar</h2>
           </div>
           <button type="button" onClick={onCancel} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
@@ -171,7 +171,7 @@ export function ProfilePhotoCropper({ file, onCancel, onConfirm }: ProfilePhotoC
               <p className="text-xs text-gray-600 flex-1">Arraste a foto para enquadrar seu rosto.</p>
             </div>
             <div className="mt-4 flex items-center gap-3">
-              <ZoomIn className="w-4 h-4 text-purple-600" />
+              <ZoomIn className="w-4 h-4 text-[#D96224]" />
               <input
                 type="range"
                 min="1"
@@ -179,7 +179,7 @@ export function ProfilePhotoCropper({ file, onCancel, onConfirm }: ProfilePhotoC
                 step="0.01"
                 value={zoom}
                 onChange={(event) => updateZoom(Number(event.target.value))}
-                className="flex-1 accent-purple-600"
+                className="flex-1 accent-[#F17B37]"
               />
             </div>
           </div>
@@ -193,7 +193,7 @@ export function ProfilePhotoCropper({ file, onCancel, onConfirm }: ProfilePhotoC
             type="button"
             onClick={confirm}
             disabled={saving || !loaded}
-            className="flex-[1.4] py-3.5 rounded-2xl bg-purple-600 font-black text-white disabled:opacity-60 flex items-center justify-center gap-2"
+            className="flex flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 font-black text-white disabled:opacity-60"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
             Usar foto

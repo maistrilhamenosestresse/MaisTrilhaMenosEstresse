@@ -2,7 +2,14 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Copy, Loader2, ReceiptText, ShieldCheck, TriangleAlert } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Loader2,
+  ReceiptText,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
 
 type PaymentState = "checking" | "paid" | "pending" | "error";
 
@@ -56,7 +63,9 @@ function InfinitePayReturnContent() {
         });
         const result = await response.json();
         if (!active) return;
-        if (!response.ok) throw new Error(result.error || "Falha ao confirmar pagamento");
+        if (!response.ok) {
+          throw new Error(result.error || "Falha ao confirmar pagamento");
+        }
         if (result.paid) {
           setState("paid");
           setMessage("Pagamento confirmado. Sua compra já foi liberada.");
@@ -75,35 +84,35 @@ function InfinitePayReturnContent() {
         window.setTimeout(check, 3000);
       }
     };
-    check();
+    void check();
     return () => {
       active = false;
     };
   }, [orderNsu, receiptUrl, slug, transactionNsu]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950 text-white p-5 flex items-center justify-center">
-      <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 text-center shadow-2xl">
+    <main className="flex min-h-screen items-center justify-center bg-[linear-gradient(145deg,#061526,#0B2540)] p-5 text-white">
+      <section className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-6 text-center shadow-2xl backdrop-blur-xl">
         {state === "paid" ? (
-          <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
+          <CheckCircle2 className="mx-auto mb-4 h-16 w-16 text-emerald-400" />
         ) : state === "error" ? (
-          <TriangleAlert className="w-16 h-16 text-amber-400 mx-auto mb-4" />
+          <TriangleAlert className="mx-auto mb-4 h-16 w-16 text-amber-400" />
         ) : (
-          <Loader2 className="w-16 h-16 text-purple-300 mx-auto mb-4 animate-spin" />
+          <Loader2 className="mx-auto mb-4 h-16 w-16 animate-spin text-orange-300" />
         )}
 
-        <h1 className="text-2xl font-black mb-2">
+        <h1 className="mb-2 text-2xl font-black">
           {state === "paid"
             ? "Pagamento confirmado!"
             : state === "error"
               ? "Confirmação pendente"
               : "Confirmando pagamento"}
         </h1>
-        <p className="text-sm text-slate-300 mb-6">{message}</p>
+        <p className="mb-6 text-sm text-slate-300">{message}</p>
 
-        <div className="rounded-2xl bg-black/20 border border-white/10 p-4 mb-5 text-left">
+        <div className="mb-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <ShieldCheck className="h-4 w-4 text-emerald-400" />
             A liberação ocorre somente após consulta oficial à InfinitePay.
           </div>
         </div>
@@ -113,26 +122,27 @@ function InfinitePayReturnContent() {
             href={confirmedReceiptUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full mb-3 rounded-2xl bg-white/10 hover:bg-white/15 py-3 px-4 font-bold flex items-center justify-center gap-2"
+            className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-3 font-bold hover:bg-white/15"
           >
-            <ReceiptText className="w-5 h-5" /> Ver comprovante
+            <ReceiptText className="h-5 w-5" /> Ver comprovante
           </a>
         )}
 
         {state === "paid" && invitations.length > 0 && (
-          <div className="rounded-2xl bg-orange-500/10 border border-orange-400/20 p-4 mb-5 text-left">
-            <h2 className="font-black text-orange-200 mb-2">Cadastro dos acompanhantes</h2>
+          <div className="mb-5 rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 text-left">
+            <h2 className="mb-2 font-black text-orange-200">Cadastro dos acompanhantes</h2>
             <div className="space-y-2">
               {invitations.map((invite) => (
                 <button
+                  type="button"
                   key={invite.token}
                   onClick={() => {
                     const link = `${window.location.origin}/cadastro?invite=${encodeURIComponent(invite.token)}`;
-                    navigator.clipboard.writeText(link);
+                    void navigator.clipboard.writeText(link);
                   }}
-                  className="w-full rounded-xl bg-white/10 p-3 text-sm font-bold flex items-center justify-between"
+                  className="flex w-full items-center justify-between rounded-xl bg-white/10 p-3 text-sm font-bold"
                 >
-                  {invite.name} <Copy className="w-4 h-4" />
+                  {invite.name} <Copy className="h-4 w-4" />
                 </button>
               ))}
             </div>
@@ -140,11 +150,12 @@ function InfinitePayReturnContent() {
         )}
 
         <button
+          type="button"
           onClick={() => {
             window.sessionStorage.removeItem(`infinitepay:${orderNsu}:returnTo`);
             router.replace(returnTo);
           }}
-          className="w-full rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 py-4 font-black disabled:opacity-50"
+          className="w-full rounded-2xl bg-[#F17B37] py-4 font-black disabled:opacity-50"
           disabled={state === "checking"}
         >
           {state === "paid" ? "Continuar" : "Voltar ao Mais Trilha"}
@@ -156,11 +167,13 @@ function InfinitePayReturnContent() {
 
 export default function InfinitePayReturnPage() {
   return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-purple-300" />
-      </main>
-    }>
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#071829] text-white">
+          <Loader2 className="h-10 w-10 animate-spin text-orange-300" />
+        </main>
+      }
+    >
       <InfinitePayReturnContent />
     </Suspense>
   );

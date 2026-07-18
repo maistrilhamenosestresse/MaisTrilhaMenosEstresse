@@ -1,10 +1,7 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { getServerSession } from 'next-auth';
 import { NextResponse } from 'next/server';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { s3Client, BUCKET_NAME } from '@/lib/aws';
 import { requireAdminUser, requireAuthenticatedUser } from '@/lib/server/auth';
-import { getAdminEmails } from '@/lib/server/env';
 import { assertSameOrigin } from '@/lib/server/request';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 
@@ -52,6 +49,9 @@ export async function POST(request: Request) {
     const extension = extensionFor(file.type);
     const key = `${rule.prefix}/${Date.now()}_${crypto.randomUUID()}.${extension}`;
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!hasExpectedImageSignature(buffer, file.type)) {
+      return NextResponse.json({ error: 'O conteúdo do arquivo não corresponde a uma imagem válida' }, { status: 400 });
+    }
 
     await s3Client.send(new PutObjectCommand({
       Bucket: BUCKET_NAME,
@@ -87,10 +87,6 @@ async function authorizeFolder(auth: 'same-origin' | 'user' | 'admin') {
 
   const adminResult = await requireAdminUser();
   if (!adminResult.response) return null;
-
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email?.toLowerCase();
-  if (email && getAdminEmails().includes(email)) return null;
   return adminResult.response;
 }
 
@@ -105,4 +101,26 @@ function extensionFor(contentType: string) {
     'image/webp': 'webp',
     'image/heic': 'heic',
   } as Record<string, string>)[contentType] || 'jpg';
+}
+
+function hasExpectedImageSignature(buffer: Buffer, contentType: string) {
+  if (contentType === 'image/jpeg') {
+    return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  if (contentType === 'image/png') {
+    return buffer.length >= 8 &&
+      buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  }
+  if (contentType === 'image/webp') {
+    return buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+  }
+  if (contentType === 'image/heic') {
+    const brand = buffer.length >= 12 ? buffer.subarray(8, 12).toString('ascii') : '';
+    return buffer.length >= 12 &&
+      buffer.subarray(4, 8).toString('ascii') === 'ftyp' &&
+      ['heic', 'heix', 'hevc', 'hevx', 'mif1'].includes(brand);
+  }
+  return false;
 }

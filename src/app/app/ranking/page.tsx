@@ -29,22 +29,22 @@ export default function PwaRanking() {
     return "Iniciante";
   };
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="mt-app-page flex min-h-full flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-br from-yellow-500 to-orange-500 pt-12 pb-16 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-b-[2.25rem] bg-[linear-gradient(145deg,#061526,#0B2540)] px-5 pb-16 pt-[max(2.25rem,env(safe-area-inset-top))] shadow-lg sm:px-6">
         <div className="absolute top-0 right-0 p-4 opacity-20"><Trophy className="w-32 h-32 text-white" /></div>
         <div className="relative z-10">
-          <p className="text-orange-100 font-bold uppercase tracking-wider text-sm mb-1">Ranking Geral</p>
+          <p className="mb-1 text-sm font-bold uppercase tracking-wider text-orange-200">Classificação geral</p>
           <h1 className="text-3xl font-black text-white mb-2">Desbrave o Topo!</h1>
-          <p className="text-orange-50 text-sm">Faça trilhas, compre na loja e acumule pontos para subir de nível e ganhar prêmios.</p>
+          <p className="text-sm text-emerald-50/80">Faça trilhas, compre na loja e acumule pontos para subir de nível e ganhar prêmios.</p>
         </div>
       </div>
 
-      <div className="px-6 -mt-8 relative z-20 flex-1 pb-10">
-        <div className="bg-white rounded-3xl p-5 shadow-xl border border-gray-100 mb-8 flex items-center justify-between">
+      <div className="relative z-20 -mt-8 flex-1 px-4 pb-10 sm:px-6">
+        <div className="mt-surface mb-8 flex items-center justify-between rounded-3xl p-5">
           <div>
             <p className="text-gray-400 text-xs font-bold uppercase">Sua Posição</p>
-            <h3 className="text-2xl font-black text-purple-600 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-2xl font-black text-[#D96224]">
               {myPosition ? `${myPosition}º` : '-'} <Medal className="w-5 h-5 text-yellow-500" />
             </h3>
           </div>
@@ -54,7 +54,7 @@ export default function PwaRanking() {
           </div>
         </div>
 
-        <h3 className="font-black text-gray-800 text-lg mb-4">Top Aventureiros</h3>
+        <h3 className="font-black text-gray-800 text-lg mb-4">Aventureiros em destaque</h3>
         
         <div className="space-y-3">
           {ranking.map((user, index) => (
@@ -63,7 +63,7 @@ export default function PwaRanking() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
               key={user.id} 
-              className={`p-4 rounded-2xl flex items-center gap-4 shadow-sm border ${user.isMe ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'}`}
+              className={`flex items-center gap-4 rounded-2xl border p-4 shadow-sm ${user.isMe ? 'border-orange-200 bg-[#FFF0E6]' : 'border-gray-100 bg-white'}`}
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black ${
                 index === 0 ? 'bg-yellow-100 text-yellow-700' :
@@ -75,7 +75,7 @@ export default function PwaRanking() {
               </div>
               
               <div className="flex-1">
-                <h4 className={`font-bold text-sm ${user.isMe ? 'text-purple-700' : 'text-gray-800'}`}>
+                <h4 className={`font-bold text-sm ${user.isMe ? 'text-[#B84D18]' : 'text-gray-800'}`}>
                   {user.name} {user.isMe && '(Você)'}
                 </h4>
                 <p className="text-xs text-gray-500">{user.level}</p>

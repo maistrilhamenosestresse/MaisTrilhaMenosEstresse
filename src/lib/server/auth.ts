@@ -28,7 +28,14 @@ export async function requireAdminUser(): Promise<AuthSuccess | AuthFailure> {
 
   const email = auth.user.email?.toLowerCase();
   const metadataRole = auth.user.app_metadata?.role;
-  const isAdmin = metadataRole === "admin" || (!!email && getAdminEmails().includes(email));
+  const { data: profile } = await createSupabaseAdmin()
+    .from("profiles")
+    .select("role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+  const isAdmin = profile?.role === "admin" ||
+    metadataRole === "admin" ||
+    (!!email && getAdminEmails().includes(email));
 
   if (!isAdmin) {
     return {
@@ -44,12 +51,7 @@ export async function requireAgendaCustomer(agendaId: string): Promise<AuthSucce
   if (auth.response) return auth;
 
   const supabase = createSupabaseAdmin();
-  const { data: client } = await supabase
-    .from('clients')
-    .select('id')
-    .or(`auth_user_id.eq.${auth.user.id},email.eq.${auth.user.email || ''}`)
-    .limit(1)
-    .maybeSingle();
+  const client = await resolveAuthenticatedClient(auth.user);
 
   if (!client) {
     return { response: NextResponse.json({ error: 'Cliente não encontrado' }, { status: 403 }) };
@@ -69,4 +71,37 @@ export async function requireAgendaCustomer(agendaId: string): Promise<AuthSucce
   }
 
   return auth;
+}
+
+export async function resolveAuthenticatedClient(user: User) {
+  const supabase = createSupabaseAdmin();
+  const { data: linked } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+  if (linked) return linked;
+  if (!user.email) return null;
+
+  const { data: byEmail } = await supabase
+    .from("clients")
+    .select("*")
+    .ilike("email", user.email)
+    .limit(1)
+    .maybeSingle();
+  if (!byEmail) return null;
+  if (byEmail.auth_user_id && byEmail.auth_user_id !== user.id) return null;
+
+  if (!byEmail.auth_user_id) {
+    const { data: claimed } = await supabase
+      .from("clients")
+      .update({ auth_user_id: user.id })
+      .eq("id", byEmail.id)
+      .is("auth_user_id", null)
+      .select("*")
+      .maybeSingle();
+    return claimed || null;
+  }
+
+  return byEmail;
 }

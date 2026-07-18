@@ -128,21 +128,21 @@ export default function AppLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="mt-app-page relative flex min-h-full flex-col items-center justify-center overflow-hidden p-6">
       {/* Decoração Premium */}
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-purple-500 opacity-10 blur-3xl" />
-      <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-indigo-500 opacity-10 blur-3xl" />
+      <div className="absolute -mr-20 -mt-20 right-0 top-0 h-80 w-80 rounded-full bg-[#F17B37]/15 blur-3xl" />
+      <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[#0B2540]/15 blur-3xl" />
 
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-[linear-gradient(145deg,#0B2540,#F17B37)] shadow-lg shadow-slate-950/20">
             <MapPin className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-black text-gray-800">MaisTrilha<span className="text-purple-600">.</span></h1>
+          <h1 className="text-2xl font-black text-[#071829]">MaisTrilha<span className="text-[#F17B37]">.</span></h1>
           <p className="text-sm text-gray-500 font-medium mt-1">Sua Área do Aventureiro</p>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
+        <div className="mt-surface rounded-[1.75rem] p-6">
           <AnimatePresence mode="wait">
             {step === 1 ? (
               <motion.form 
@@ -163,7 +163,7 @@ export default function AppLoginPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm font-medium outline-none transition-all focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
                     placeholder="seu@email.com.br"
                   />
                 </div>
@@ -177,13 +177,13 @@ export default function AppLoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-purple-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group"
+                  className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-4 font-bold text-white shadow-lg shadow-slate-950/20 transition-all hover:bg-[#061B30] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {loading ? (
                     "Enviando..."
                   ) : (
                     <>
-                      Entrar no App <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      Entrar no aplicativo <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
@@ -201,7 +201,7 @@ export default function AppLoginPage() {
                   <h3 className="font-bold text-gray-800 text-lg mb-1">Código de Acesso</h3>
                   <p className="text-xs text-gray-500 font-medium">
                     Enviamos uma chave mágica de 8 dígitos para<br />
-                    <strong className="text-purple-600">{email}</strong>
+                    <strong className="text-[#D96224]">{email}</strong>
                   </p>
                 </div>
 
@@ -213,7 +213,7 @@ export default function AppLoginPage() {
                     maxLength={8}
                     value={token}
                     onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-4 text-center text-2xl tracking-[0.4em] font-black text-gray-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-4 text-center text-2xl font-black tracking-[0.4em] text-gray-800 outline-none transition-all focus:border-orange-300 focus:ring-2 focus:ring-orange-200"
                     placeholder="00000000"
                   />
                 </div>
@@ -227,7 +227,7 @@ export default function AppLoginPage() {
                 <button
                   type="submit"
                   disabled={loading || token.length < 8}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-purple-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-4 font-bold text-white shadow-lg shadow-slate-950/20 transition-all hover:bg-[#061B30] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {loading ? "Verificando..." : "Confirmar e Entrar"}
                 </button>
@@ -235,7 +235,7 @@ export default function AppLoginPage() {
                 <button 
                   type="button" 
                   onClick={() => setStep(1)}
-                  className="w-full text-xs font-bold text-gray-400 hover:text-purple-600 py-2 transition-colors"
+                  className="w-full py-2 text-xs font-bold text-gray-400 transition-colors hover:text-[#D96224]"
                 >
                   Usar outro e-mail
                 </button>

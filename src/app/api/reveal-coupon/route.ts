@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
+import { requireServerEnv } from '@/lib/server/env';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
 
   const personName = String(parsed.data.personName || 'Anônimo').trim().slice(0, 150);
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
-  const ipHash = createHash('sha256').update(`${process.env.RATE_LIMIT_SECRET || process.env.NEXTAUTH_SECRET}:${ip}`).digest('hex');
+  const ipHash = createHash('sha256').update(`${requireServerEnv('RATE_LIMIT_SECRET')}:${ip}`).digest('hex');
   const { data: coupon, error } = await createSupabaseAdmin().rpc('redeem_campaign_coupon', {
     p_campaign_id: CAMPAIGN_ID,
     p_max_redemptions: MAX_REDEMPTIONS,

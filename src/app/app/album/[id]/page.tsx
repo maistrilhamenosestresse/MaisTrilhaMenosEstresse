@@ -124,9 +124,9 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-24">
+    <div className="mt-app-page flex min-h-full flex-col pb-24">
       {/* Header */}
-      <div className="bg-white px-4 py-4 flex items-center gap-4 border-b border-gray-100 sticky top-0 z-40 shadow-sm">
+      <div className="mt-app-header sticky top-0 z-40 flex items-center gap-4 border-b px-4 py-3">
         <button onClick={() => router.back()} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors">
           <ChevronLeft className="w-6 h-6 text-gray-700" />
         </button>
@@ -148,7 +148,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             type="button"
             onClick={downloadAlbum}
             disabled={downloadingAlbum}
-            className="w-10 h-10 rounded-full bg-purple-50 text-purple-700 flex items-center justify-center disabled:opacity-50"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF0E6] text-[#D96224] disabled:opacity-50"
             aria-label="Baixar álbum completo"
           >
             {downloadingAlbum ? <Loader2 className="w-5 h-5 animate-spin" /> : <Images className="w-5 h-5" />}
@@ -200,7 +200,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         >
           <button 
             onClick={() => setIsAiMode(true)}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-xl shadow-purple-500/30 px-6 py-4 rounded-full font-black text-sm flex items-center gap-3 hover:scale-105 transition-transform"
+            className="flex items-center gap-3 rounded-full bg-[#0B2540] px-6 py-4 text-sm font-black text-white shadow-xl shadow-slate-950/20 transition-transform hover:scale-[1.02]"
           >
             <Sparkles className="w-5 h-5" />
             Achar minhas fotos com IA
@@ -221,14 +221,14 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
 
             <div className="text-center max-w-sm w-full bg-white rounded-3xl p-8 relative overflow-hidden">
               {/* Background Decoration */}
-              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-purple-100 to-blue-50" />
+              <div className="absolute left-0 top-0 h-32 w-full bg-gradient-to-br from-orange-100 to-blue-50" />
               
               <div className="relative z-10">
-                <div className="w-20 h-20 bg-white shadow-xl shadow-purple-500/20 rounded-full mx-auto flex items-center justify-center mb-6">
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-xl shadow-orange-900/15">
                   {aiLoading ? (
-                    <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+                    <Loader2 className="h-8 w-8 animate-spin text-[#D96224]" />
                   ) : (
-                    <Sparkles className="w-8 h-8 text-purple-600" />
+                    <Sparkles className="h-8 w-8 text-[#D96224]" />
                   )}
                 </div>
 

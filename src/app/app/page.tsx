@@ -82,12 +82,12 @@ export default function PwaDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="mt-app-page flex min-h-full flex-col">
       {/* Header Premium (Estilo Banco Digital) */}
-      <div className="bg-gradient-to-b from-purple-700 to-purple-900 pt-12 pb-24 px-6 rounded-b-[2.5rem] shadow-lg relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-b-[2.25rem] bg-[linear-gradient(145deg,#061526_0%,#0B2540_72%,#12385E_100%)] px-5 pb-24 pt-[max(2.25rem,env(safe-area-inset-top))] shadow-[0_20px_45px_rgba(5,24,43,0.25)] sm:px-7">
         {/* Abstract background shapes */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-purple-500 opacity-20 blur-3xl" />
-        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full bg-indigo-500 opacity-20 blur-2xl" />
+        <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#F17B37]/20 blur-3xl" />
+        <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-blue-300/10 blur-2xl" />
 
         <div className="flex justify-between items-center mb-8 relative z-10">
           <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export default function PwaDashboard() {
               )}
             </div>
             <div>
-              <p className="text-purple-200 text-xs font-medium">Olá, {userRank}</p>
+              <p className="text-blue-100/75 text-xs font-semibold">Olá, {userRank}</p>
               <h1 className="text-white font-bold text-lg">{userName || "Aventureiro"}</h1>
             </div>
           </div>
@@ -114,15 +114,15 @@ export default function PwaDashboard() {
             type="button"
             onClick={() => router.push('/app/ranking')}
             aria-label="Ver meu ranking"
-            className="bg-white/10 hover:bg-white/20 backdrop-blur-md p-2.5 rounded-full border border-white/20 transition-colors"
+            className="rounded-full border border-white/15 bg-white/10 p-2.5 backdrop-blur-md transition-colors hover:bg-white/20"
           >
             <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
           </button>
         </div>
 
         <div className="relative z-10">
-          <p className="text-purple-200 text-sm font-medium mb-1 flex items-center gap-2">
-            💳 Saldo Cashback <span className="bg-purple-500/50 px-2 py-0.5 rounded text-[10px] font-bold">Dinheiro Real</span>
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-100/80">
+            💳 Saldo disponível <span className="rounded-full bg-[#F17B37]/20 px-2 py-0.5 text-[10px] font-extrabold text-orange-100">Benefício</span>
           </p>
           <div className="flex items-center gap-3">
             <h2 className="text-4xl font-black text-white">{formatCurrency(clientData?.cashback_saldo || 0)}</h2>
@@ -133,7 +133,7 @@ export default function PwaDashboard() {
               <Plus className="w-4 h-4 text-white" />
             </button>
           </div>
-          <p className="text-purple-300 text-xs mt-1">
+          <p className="mt-1 text-xs text-blue-100/70">
             ⭐ {clientData?.pontos || 0} pontos de fidelidade ≈ {formatCurrency((clientData?.pontos || 0) / 100)} de desconto
           </p>
         </div>
@@ -146,28 +146,28 @@ export default function PwaDashboard() {
             initial={{ scale: 1, opacity: 0 }}
             animate={{ scale: 150, opacity: 1 }}
             transition={{ duration: 1.2, ease: "easeInOut" }} // Mais suave, dá tempo de ver a bola crescer
-            className="fixed top-[140px] right-[40px] w-8 h-8 bg-purple-600 rounded-full z-[100] origin-center"
+            className="fixed right-[40px] top-[140px] z-[100] h-8 w-8 origin-center rounded-full bg-[#F17B37]"
           />
         )}
       </AnimatePresence>
 
       {/* Main Action Buttons */}
-      <div className="px-6 -mt-12 relative z-20">
-        <div className="bg-white rounded-3xl p-5 shadow-xl border border-gray-100 flex justify-between gap-2">
+      <div className="relative z-20 -mt-12 px-4 sm:px-6">
+        <div className="mt-surface flex justify-between gap-1 rounded-[1.75rem] p-4">
           <button onClick={() => router.push('/app/loja')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 group-hover:bg-purple-100 flex items-center justify-center text-purple-600 transition-colors">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF0E6] text-[#D96224] transition-colors group-hover:bg-orange-100">
               <ShoppingBag className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-gray-700">Loja</span>
           </button>
           <button onClick={handleRecarregar} className="flex flex-col items-center justify-center gap-2 flex-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#E7EEF6] text-[#0B2540] transition-colors group-hover:bg-blue-100">
               <ArrowDownRight className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-gray-700">Recarregar</span>
           </button>
           <button onClick={() => router.push('/app/beneficios')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
-            <div className="w-12 h-12 rounded-2xl bg-orange-50 group-hover:bg-orange-100 flex items-center justify-center text-orange-600 transition-colors">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 transition-colors group-hover:bg-amber-100">
               <Gift className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-gray-700">Benefícios</span>
@@ -182,11 +182,14 @@ export default function PwaDashboard() {
       </div>
 
       {/* Seção Loja / Benefícios */}
-      <div className="px-6 mt-8 space-y-6 flex-1 pb-10">
+      <div className="mt-8 flex-1 space-y-7 px-4 pb-8 sm:px-6">
         <div>
           <div className="flex justify-between items-end mb-4">
-            <h3 className="text-lg font-black text-gray-800">MaisTrilha Store</h3>
-            <Link href="/app/loja" className="text-purple-600 text-xs font-bold flex items-center">Ver tudo <ChevronRight className="w-3 h-3" /></Link>
+            <div>
+              <p className="mt-eyebrow">Equipamentos</p>
+              <h3 className="text-lg font-black text-[#071829]">Loja MaisTrilha</h3>
+            </div>
+            <Link href="/app/loja" className="flex items-center text-xs font-extrabold text-[#D96224]">Ver tudo <ChevronRight className="w-3 h-3" /></Link>
           </div>
           
           {productsLoading ? (
@@ -202,7 +205,7 @@ export default function PwaDashboard() {
                   type="button"
                   key={product.id}
                   onClick={() => router.push(`/app/loja/checkout?produtoId=${product.id}`)}
-                  className="min-w-[140px] text-left bg-white rounded-2xl p-4 shadow-sm border border-gray-100 snap-start shrink-0 hover:border-purple-200 transition-colors"
+                  className="mt-surface min-w-[148px] shrink-0 snap-start rounded-2xl p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-orange-200"
                 >
                   <div className="w-full h-24 bg-gray-50 rounded-xl mb-3 flex items-center justify-center overflow-hidden">
                     {product.image ? (
@@ -221,12 +224,12 @@ export default function PwaDashboard() {
                   </div>
                   <p className="text-xs text-gray-400 font-bold uppercase mb-1 line-clamp-1">{product.category}</p>
                   <h4 className="font-bold text-gray-800 text-sm leading-tight mb-2 line-clamp-2">{product.name}</h4>
-                  <p className="text-purple-600 font-black">{formatCurrency(product.price)}</p>
+                  <p className="font-black text-[#D96224]">{formatCurrency(product.price)}</p>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+            <div className="mt-surface rounded-2xl p-5 text-center">
               <PackageOpen className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="text-sm font-bold text-gray-700">Novidades em breve</p>
               <p className="text-xs text-gray-500 mt-1">A loja ainda não possui produtos disponíveis.</p>
@@ -237,15 +240,18 @@ export default function PwaDashboard() {
         {/* Últimas Transações */}
         <div>
           <div className="flex justify-between items-end mb-4">
-            <h3 className="text-lg font-black text-gray-800">Sua Movimentação</h3>
+            <div>
+              <p className="mt-eyebrow">Carteira</p>
+              <h3 className="text-lg font-black text-[#071829]">Sua movimentação</h3>
+            </div>
           </div>
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 text-center flex flex-col items-center">
+          <div className="mt-surface flex flex-col items-center rounded-[1.75rem] p-6 text-center">
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-400 mb-3">
               <History className="w-8 h-8" />
             </div>
             <h4 className="font-bold text-gray-800 text-sm mb-1">Acompanhe seus gastos</h4>
-            <p className="text-xs text-gray-500 mb-4 px-4">Veja seu extrato de compras, uso de cashback e recargas de saldo da sua carteira.</p>
-            <button onClick={() => router.push('/app/extratos')} className="bg-purple-100 text-purple-700 font-bold text-sm px-6 py-2.5 rounded-full hover:bg-purple-200 transition-colors">
+            <p className="text-xs text-gray-500 mb-4 px-4">Veja seu extrato de compras, uso de saldo e recargas da sua carteira.</p>
+            <button onClick={() => router.push('/app/extratos')} className="rounded-full bg-[#0B2540] px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#061B30]">
               Acessar Meu Extrato
             </button>
           </div>

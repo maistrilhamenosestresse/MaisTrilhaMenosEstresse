@@ -77,22 +77,22 @@ export default function PwaExtratos() {
   const formatCurrency = (val: number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="bg-white pt-12 pb-6 px-6 rounded-b-[2.5rem] shadow-sm relative z-10 border-b border-gray-100">
+    <div className="mt-app-page flex min-h-full flex-col">
+      <div className="mt-app-header relative z-10 border-b px-5 pb-6 pt-[max(2.25rem,env(safe-area-inset-top))] sm:px-6">
         <button onClick={() => router.back()} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-700 mb-6 hover:bg-gray-200 transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
         <p className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">Seu Saldo Total</p>
-        <h1 className="text-4xl font-black text-purple-700 mb-2">{formatCurrency(saldo)}</h1>
+        <h1 className="mb-2 text-4xl font-black text-[#0B2540]">{formatCurrency(saldo)}</h1>
       </div>
 
-      <div className="px-6 py-6 flex-1 pb-24 overflow-y-auto">
+      <div className="flex-1 px-4 py-6 pb-24 sm:px-6">
         <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-4 px-2">Histórico Real</h3>
         
         {loading ? (
-          <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 text-purple-600 animate-spin" /></div>
+          <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#D96224]" /></div>
         ) : extrato.length > 0 ? (
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-gray-100">
+          <div className="mt-surface rounded-3xl p-2">
             {extrato.map((item, i) => (
               <div key={i} className="flex items-center gap-4 p-4 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                 <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 shrink-0">

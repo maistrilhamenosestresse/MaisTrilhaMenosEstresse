@@ -37,10 +37,9 @@ const formatCurrency = (val: number | string) => Number(val).toLocaleString('pt-
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
 const formatPaymentMethod = (method?: string) => {
-  if (method === 'CREDIT_CARD' || method === 'CREDIT_CARD_INFINITEPAY') return 'Cartão (InfinitePay)';
-  if (method === 'BOLETO') return 'Boleto';
-  if (method === 'PIX' || method === 'PIX_INFINITEPAY') return 'Pix (InfinitePay)';
-  if (method === 'INFINITEPAY') return 'InfinitePay pendente';
+  if (method === 'CREDIT_CARD') return 'Cartão (Asaas)';
+  if (method === 'BOLETO') return 'Boleto (Asaas)';
+  if (method === 'PIX') return 'Pix (Asaas)';
   if (method === 'ASAAS') return 'Asaas';
   return method || 'Não informado';
 };
@@ -971,12 +970,12 @@ export default function AdminPage() {
   const whatsappLink = `https://wa.me/?text=${encodeURIComponent(`⛰️ A nossa agenda oficial chegou! Prepare as botas!\n\n👉 https://www.maistrilhasmenosestresse.com/agenda`)}`;
 
   return (
-    <div suppressHydrationWarning className="h-[100dvh] print:h-auto print:min-h-screen w-full flex flex-col md:flex-row bg-gray-50 overflow-hidden print:overflow-visible relative">
+    <div suppressHydrationWarning className="mt-admin-shell relative flex h-[100dvh] w-full flex-col overflow-hidden print:h-auto print:min-h-screen print:overflow-visible md:flex-row">
       
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 z-20 shrink-0 h-full shadow-sm">
-        <div className="p-6 flex items-center gap-3 border-b border-gray-100 shrink-0">
-          <div className="bg-[#1D2A3A] p-2 rounded-xl shadow-md">
+      <aside className="mt-admin-sidebar z-20 hidden h-full w-60 shrink-0 flex-col border-r bg-white md:flex">
+        <div className="flex shrink-0 items-center gap-3 border-b border-gray-100 p-5">
+          <div className="rounded-xl bg-[#071829] p-2 shadow-md">
             <ShieldCheck className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -985,10 +984,10 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+        <nav className="custom-scrollbar flex-1 space-y-1 overflow-y-auto p-3">
           <button 
             onClick={() => setMainTab('trilhas')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'trilhas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'trilhas' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
             <CalendarDays className="h-5 w-5" />
             Trilhas
@@ -996,7 +995,7 @@ export default function AdminPage() {
           
           <button 
             onClick={() => setMainTab('clientes')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'clientes' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'clientes' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
             <FileText className="h-5 w-5" />
             Clientes
@@ -1004,7 +1003,7 @@ export default function AdminPage() {
 
           <button 
             onClick={() => setMainTab('reservas')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'reservas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'reservas' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
           >
             <CheckCircle2 className="h-5 w-5" />
             Reservas
@@ -1012,7 +1011,7 @@ export default function AdminPage() {
 
             <button 
               onClick={() => setMainTab('financas')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-[#E7EEF6] text-[#0B2540]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
             >
               <DollarSign className="h-5 w-5" />
               Finanças & Asaas
@@ -1020,7 +1019,7 @@ export default function AdminPage() {
 
             <button 
               onClick={() => setMainTab('loja')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'loja' ? 'bg-blue-50 text-blue-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'loja' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
             >
               <Gift className="h-5 w-5" />
               Loja
@@ -1028,7 +1027,7 @@ export default function AdminPage() {
 
             <button 
               onClick={() => setMainTab('gamificacao')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'gamificacao' ? 'bg-purple-50 text-purple-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'gamificacao' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
             >
               <Trophy className="h-5 w-5" />
               Gamificação
@@ -1036,22 +1035,11 @@ export default function AdminPage() {
 
             <button 
               onClick={() => setMainTab('assistente')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'assistente' ? 'bg-amber-50 text-amber-500' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold transition-all ${mainTab === 'assistente' ? 'bg-[#FFF0E6] text-[#D96224]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
             >
               <TrendingUp className="h-5 w-5" />
               CFO Assistente
             </button>
-
-
-          <div className="pt-4 mt-4 border-t border-gray-100 hidden md:block">
-            <button 
-              onClick={() => window.location.href = '/gerenciador'}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all bg-[#1D2A3A] text-white hover:bg-gray-900 shadow-md hover:scale-105"
-            >
-              <Navigation className="h-5 w-5" />
-              Gerenciar Site
-            </button>
-          </div>
         </nav>
 
         <div className="p-4 border-t border-gray-100 flex flex-col items-center shrink-0">
@@ -1067,7 +1055,7 @@ export default function AdminPage() {
 
       {/* MAIN CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
-        <header className="bg-white border-b border-gray-100 px-4 py-4 shrink-0 shadow-sm flex items-center justify-between z-10 print:hidden">
+        <header className="z-10 flex shrink-0 items-center justify-between border-b border-gray-100 bg-white/95 px-3 py-3 shadow-sm backdrop-blur-xl print:hidden sm:px-4">
           <div className="flex items-center gap-3 md:hidden">
             <div className="bg-[#1D2A3A] p-2 rounded-xl shadow-md hidden sm:block">
               <ShieldCheck className="h-6 w-6 text-white" />
@@ -1076,6 +1064,19 @@ export default function AdminPage() {
               <h1 className="text-lg font-black text-gray-900 leading-tight">Painel Admin</h1>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Mais Trilha Menos Estresse</p>
             </div>
+          </div>
+
+          <div className="hidden min-w-0 md:block">
+            <p className="mt-eyebrow">Mais Trilha Menos Estresse</p>
+            <h2 className="truncate text-lg font-black text-[#071829]">
+              {mainTab === 'trilhas' && 'Gestão de trilhas'}
+              {mainTab === 'clientes' && 'Clientes e contratos'}
+              {mainTab === 'reservas' && 'Reservas e pagamentos'}
+              {mainTab === 'financas' && 'Financeiro'}
+              {mainTab === 'loja' && 'Loja'}
+              {mainTab === 'gamificacao' && 'Pontos e benefícios'}
+              {mainTab === 'assistente' && 'CFO Assistente'}
+            </h2>
           </div>
           
           <div className="flex items-center gap-2 md:gap-4 ml-auto">
@@ -1185,7 +1186,7 @@ export default function AdminPage() {
       </header>
 
       {/* 2. ÁREA CENTRAL DE CONTEÚDO ROLÁVEL */}
-      <main className="flex-1 min-w-0 overflow-y-auto print:overflow-visible custom-scrollbar p-3 sm:p-4 lg:p-6 pb-28 md:pb-6 overscroll-contain">
+      <main className="mt-admin-main custom-scrollbar min-w-0 flex-1 overflow-y-auto overscroll-contain p-2.5 pb-28 print:overflow-visible sm:p-4 md:pb-5 lg:p-5">
         <div className="max-w-7xl mx-auto w-full">
           
           <AnimatePresence mode="wait">
@@ -1369,7 +1370,7 @@ export default function AdminPage() {
                       <p className="text-gray-500">Nenhum cliente encontrado.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 md:max-h-[55vh] md:overflow-y-auto custom-scrollbar md:pr-2 pb-2">
+                    <div className="space-y-3 pb-2">
                       {filteredClients.map(client => {
   const today = new Date();
   let isBirthdayClient = false;
@@ -1764,7 +1765,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       
-                      <div className="p-3 sm:p-4 space-y-3 md:max-h-[48vh] md:overflow-y-auto custom-scrollbar">
+                      <div className="space-y-3 p-3 sm:p-4">
                         {reservas.filter(r => reservaFilter === 'ALL' || r.status_pagamento === reservaFilter).length === 0 ? (
                           <p className="text-center text-gray-400 py-6 text-sm font-medium">Nenhum passageiro {reservaFilter !== 'ALL' ? 'neste status' : 'nesta trilha ainda'}.</p>
                         ) : (
@@ -1877,11 +1878,11 @@ export default function AdminPage() {
               <motion.div key="financas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
                 
                 {/* Abas Superiores de Finanças (Scroll Horizontal) */}
-                <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto custom-scrollbar shrink-0 mt-4">
-                  <button type="button" onClick={() => setFinancasTab('asaas')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'asaas' ? 'border-[#32BCAD] text-[#32BCAD] bg-[#32BCAD]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Asaas (Banco)</button>
-                  <button type="button" onClick={() => setFinancasTab('despesas')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'despesas' ? 'border-red-500 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Custos Trilha</button>
-                  <button type="button" onClick={() => setFinancasTab('receitas')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'receitas' ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Receitas Trilha</button>
-                  <button type="button" onClick={() => setFinancasTab('relatorios')} className={`flex-none px-6 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${financasTab === 'relatorios' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Relatório Final</button>
+                <div className="mt-2 grid shrink-0 grid-cols-2 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm sm:grid-cols-4">
+                  <button type="button" onClick={() => setFinancasTab('asaas')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'asaas' ? 'border-[#0B2540] text-[#0B2540] bg-[#E7EEF6]' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Asaas</button>
+                  <button type="button" onClick={() => setFinancasTab('despesas')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'despesas' ? 'border-red-500 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Custos</button>
+                  <button type="button" onClick={() => setFinancasTab('receitas')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'receitas' ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Receitas</button>
+                  <button type="button" onClick={() => setFinancasTab('relatorios')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'relatorios' ? 'border-[#D96224] text-[#D96224] bg-[#FFF0E6]' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Relatório</button>
                 </div>
 
                 {/* CONTEÚDO: ASAAS */}
@@ -1927,7 +1928,7 @@ export default function AdminPage() {
                             <h3 className="font-bold text-gray-800 flex items-center gap-2"><DollarSign className="h-5 w-5 text-red-500"/> Gastos Registrados</h3>
                             <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">Total: {formatCurrency(totalCosts)}</span>
                           </div>
-                          <div className="p-4 space-y-3 md:max-h-[48vh] md:overflow-y-auto custom-scrollbar">
+                          <div className="space-y-3 p-4">
                             {custos.length === 0 ? (
                               <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum custo registrado.</p>
                             ) : (
@@ -1966,7 +1967,7 @@ export default function AdminPage() {
                           <div className="bg-gray-50 border-b border-gray-100 p-4">
                             <h3 className="font-bold text-gray-800 text-sm">Origem das Receitas (Passageiros Pagos)</h3>
                           </div>
-                          <div className="p-4 space-y-2 md:max-h-[48vh] md:overflow-y-auto custom-scrollbar">
+                          <div className="space-y-2 p-4">
                             {reservas.filter(r => r.status_pagamento === 'pago').length === 0 ? (
                               <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum pagamento confirmado.</p>
                             ) : (
@@ -2441,7 +2442,7 @@ export default function AdminPage() {
                       <label className="block text-sm font-bold mb-1">Valor líquido desejado</label>
                       <input {...register("price", { required: true })} inputMode="decimal" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="150,00" />
                       <p className="mt-1 text-[10px] leading-tight text-gray-500">
-                        Este é o valor líquido da venda. Pix e cartão serão processados pela InfinitePay; boleto, pelo Asaas.
+                        Este é o valor líquido da venda. Pix e cartão serão processados pela InfinitePay; boleto será processado pelo Asaas.
                       </p>
                     </div>
                     <div><label className="block text-sm font-bold mb-1">Vagas</label><input type="number" {...register("max_capacity", { required: true })} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#F17B37]" placeholder="15" /></div>
@@ -2467,7 +2468,8 @@ export default function AdminPage() {
                     </label>
                     <div className="flex flex-wrap gap-4">
                       {[
-                        { key: 'INFINITEPAY', methods: ['PIX', 'CREDIT_CARD'], label: 'Pix e cartão (InfinitePay)' },
+                        { key: 'PIX', methods: ['PIX'], label: 'Pix (Asaas)' },
+                        { key: 'CREDIT_CARD', methods: ['CREDIT_CARD'], label: 'Cartão (Asaas)' },
                         { key: 'BOLETO', methods: ['BOLETO'], label: 'Boleto (Asaas)' },
                       ].map(option => (
                         <label key={option.key} className="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-gray-200 hover:border-orange-300 transition-colors">
@@ -2494,7 +2496,7 @@ export default function AdminPage() {
                       <CreditCard className="h-4 w-4" /> Repasse automático das tarifas
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-emerald-700">
-                      Na InfinitePay, configure “Repassar taxas” para o cartão; o Pix não tem tarifa. No boleto, o sistema acrescenta a tarifa do Asaas.
+                      O sistema calcula a tarifa da forma escolhida e acrescenta o valor necessário para preservar o preço líquido configurado.
                     </p>
                   </div>
                 </div>

@@ -93,7 +93,7 @@ export default function PwaPerfil() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div>;
+    return <div className="mt-app-page flex min-h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#D96224]" /></div>;
   }
 
   const getInitials = (name: string) => {
@@ -103,16 +103,16 @@ export default function PwaPerfil() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="mt-app-page flex min-h-full flex-col">
       {/* Header Profile */}
-      <div className="bg-white pt-16 pb-8 px-6 rounded-b-[2.5rem] shadow-sm relative z-10 border-b border-gray-100 flex flex-col items-center">
+      <div className="mt-app-header relative z-10 flex flex-col items-center border-b px-5 pb-7 pt-[max(2.75rem,env(safe-area-inset-top))] sm:px-6">
         
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-          <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full border-4 border-white shadow-lg flex items-center justify-center overflow-hidden mb-4 relative">
+          <div className="relative mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-[linear-gradient(145deg,#0B2540,#F17B37)] shadow-lg">
             {client?.photo_url ? (
               <img 
                 src={client.photo_url} 
-                alt="Profile" 
+                alt="Foto de perfil"
                 className="w-full h-full object-cover" 
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
@@ -136,7 +136,7 @@ export default function PwaPerfil() {
           </div>
           
           {!uploading && (
-            <div className="absolute bottom-4 right-0 bg-purple-600 p-2 rounded-full border-2 border-white shadow-md hover:bg-purple-700 transition-colors">
+            <div className="absolute bottom-4 right-0 rounded-full border-2 border-white bg-[#F17B37] p-2 shadow-md transition-colors hover:bg-[#D96224]">
               <Camera className="w-4 h-4 text-white" />
             </div>
           )}
@@ -147,7 +147,7 @@ export default function PwaPerfil() {
         <p className="text-gray-500 text-sm font-medium">{client?.email}</p>
         <div className="mt-4 grid grid-cols-2 gap-2 w-full max-w-xs">
           <div className="bg-green-50 text-green-700 px-3 py-2 rounded-xl text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-green-600">💳 Cashback</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-green-600">💳 Saldo</p>
             <p className="font-black text-sm">R$ {Number(client?.cashback_saldo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
           <div className="bg-amber-50 text-amber-700 px-3 py-2 rounded-xl text-center">
@@ -158,10 +158,10 @@ export default function PwaPerfil() {
       </div>
 
       {/* Menu Settings */}
-      <div className="px-6 py-8 flex-1 pb-24 overflow-y-auto space-y-6">
+      <div className="flex-1 space-y-6 px-4 py-7 pb-24 sm:px-6">
         <div>
           <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 px-2">Minha Conta</h3>
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-gray-100">
+          <div className="mt-surface rounded-3xl p-2">
             <button onClick={() => router.push('/app/termos')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-blue-50 p-2.5 rounded-xl text-blue-600"><User className="w-5 h-5" /></div>
@@ -181,7 +181,7 @@ export default function PwaPerfil() {
 
         <div>
           <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 px-2">Segurança e Mais</h3>
-          <div className="bg-white rounded-3xl p-2 shadow-sm border border-gray-100">
+          <div className="mt-surface rounded-3xl p-2">
             <button onClick={handleComingSoon} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-gray-50 p-2.5 rounded-xl text-gray-600"><ShieldCheck className="w-5 h-5" /></div>
@@ -192,7 +192,7 @@ export default function PwaPerfil() {
             <button onClick={handleComingSoon} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-gray-50 p-2.5 rounded-xl text-gray-600"><Settings className="w-5 h-5" /></div>
-                <span className="font-bold text-gray-800 text-sm">Configurações do App</span>
+                <span className="font-bold text-gray-800 text-sm">Configurações do aplicativo</span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-300" />
             </button>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAsaasPayment } from "@/lib/asaas";
-import { requireAuthenticatedUser } from "@/lib/server/auth";
+import { requireAuthenticatedUser, resolveAuthenticatedClient } from "@/lib/server/auth";
 import { processCanceledAsaasPayment, processConfirmedAsaasPayment } from "@/lib/server/asaas-payment-processing";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
@@ -18,20 +18,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createSupabaseAdmin();
-  let { data: client } = await supabase
-    .from("clients")
-    .select("id")
-    .eq("auth_user_id", auth.user.id)
-    .maybeSingle();
-  if (!client && auth.user.email) {
-    const result = await supabase
-      .from("clients")
-      .select("id")
-      .ilike("email", auth.user.email)
-      .limit(1)
-      .maybeSingle();
-    client = result.data;
-  }
+  const client = await resolveAuthenticatedClient(auth.user);
   if (!client) {
     return NextResponse.json({ error: "Cadastro não encontrado" }, { status: 404 });
   }

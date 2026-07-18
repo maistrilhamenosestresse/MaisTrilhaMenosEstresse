@@ -12,16 +12,11 @@ const ALLOWED_STATUSES = new Set([
   'expirado',
 ]);
 const ALLOWED_METHODS = new Set([
+  'INFINITEPAY',
   'PIX',
   'CREDIT_CARD',
-  'PIX_INFINITEPAY',
-  'CREDIT_CARD_INFINITEPAY',
-  'INFINITEPAY',
   'BOLETO',
-  'DINHEIRO',
-  'TRANSFERENCIA',
   'CORTESIA',
-  'ASAAS',
   'SALDO_E_PONTOS',
 ]);
 

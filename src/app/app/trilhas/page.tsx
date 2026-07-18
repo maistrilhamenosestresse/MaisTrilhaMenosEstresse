@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -91,7 +92,7 @@ export default function PwaTrilhas() {
             duration: a.duration_hours ? `${a.duration_hours}h` : "1 Dia",
             difficulty: a.difficulty || "Média",
             price: a.price || 0,
-            image: "🏞️"
+            imageUrl: a.flyer_url || (Array.isArray(a.images) ? a.images[0] : null)
           }));
           setExplorarTrails(mappedExplorar);
         }
@@ -119,26 +120,26 @@ export default function PwaTrilhas() {
   const filteredExplorar = explorarTrails.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="mt-app-page flex min-h-full flex-col">
       {/* Header and Tabs */}
-      <div className="bg-white pt-12 pb-4 px-6 rounded-b-[2.5rem] shadow-sm relative z-10 border-b border-gray-100">
+      <div className="mt-app-header relative z-10 border-b px-4 pb-4 pt-[max(2rem,env(safe-area-inset-top))] sm:px-6">
         <h1 className="text-2xl font-black text-gray-800 mb-6 flex items-center gap-2">
-          <MapPin className="w-6 h-6 text-purple-600" /> Suas Aventuras
+          <MapPin className="w-6 h-6 text-[#D96224]" /> Suas Aventuras
         </h1>
         
         <div className="flex bg-gray-100 p-1 rounded-2xl mb-4 relative">
           <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-in-out ${activeTab === 'explorar' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
           <button 
-            className={`flex-1 py-2.5 text-sm font-bold z-10 transition-colors ${activeTab === 'euVou' ? 'text-purple-700' : 'text-gray-500'}`}
+            className={`flex-1 py-2.5 text-sm font-bold z-10 transition-colors ${activeTab === 'euVou' ? 'text-[#0B2540]' : 'text-gray-500'}`}
             onClick={() => setActiveTab('euVou')}
           >
             Eu Vou
           </button>
           <button 
-            className={`flex-1 py-2.5 text-sm font-bold z-10 transition-colors ${activeTab === 'explorar' ? 'text-purple-700' : 'text-gray-500'}`}
+            className={`flex-1 py-2.5 text-sm font-bold z-10 transition-colors ${activeTab === 'explorar' ? 'text-[#0B2540]' : 'text-gray-500'}`}
             onClick={() => setActiveTab('explorar')}
           >
-            Comprar Mais
+            Explorar
           </button>
         </div>
 
@@ -150,17 +151,17 @@ export default function PwaTrilhas() {
               placeholder="Buscar destino..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-100 border-none rounded-xl pl-10 pr-4 py-3 text-sm font-medium focus:ring-2 focus:ring-purple-500 transition-all outline-none"
+              className="w-full rounded-xl border border-transparent bg-[#F1F3EF] py-3 pl-10 pr-4 text-sm font-medium outline-none transition-all focus:border-orange-200 focus:ring-2 focus:ring-orange-200"
             />
           </motion.div>
         )}
       </div>
 
       {/* Main Content Area */}
-      <div className="px-6 py-6 flex-1 pb-24 overflow-y-auto">
+      <div className="flex-1 px-4 py-6 pb-24 sm:px-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40">
-            <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-4" />
+            <Loader2 className="mb-4 h-8 w-8 animate-spin text-[#D96224]" />
             <p className="text-gray-500 font-medium text-sm">Buscando aventuras...</p>
           </div>
         ) : loadError ? (
@@ -180,15 +181,15 @@ export default function PwaTrilhas() {
                 className="space-y-6"
               >
                 {euVouTrails.length > 0 ? euVouTrails.map((trail) => (
-                  <div key={trail.reservaId} className="bg-white rounded-3xl p-5 shadow-lg border border-gray-100 relative overflow-hidden group">
+                  <div key={trail.reservaId} className="mt-surface group relative overflow-hidden rounded-[1.75rem] p-5">
                     <div className="absolute top-0 right-0 p-4 opacity-5"><Backpack className="w-24 h-24" /></div>
                     
                     <div className="flex gap-4 items-start relative z-10 mb-4">
-                      <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-inner border border-purple-100">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-orange-100 bg-[#FFF0E6] text-3xl shadow-inner">
                         {trail.image}
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 mb-1 inline-block">
+                        <span className="mb-1 inline-block rounded-full bg-[#E7EEF6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#0B2540]">
                           {trail.status}
                         </span>
                         <h3 className="font-black text-gray-800 text-base leading-tight mb-1">{trail.name}</h3>
@@ -215,7 +216,7 @@ export default function PwaTrilhas() {
 
                     <button 
                       onClick={() => router.push(`/app/trilhas/${trail.id}`)}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 relative z-10 group-hover:scale-[1.02]"
+                      className="relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 font-bold text-white shadow-md transition-all hover:bg-[#061B30] group-hover:scale-[1.01]"
                     >
                       <Navigation className="w-4 h-4" /> Acessar Álbum / Informações
                     </button>
@@ -224,7 +225,7 @@ export default function PwaTrilhas() {
                   <div className="text-center py-12">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🎒</div>
                     <h3 className="text-lg font-bold text-gray-800 mb-2">Nenhuma aventura marcada</h3>
-                    <p className="text-sm text-gray-500 px-4">Você ainda não tem trilhas agendadas. Vá para a aba "Comprar Mais" para explorar novos destinos!</p>
+                    <p className="text-sm text-gray-500 px-4">Você ainda não tem trilhas agendadas. Acesse a aba Explorar para conhecer novos destinos!</p>
                   </div>
                 )}
               </motion.div>
@@ -242,11 +243,21 @@ export default function PwaTrilhas() {
                 {filteredExplorar.length > 0 ? filteredExplorar.map((trail) => (
                   <div 
                     key={trail.id} 
-                    onClick={() => router.push(`/agenda/${trail.id}`)}
-                    className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex gap-4 items-center group cursor-pointer hover:border-purple-200 transition-colors"
+                    onClick={() => router.push(`/app/trilhas/${trail.id}/carrinho`)}
+                    className="mt-surface group flex cursor-pointer items-center gap-4 rounded-[1.5rem] p-4 transition-all hover:-translate-y-0.5 hover:border-orange-200"
                   >
-                    <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center text-4xl shrink-0">
-                      {trail.image}
+                    <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-4xl">
+                      {trail.imageUrl ? (
+                        <Image
+                          src={trail.imageUrl}
+                          alt={`Foto da trilha ${trail.name}`}
+                          fill
+                          sizes="80px"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        "🏞️"
+                      )}
                     </div>
                     
                     <div className="flex-1">
@@ -260,10 +271,10 @@ export default function PwaTrilhas() {
                         <p className="text-xs text-gray-500 flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(trail.date)}</p>
                         <p className="text-xs text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {trail.duration}</p>
                       </div>
-                      <p className="font-black text-purple-600">{formatCurrency(trail.price)}</p>
+                      <p className="font-black text-[#D96224]">{formatCurrency(trail.price)}</p>
                     </div>
                     
-                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-purple-500 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#D96224] transition-colors" />
                   </div>
                 )) : (
                   <div className="text-center py-12">

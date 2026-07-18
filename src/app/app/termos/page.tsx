@@ -123,15 +123,15 @@ export default function AppTermsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      <div className="mt-app-page flex min-h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D96224]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-full bg-gray-50 pb-8">
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+    <div className="mt-app-page min-h-full pb-8">
+      <header className="mt-app-header sticky top-0 z-40 flex items-center gap-3 border-b px-4 py-3">
         <button
           type="button"
           onClick={() => router.back()}
@@ -146,14 +146,14 @@ export default function AppTermsPage() {
       </header>
 
       <main className="p-4 sm:p-6 space-y-4 max-w-xl mx-auto">
-        <section className="rounded-[1.75rem] bg-gradient-to-br from-purple-700 to-indigo-900 p-5 text-white shadow-lg">
+        <section className="rounded-[1.75rem] bg-[linear-gradient(145deg,#061526,#0B2540)] p-5 text-white shadow-lg">
           <div className="flex items-start gap-3">
             <span className="w-11 h-11 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-6 h-6" />
             </span>
             <div>
               <h2 className="font-black text-lg">Central de segurança</h2>
-              <p className="text-sm text-purple-100 mt-1 leading-relaxed">
+              <p className="mt-1 text-sm leading-relaxed text-blue-100/80">
                 Leia cada documento, assine as versões atualizadas e baixe sua cópia em PDF.
               </p>
             </div>
@@ -187,8 +187,8 @@ export default function AppTermsPage() {
               proteger suas credenciais e manter os dados cadastrais corretos.
             </p>
             <p>
-              Pix e cartão são processados pela InfinitePay; boleto é processado pelo Asaas. Cashback e pontos seguem as regras mostradas
-              no checkout; valores reservados são devolvidos quando um checkout não é concluído ou
+              Pix e cartão são processados pela InfinitePay; boleto é processado pelo Asaas. Saldo e pontos seguem as regras mostradas
+              na tela de pagamento; valores reservados são devolvidos quando um pagamento não é concluído ou
               quando o fluxo de cancelamento aplicável determina a devolução.
             </p>
             <p>
@@ -246,7 +246,7 @@ export default function AppTermsPage() {
                     <button
                       type="button"
                       onClick={() => openSignature(definition)}
-                      className="rounded-2xl bg-purple-600 text-white py-3.5 font-black flex items-center justify-center gap-2"
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 font-black text-white"
                     >
                       <PenLine className="w-5 h-5" />
                       {signed ? "Assinar novamente" : "Ler e assinar"}
@@ -277,7 +277,7 @@ export default function AppTermsPage() {
           <div className="bg-white w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden max-h-[94dvh] flex flex-col">
             <header className="p-5 border-b border-gray-100 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-600">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D96224]">
                   Versão {activeContract.version}
                 </p>
                 <h2 className="font-black text-gray-900 truncate">Assinar documento</h2>
@@ -312,7 +312,7 @@ export default function AppTermsPage() {
                   type="checkbox"
                   checked={accepted}
                   onChange={(event) => setAccepted(event.target.checked)}
-                  className="mt-1 w-5 h-5 accent-purple-600"
+                  className="mt-1 h-5 w-5 accent-[#F17B37]"
                 />
                 <span className="text-xs text-gray-700 leading-relaxed">
                   Li e compreendi o documento, confirmo a veracidade dos meus dados e aceito assinar eletronicamente.
@@ -329,7 +329,7 @@ export default function AppTermsPage() {
                 type="button"
                 onClick={signContract}
                 disabled={!accepted || signing}
-                className="flex-[1.4] rounded-2xl bg-purple-600 py-3.5 font-black text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex flex-[1.4] items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 font-black text-white disabled:opacity-50"
               >
                 {signing ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                 Confirmar assinatura

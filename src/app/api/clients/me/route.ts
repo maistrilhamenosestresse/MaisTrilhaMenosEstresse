@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import type { User } from '@supabase/supabase-js';
-import { requireAuthenticatedUser } from '@/lib/server/auth';
+import { requireAuthenticatedUser, resolveAuthenticatedClient } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
 export async function GET() {
   const auth = await requireAuthenticatedUser();
   if (auth.response) return auth.response;
-  const client = await resolveClient(auth.user);
+  const client = await resolveAuthenticatedClient(auth.user);
   if (!client) return NextResponse.json({ error: 'Cadastro não encontrado' }, { status: 404 });
   return NextResponse.json({ client });
 }
@@ -20,7 +19,7 @@ export async function PUT(request: Request) {
   const parsed = await readJsonBody<Record<string, unknown>>(request, 100_000);
   if (parsed.response) return parsed.response;
 
-  const client = await resolveClient(auth.user);
+  const client = await resolveAuthenticatedClient(auth.user);
   if (!client) return NextResponse.json({ error: 'Cadastro não encontrado' }, { status: 404 });
   const updates = sanitizeUpdates(parsed.data);
   if ('error' in updates) return NextResponse.json({ error: updates.error }, { status: 400 });
@@ -33,21 +32,6 @@ export async function PUT(request: Request) {
     .single();
   if (error) return NextResponse.json({ error: 'Não foi possível atualizar o cadastro' }, { status: 400 });
   return NextResponse.json({ client: data });
-}
-
-async function resolveClient(user: User) {
-  const supabase = createSupabaseAdmin();
-  const { data: linked } = await supabase.from('clients').select('*').eq('auth_user_id', user.id).maybeSingle();
-  if (linked) return linked;
-  if (!user.email) return null;
-
-  const { data: byEmail } = await supabase.from('clients').select('*').ilike('email', user.email).limit(1).maybeSingle();
-  if (!byEmail) return null;
-  if (!byEmail.auth_user_id) {
-    await supabase.from('clients').update({ auth_user_id: user.id }).eq('id', byEmail.id).is('auth_user_id', null);
-    byEmail.auth_user_id = user.id;
-  }
-  return byEmail.auth_user_id === user.id ? byEmail : null;
 }
 
 function sanitizeUpdates(body: Record<string, unknown>): Record<string, unknown> | { error: string } {

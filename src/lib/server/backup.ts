@@ -13,8 +13,14 @@ const BACKUP_TABLES = [
   'fotos_trilhas', 'produtos', 'pedidos_loja', 'wallet_transactions',
   'points_transactions', 'content_documents', 'profiles', 'asaas_webhook_events',
   'asaas_payments', 'infinitepay_checkouts', 'audit_logs', 'backup_runs',
-  'dependent_registration_invites',
+  'backup_restore_tests', 'dependent_registration_invites',
 ] as const;
+
+const OPTIONAL_TABLES = new Set([
+  'global_stats', 'trilha_custos', 'notificacoes', 'coupon_redemptions',
+  'bolao_apostas', 'settings', 'trilha_gpx', 'fotos_trilhas',
+  'infinitepay_checkouts',
+]);
 
 const MEDIA_PREFIXES = ['legacy-media/', 'media/', 'trilhas/', 'produtos/', 'cadastro-docs/', 'signatures/', 'app-profiles/'];
 
@@ -41,14 +47,12 @@ export async function runServerBackup(triggeredBy: string) {
       try {
         tables[table] = await exportTable(supabase, table);
       } catch (error: any) {
+        if (!OPTIONAL_TABLES.has(table)) throw error;
         warnings.push(`${table}: ${error.message || String(error)}`);
       }
     }
 
-    const authUsers = await exportAuthUsers(supabase).catch((error: any) => {
-      warnings.push(`auth.users: ${error.message || String(error)}`);
-      return [];
-    });
+    const authUsers = await exportAuthUsers(supabase);
 
     const databasePayload = {
       format: 'maistrilha-supabase-backup-v1',
@@ -90,15 +94,30 @@ export async function runServerBackup(triggeredBy: string) {
       },
       warnings,
     };
+    const manifestBody = Buffer.from(JSON.stringify(manifest, null, 2));
+    const manifestChecksum = createHash('sha256').update(manifestBody).digest('hex');
 
     await s3Client.send(new PutObjectCommand({
       Bucket: backupBucket,
       Key: manifestKey,
-      Body: Buffer.from(JSON.stringify(manifest, null, 2)),
+      Body: manifestBody,
       ContentType: 'application/json',
       ServerSideEncryption: 'AES256',
-      Metadata: { backupId },
+      Metadata: { backupId, checksumSha256: manifestChecksum },
     }));
+
+    const [databaseHead, manifestHead] = await Promise.all([
+      s3Client.send(new HeadObjectCommand({ Bucket: backupBucket, Key: databaseKey })),
+      s3Client.send(new HeadObjectCommand({ Bucket: backupBucket, Key: manifestKey })),
+    ]);
+    if (
+      databaseHead.ContentLength !== compressed.length ||
+      databaseHead.Metadata?.checksumsha256 !== checksum ||
+      manifestHead.ContentLength !== manifestBody.length ||
+      manifestHead.Metadata?.checksumsha256 !== manifestChecksum
+    ) {
+      throw new Error('Falha na verificação de integridade dos objetos gravados no backup');
+    }
 
     await supabase.from('backup_runs').update({
       status: 'completed',
@@ -106,6 +125,12 @@ export async function runServerBackup(triggeredBy: string) {
       manifest_key: manifestKey,
       size_bytes: compressed.length,
       checksum_sha256: checksum,
+      manifest_checksum_sha256: manifestChecksum,
+      warnings,
+      table_count: Object.keys(tables).length,
+      auth_user_count: authUsers.length,
+      media_object_count: mediaObjects.length,
+      media_copied_count: mediaMirror.copied,
       completed_at: new Date().toISOString(),
     }).eq('id', backupId);
 

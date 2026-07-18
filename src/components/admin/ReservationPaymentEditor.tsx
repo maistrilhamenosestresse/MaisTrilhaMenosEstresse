@@ -19,16 +19,11 @@ const statuses = [
 ];
 
 const methods = [
-  { value: "PIX", label: "Pix" },
-  { value: "CREDIT_CARD", label: "Cartão" },
-  { value: "PIX_INFINITEPAY", label: "Pix (InfinitePay)" },
-  { value: "CREDIT_CARD_INFINITEPAY", label: "Cartão (InfinitePay)" },
-  { value: "INFINITEPAY", label: "InfinitePay pendente" },
-  { value: "BOLETO", label: "Boleto" },
-  { value: "DINHEIRO", label: "Dinheiro" },
-  { value: "TRANSFERENCIA", label: "Transferência" },
+  { value: "INFINITEPAY", label: "Pix ou cartão (InfinitePay)" },
+  { value: "PIX", label: "Pix legado/manual" },
+  { value: "CREDIT_CARD", label: "Cartão legado/manual" },
+  { value: "BOLETO", label: "Boleto (Asaas)" },
   { value: "CORTESIA", label: "Cortesia" },
-  { value: "ASAAS", label: "Asaas" },
   { value: "SALDO_E_PONTOS", label: "Saldo e pontos" },
 ];
 
@@ -39,7 +34,7 @@ export function ReservationPaymentEditor({
 }: ReservationPaymentEditorProps) {
   const [status, setStatus] = useState("pendente");
   const [amount, setAmount] = useState("0");
-  const [method, setMethod] = useState("PIX");
+  const [method, setMethod] = useState("INFINITEPAY");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +44,7 @@ export function ReservationPaymentEditor({
     if (!reservation) return;
     setStatus(reservation.status_pagamento || "pendente");
     setAmount(String(Number(reservation.valor_pago || 0).toFixed(2)));
-    setMethod(String(reservation.metodo_pagamento || "PIX").toUpperCase());
+    setMethod(String(reservation.metodo_pagamento || "INFINITEPAY").toUpperCase());
     setReason("");
     setError("");
     setWarning("");
@@ -118,8 +113,8 @@ export function ReservationPaymentEditor({
             <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex gap-3 text-amber-800">
               <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
               <p className="text-xs leading-relaxed">
-                Esta reserva possui cobrança no Asaas. A edição abaixo corrige o registro interno,
-                mas não cancela nem estorna a cobrança no Asaas.
+                Esta reserva possui cobrança em um provedor externo. A edição abaixo corrige o registro interno,
+                mas não cancela nem estorna a cobrança na InfinitePay ou no Asaas.
               </p>
             </div>
           )}

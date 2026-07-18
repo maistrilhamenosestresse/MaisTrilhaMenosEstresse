@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
-import { readJsonBody } from '@/lib/server/request';
-import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
-import { verifyAndProcessInfinitePayPayment } from '@/lib/server/infinitepay-payment-processing';
+import { NextResponse } from "next/server";
+import { readJsonBody } from "@/lib/server/request";
+import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { verifyAndProcessInfinitePayPayment } from "@/lib/server/infinitepay-payment-processing";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type InfinitePayWebhook = {
   invoice_slug?: string;
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const slug = safeIdentifier(parsed.data.invoice_slug, 150);
   if (!orderNsu || !transactionNsu || !slug) {
     return NextResponse.json(
-      { success: false, message: 'Identificadores do pagamento ausentes' },
+      { success: false, message: "Identificadores do pagamento ausentes" },
       { status: 400 },
     );
   }
@@ -42,21 +42,25 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({
       success: true,
-      message: result.paid ? null : 'Pagamento ainda não confirmado',
+      message: result.paid ? null : "Pagamento ainda não confirmado",
     });
   } catch (error: any) {
-    console.error('Erro no webhook InfinitePay:', error);
+    console.error("Erro no webhook InfinitePay:", error);
     return NextResponse.json(
-      { success: false, message: error.message || 'Falha ao confirmar pagamento' },
+      { success: false, message: error.message || "Falha ao confirmar pagamento" },
       { status: 400 },
     );
   }
 }
 
 function safeIdentifier(value: unknown, maxLength: number) {
-  const normalized = String(value || '').trim();
-  if (!normalized || normalized.length > maxLength || !/^[a-zA-Z0-9._:-]+$/.test(normalized)) {
-    return '';
+  const normalized = String(value || "").trim();
+  if (
+    !normalized ||
+    normalized.length > maxLength ||
+    !/^[a-zA-Z0-9._:-]+$/.test(normalized)
+  ) {
+    return "";
   }
   return normalized;
 }

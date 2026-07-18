@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { requireAuthenticatedUser } from '@/lib/server/auth';
+import { requireAuthenticatedUser, resolveAuthenticatedClient } from '@/lib/server/auth';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 
@@ -31,12 +31,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = createSupabaseAdmin();
-  let { data: principal } = await supabase.from('clients').select('id, email').eq('auth_user_id', auth.user.id).maybeSingle();
-  if (!principal && auth.user.email) {
-    const result = await supabase.from('clients').select('id, email').ilike('email', auth.user.email).limit(1).maybeSingle();
-    principal = result.data;
-    if (principal) await supabase.from('clients').update({ auth_user_id: auth.user.id }).eq('id', principal.id);
-  }
+  const principal = await resolveAuthenticatedClient(auth.user);
   if (!principal) return NextResponse.json({ error: 'Complete seu cadastro antes de reservar' }, { status: 403 });
   if (parsed.data.client_id && parsed.data.client_id !== principal.id) {
     return NextResponse.json({ error: 'Cliente da reserva não pertence à sessão' }, { status: 403 });

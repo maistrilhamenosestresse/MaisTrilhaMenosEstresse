@@ -51,13 +51,18 @@ export async function getAsaasPayment(paymentId: string) {
   return asaasRequest(`/payments/${encodeURIComponent(paymentId)}`);
 }
 
+export async function cancelAsaasPayment(paymentId: string) {
+  return asaasRequest(`/payments/${encodeURIComponent(paymentId)}`, { method: 'DELETE' });
+}
+
 async function asaasRequest(path: string, init: RequestInit = {}) {
   const baseUrl = (process.env.ASAAS_API_URL || 'https://api.asaas.com/v3').replace(/\/$/, '');
+  const accessToken = requireServerEnv('ASAAS_API_KEY').replace(/^\\(?=\$aact_)/, '');
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'access_token': requireServerEnv('ASAAS_API_KEY'),
+      'access_token': accessToken,
       'User-Agent': 'MaisTrilha/1.0 (Next.js)',
       ...init.headers,
     },

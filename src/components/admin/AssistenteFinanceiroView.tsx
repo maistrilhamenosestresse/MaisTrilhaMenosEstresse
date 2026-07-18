@@ -272,7 +272,7 @@ export default function AssistenteFinanceiroView({ agenda, reservas, custos }: P
                     {formatCurrency(calcularPrecoParaReceita(agenda.price))}
                   </p>
                   <p className="text-xs text-gray-500 leading-tight">
-                    Preço líquido ({formatCurrency(agenda.price)}): Pix/cartão pela InfinitePay e boleto pelo Asaas.
+                    Preço líquido ({formatCurrency(agenda.price)}): Pix e cartão pela InfinitePay; boleto pelo Asaas.
                   </p>
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">

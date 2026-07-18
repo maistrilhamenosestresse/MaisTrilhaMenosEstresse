@@ -58,8 +58,8 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600 mb-4" />
+      <div className="mt-app-page flex min-h-full flex-col items-center justify-center">
+        <Loader2 className="mb-4 h-8 w-8 animate-spin text-[#D96224]" />
         <p className="text-sm font-medium text-gray-500">Preparando a aventura...</p>
       </div>
     );

@@ -52,7 +52,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não foi possível gerar o link" }, { status: 500 });
   }
 
-  const configuredOrigin = String(process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
+  const configuredOrigin = String(
+    process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || "",
+  ).replace(/\/$/, "");
   const origin = configuredOrigin || new URL(request.url).origin;
   const signingUrl = `${origin}/contratos/assinar/${encodeURIComponent(token)}`;
 

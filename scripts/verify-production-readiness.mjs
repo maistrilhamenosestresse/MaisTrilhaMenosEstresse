@@ -17,6 +17,7 @@ const successes = [];
 const allowSandbox = process.argv.includes('--allow-sandbox');
 const officialSiteUrl = 'https://www.maistrilhasmenosestresse.com';
 const officialWebhookUrl = `${officialSiteUrl}/api/webhooks/asaas`;
+const officialInfinitePayWebhookUrl = `${officialSiteUrl}/api/webhooks/infinitepay`;
 
 const requiredVariables = [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -25,6 +26,7 @@ const requiredVariables = [
   'ADMIN_EMAILS',
   'ASAAS_API_KEY',
   'ASAAS_WEBHOOK_TOKEN',
+  'INFINITEPAY_HANDLE',
   'AWS_ACCESS_KEY_ID',
   'AWS_SECRET_ACCESS_KEY',
   'AWS_S3_BUCKET_NAME',
@@ -40,7 +42,7 @@ for (const name of requiredVariables) {
 
 if (!allowSandbox) checkProductionUrls();
 
-const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET', 'NEXTAUTH_SECRET'];
+const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET'];
 const configuredSecrets = [];
 for (const name of secretNames) {
   const value = process.env[name]?.trim();
@@ -70,6 +72,7 @@ if (connectivityVariables.some((name) => !process.env[name]?.trim())) finish();
 await checkSupabase();
 await checkAws();
 await checkAsaas();
+checkInfinitePay();
 finish();
 
 async function checkSupabase() {
@@ -92,7 +95,8 @@ async function checkSupabase() {
       'agendas', 'clients', 'reservas', 'profiles', 'wallet_transactions',
       'points_transactions', 'content_documents', 'asaas_webhook_events',
       'asaas_payments', 'audit_logs', 'backup_runs', 'dependent_registration_invites',
-      'api_rate_limits', 'pedidos_loja',
+      'backup_restore_tests', 'api_rate_limits', 'pedidos_loja',
+      'infinitepay_checkouts',
     ];
     const rpcs = [
       'consume_api_rate_limit', 'redeem_campaign_coupon', 'create_pending_reservation_batch',
@@ -100,6 +104,7 @@ async function checkSupabase() {
       'release_reservation_checkout_claim', 'create_store_order',
       'finalize_store_order_from_asaas', 'cancel_store_order',
       'credit_wallet_from_asaas', 'reverse_wallet_credit_from_asaas',
+      'credit_wallet_from_provider',
       'award_points_from_asaas', 'increment_agenda_views',
     ];
     for (const table of tables) {
@@ -117,6 +122,35 @@ async function checkSupabase() {
       .maybeSingle();
     if (error) failures.push(`não foi possível verificar content_documents: ${safeMessage(error)}`);
     else if (!data) failures.push('manifesto de mídias ainda não foi sincronizado em content_documents');
+
+    const { data: verifiedBackup, error: backupError } = await supabase
+      .from('backup_runs')
+      .select('id, completed_at, integrity_verified_at')
+      .eq('status', 'completed')
+      .not('integrity_verified_at', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (backupError) {
+      failures.push(`não foi possível verificar o último backup: ${safeMessage(backupError)}`);
+    } else if (!verifiedBackup) {
+      failures.push('nenhum backup concluído passou pelo teste de restauração/integridade');
+    } else {
+      const { data: restoreTest, error: restoreError } = await supabase
+        .from('backup_restore_tests')
+        .select('id')
+        .eq('backup_run_id', verifiedBackup.id)
+        .eq('status', 'completed')
+        .eq('database_checksum_valid', true)
+        .eq('manifest_checksum_valid', true)
+        .limit(1)
+        .maybeSingle();
+      if (restoreError) {
+        failures.push(`não foi possível verificar o teste de restauração: ${safeMessage(restoreError)}`);
+      } else if (!restoreTest) {
+        failures.push('o backup marcado como íntegro não possui teste de restauração concluído');
+      }
+    }
 
     await checkAnonymousSupabaseBoundaries(url, anonKey);
     if (failures.length === failureCountBefore) {
@@ -196,13 +230,14 @@ async function checkAws() {
 async function checkAsaas() {
   try {
     const baseUrl = (process.env.ASAAS_API_URL || 'https://api.asaas.com/v3').replace(/\/$/, '');
+    const accessToken = required('ASAAS_API_KEY').replace(/^\\(?=\$aact_)/, '');
     const asaasHost = new URL(baseUrl).hostname;
     if (asaasHost.includes('sandbox') && !allowSandbox) {
       failures.push('Asaas ainda está no ambiente sandbox; use https://api.asaas.com/v3 para produção');
     }
     const response = await fetch(`${baseUrl}/customers?limit=1&offset=0`, {
       headers: {
-        access_token: required('ASAAS_API_KEY'),
+        access_token: accessToken,
         'user-agent': 'MaisTrilha/production-readiness',
       },
     });
@@ -213,8 +248,36 @@ async function checkAsaas() {
   }
 }
 
+function checkInfinitePay() {
+  try {
+    const handle = required('INFINITEPAY_HANDLE')
+      .replace(/^\\?(?=\$)/, '')
+      .replace(/^\$/, '')
+      .trim();
+    if (!/^[a-zA-Z0-9_.-]{3,80}$/.test(handle)) {
+      throw new Error('INFINITEPAY_HANDLE inválido');
+    }
+
+    const apiUrl = new URL(
+      (process.env.INFINITEPAY_API_URL || 'https://api.checkout.infinitepay.io').replace(/\/$/, ''),
+    );
+    if (apiUrl.protocol !== 'https:' || apiUrl.hostname !== 'api.checkout.infinitepay.io') {
+      throw new Error('INFINITEPAY_API_URL deve usar https://api.checkout.infinitepay.io');
+    }
+
+    const publicUrl = (process.env.INFINITEPAY_PUBLIC_BASE_URL || '').replace(/\/+$/, '');
+    if (!allowSandbox && publicUrl !== officialSiteUrl) {
+      failures.push(`INFINITEPAY_PUBLIC_BASE_URL deve usar o domínio oficial ${officialSiteUrl}`);
+      return;
+    }
+    successes.push(`InfinitePay: InfiniteTag e endpoints validados (${officialInfinitePayWebhookUrl})`);
+  } catch (error) {
+    failures.push(`InfinitePay mal configurada: ${safeMessage(error)}`);
+  }
+}
+
 function checkProductionUrls() {
-  const productionUrls = ['NEXTAUTH_URL', 'NEXT_PUBLIC_BASE_URL', 'NEXT_PUBLIC_SITE_URL'];
+  const productionUrls = ['NEXT_PUBLIC_BASE_URL', 'NEXT_PUBLIC_SITE_URL'];
   for (const name of productionUrls) {
     const value = process.env[name]?.trim().replace(/\/+$/, '');
     if (!value) {
@@ -223,8 +286,8 @@ function checkProductionUrls() {
       failures.push(`${name} deve usar o domínio oficial ${officialSiteUrl}`);
     }
   }
-  if (!failures.some((failure) => /NEXTAUTH_URL|NEXT_PUBLIC_BASE_URL|NEXT_PUBLIC_SITE_URL/.test(failure))) {
-    successes.push(`Site: domínio oficial e webhook Asaas (${officialWebhookUrl})`);
+  if (!failures.some((failure) => /NEXT_PUBLIC_BASE_URL|NEXT_PUBLIC_SITE_URL/.test(failure))) {
+    successes.push(`Site: domínio oficial, webhook Asaas (${officialWebhookUrl}) e InfinitePay (${officialInfinitePayWebhookUrl})`);
   }
 }
 

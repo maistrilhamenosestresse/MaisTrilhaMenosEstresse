@@ -8,7 +8,7 @@ import { requireServerEnv } from '@/lib/server/env';
 export async function enforceRateLimit(request: Request, scope: string, limit: number, windowSeconds: number) {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const identity = forwarded || request.headers.get('x-real-ip') || 'unknown';
-  const secret = process.env.RATE_LIMIT_SECRET || process.env.NEXTAUTH_SECRET || requireServerEnv('CRON_SECRET');
+  const secret = requireServerEnv('RATE_LIMIT_SECRET');
   const rateKey = createHash('sha256').update(`${secret}:${scope}:${identity}`).digest('hex');
   const { data: allowed, error } = await createSupabaseAdmin().rpc('consume_api_rate_limit', {
     p_rate_key: rateKey,

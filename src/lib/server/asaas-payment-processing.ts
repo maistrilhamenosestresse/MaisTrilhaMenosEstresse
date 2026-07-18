@@ -64,19 +64,34 @@ export async function processConfirmedProviderPayment(
   }
 
   if (reference.startsWith('RECARGA:')) {
-    const clientId = reference.split(':')[1];
-    const { data: credited, error } = await supabase.rpc('credit_wallet_from_provider', {
-      p_client_id: clientId,
-      p_payment_id: paymentId,
-      p_amount: paidValue,
-      p_description: `Recarga de carteira via ${providerLabel(payment.provider)}`,
-      p_provider: payment.provider === 'INTERNAL' ? 'ASAAS' : payment.provider,
-    });
+    const [, clientId, netAmountCents] = reference.split(':');
+    const configuredAmount = Number(netAmountCents) / 100;
+    const creditAmount = Number.isFinite(configuredAmount) && configuredAmount > 0
+      ? configuredAmount
+      : paidValue;
+    if (creditAmount > paidValue + 0.01) {
+      throw new Error('Valor recebido abaixo da recarga contratada');
+    }
+    const creditRpc = payment.provider === 'INFINITEPAY'
+      ? await supabase.rpc('credit_wallet_from_provider', {
+          p_client_id: clientId,
+          p_payment_id: paymentId,
+          p_amount: creditAmount,
+          p_description: 'Recarga de carteira via InfinitePay',
+          p_provider: 'INFINITEPAY',
+        })
+      : await supabase.rpc('credit_wallet_from_asaas', {
+          p_client_id: clientId,
+          p_payment_id: paymentId,
+          p_amount: creditAmount,
+          p_description: 'Recarga de carteira via Asaas',
+        });
+    const { data: credited, error } = creditRpc;
     if (error) throw error;
     if (credited) {
       await supabase.from('notificacoes').insert({
         tipo: 'recarga', titulo: 'Recarga confirmada',
-        mensagem: `Recarga de R$ ${paidValue.toFixed(2)} confirmada.`, lida: false,
+        mensagem: `Recarga de R$ ${creditAmount.toFixed(2)} confirmada.`, lida: false,
       });
     }
     return credited ? 'completed' : 'duplicate';
@@ -295,7 +310,7 @@ async function completeTrailPayment(
 }
 
 function providerLabel(provider: PaymentProvider) {
-  if (provider === 'INFINITEPAY') return 'InfinitePay';
   if (provider === 'INTERNAL') return 'saldo e pontos';
+  if (provider === 'INFINITEPAY') return 'InfinitePay';
   return 'Asaas';
 }

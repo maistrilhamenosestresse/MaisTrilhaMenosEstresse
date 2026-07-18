@@ -16,15 +16,15 @@ function isMobileRequest(requestHeaders: Headers) {
 function DesktopBlockedScreen() {
   return (
     <div className="min-h-[100dvh] bg-[#0F1722] text-white flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-purple-600/20 blur-3xl" />
+      <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#F17B37]/20 blur-3xl" />
       <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-[#F17B37]/15 blur-3xl" />
 
       <div className="relative z-10 w-full max-w-lg text-center bg-white/5 border border-white/10 rounded-[2rem] p-8 md:p-12 shadow-2xl backdrop-blur-xl">
-        <div className="w-24 h-24 mx-auto mb-7 rounded-3xl bg-purple-500/15 border border-purple-400/20 flex items-center justify-center">
-          <MonitorX className="w-12 h-12 text-purple-300" />
+        <div className="w-24 h-24 mx-auto mb-7 rounded-3xl bg-[#F17B37]/15 border border-orange-300/20 flex items-center justify-center">
+          <MonitorX className="w-12 h-12 text-orange-200" />
         </div>
 
-        <p className="text-purple-300 text-xs font-black uppercase tracking-[0.25em] mb-3">MaisTrilha App</p>
+        <p className="text-orange-200 text-xs font-black uppercase tracking-[0.25em] mb-3">Aplicativo MaisTrilha</p>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Acesso exclusivo pelo celular</h1>
         <p className="text-gray-300 leading-relaxed mb-8">
           Esta área foi desenvolvida especialmente para dispositivos móveis. Abra este endereço no seu celular ou tablet para acessar sua carteira, trilhas, loja, ranking e perfil.

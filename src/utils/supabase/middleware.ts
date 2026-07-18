@@ -36,11 +36,18 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const { data: ownProfile } = user
+    ? await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    : { data: null }
   const adminEmails = (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
-  const isAdmin = !!user?.email && (user.app_metadata?.role === 'admin' || adminEmails.includes(user.email.toLowerCase()))
+  const isAdmin = !!user && (
+    ownProfile?.role === 'admin' ||
+    user.app_metadata?.role === 'admin' ||
+    (!!user.email && adminEmails.includes(user.email.toLowerCase()))
+  )
   const isAppRoute = request.nextUrl.pathname.startsWith('/app')
   const isAppLogin = request.nextUrl.pathname.startsWith('/app/login')
 
