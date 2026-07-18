@@ -1,4 +1,4 @@
-const { withAppBuildGradle, withInfoPlist, withXcodeProject } = require("expo/config-plugins");
+const { withInfoPlist, withXcodeProject } = require("expo/config-plugins");
 const crypto = require("node:crypto");
 
 module.exports = function withNearbyIos(config) {
@@ -11,16 +11,6 @@ module.exports = function withNearbyIos(config) {
       ...(result.modResults.NSBonjourServices || []),
       bonjour,
     ]));
-    return result;
-  });
-  config = withAppBuildGradle(config, (result) => {
-    const dependency = 'implementation "com.google.android.gms:play-services-nearby:19.3.0"';
-    if (!result.modResults.contents.includes(dependency)) {
-      result.modResults.contents = result.modResults.contents.replace(
-        /dependencies\s*\{/,
-        `dependencies {\n    ${dependency}`,
-      );
-    }
     return result;
   });
   return withXcodeProject(config, (result) => {

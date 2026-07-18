@@ -1,4 +1,4 @@
-package app
+package expo.modules.nearbymesh
 
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
@@ -60,7 +60,14 @@ class NearbyMesh : Module() {
       lifecycleCallback,
       AdvertisingOptions.Builder().setStrategy(strategy).build(),
     ).addOnFailureListener { error ->
-      sendEvent("onStatus", mapOf("state" to "error", "peers" to connected.size, "detail" to (error.message ?: "Falha ao anunciar")))
+      sendEvent(
+        "onStatus",
+        mapOf(
+          "state" to "error",
+          "peers" to connected.size,
+          "detail" to (error.message ?: "Falha ao anunciar"),
+        ),
+      )
     }
   }
 
@@ -71,7 +78,14 @@ class NearbyMesh : Module() {
       DiscoveryOptions.Builder().setStrategy(strategy).build(),
     ).addOnSuccessListener { sendStatus("running") }
       .addOnFailureListener { error ->
-        sendEvent("onStatus", mapOf("state" to "error", "peers" to connected.size, "detail" to (error.message ?: "Falha ao procurar")))
+        sendEvent(
+          "onStatus",
+          mapOf(
+            "state" to "error",
+            "peers" to connected.size,
+            "detail" to (error.message ?: "Falha ao procurar"),
+          ),
+        )
       }
   }
 
@@ -82,6 +96,7 @@ class NearbyMesh : Module() {
       client.requestConnection(endpointName, endpointId, lifecycleCallback)
         .addOnFailureListener { pending.remove(endpointId) }
     }
+
     override fun onEndpointLost(endpointId: String) {
       pending.remove(endpointId)
     }
@@ -95,11 +110,13 @@ class NearbyMesh : Module() {
       }
       client.acceptConnection(endpointId, payloadCallback)
     }
+
     override fun onConnectionResult(endpointId: String, result: ConnectionResolution) {
       pending.remove(endpointId)
       if (result.status.isSuccess) connected.add(endpointId) else connected.remove(endpointId)
       sendStatus("running")
     }
+
     override fun onDisconnected(endpointId: String) {
       connected.remove(endpointId)
       pending.remove(endpointId)
@@ -111,8 +128,12 @@ class NearbyMesh : Module() {
     override fun onPayloadReceived(endpointId: String, payload: Payload) {
       if (payload.type != Payload.Type.BYTES) return
       val bytes = payload.asBytes() ?: return
-      sendEvent("onMessage", mapOf("endpointId" to endpointId, "data" to String(bytes, StandardCharsets.UTF_8)))
+      sendEvent(
+        "onMessage",
+        mapOf("endpointId" to endpointId, "data" to String(bytes, StandardCharsets.UTF_8)),
+      )
     }
+
     override fun onPayloadTransferUpdate(endpointId: String, update: PayloadTransferUpdate) = Unit
   }
 

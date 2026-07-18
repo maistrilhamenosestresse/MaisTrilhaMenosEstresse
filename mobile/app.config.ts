@@ -17,7 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   newArchEnabled: true,
   experiments: {
     inlineModules: {
-      watchedDirectories: ["native"]
+      watchedDirectories: ["native-ios"]
     }
   },
   scheme: isGuide ? "maistrilhaguia" : "maistrilha",
