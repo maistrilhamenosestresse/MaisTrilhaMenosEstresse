@@ -15,6 +15,7 @@ import {
 
 const INSTALL_DISMISSED_KEY = "mt-pwa-install-dismissed";
 const INSTALL_CONFIRMED_KEY = "mt-pwa-install-confirmed";
+const NOTIFICATION_DISMISSED_SESSION_KEY = "mt-pwa-notification-dismissed";
 
 const topicOptions = [
   {
@@ -51,10 +52,12 @@ export function PwaEngagementCard({ compact = false }: Props) {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIos, setIsIos] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [platformReady, setPlatformReady] = useState(false);
   const [installConfirmed, setInstallConfirmed] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
+  const [notificationDismissed, setNotificationDismissed] = useState(false);
   const [compactOpen, setCompactOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [topics, setTopics] = useState<string[]>(topicOptions.map((item) => item.value));
@@ -69,13 +72,16 @@ export function PwaEngagementCard({ compact = false }: Props) {
   const refresh = useCallback(async () => {
     if (typeof window === "undefined") return;
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const android = /android/i.test(navigator.userAgent);
     const installed = window.matchMedia("(display-mode: standalone)").matches ||
       Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
     setIsIos(ios);
+    setIsAndroid(android);
     setStandalone(installed);
     if (installed) localStorage.setItem(INSTALL_CONFIRMED_KEY, "1");
     setInstallConfirmed(installed || localStorage.getItem(INSTALL_CONFIRMED_KEY) === "1");
     setInstallDismissed(localStorage.getItem(INSTALL_DISMISSED_KEY) === "1");
+    setNotificationDismissed(sessionStorage.getItem(NOTIFICATION_DISMISSED_SESSION_KEY) === "1");
     setPlatformReady(true);
     if ("Notification" in window) setPermission(Notification.permission);
 
@@ -109,6 +115,7 @@ export function PwaEngagementCard({ compact = false }: Props) {
       setInstallConfirmed(true);
       setStandalone(true);
       setInstallDismissed(false);
+      setCompactOpen(true);
       setInstallPrompt(null);
     };
     const displayMode = window.matchMedia("(display-mode: standalone)");
@@ -147,6 +154,22 @@ export function PwaEngagementCard({ compact = false }: Props) {
     setCompactOpen(false);
   };
 
+  const dismissNotificationNotice = () => {
+    sessionStorage.setItem(NOTIFICATION_DISMISSED_SESSION_KEY, "1");
+    setNotificationDismissed(true);
+    setCompactOpen(false);
+  };
+
+  const sendTestNotification = async () => {
+    const response = await fetch("/api/push/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Não foi possível enviar a notificação de teste.");
+    return result;
+  };
+
   const subscribe = async () => {
     setBusy(true);
     setMessage("");
@@ -176,7 +199,12 @@ export function PwaEngagementCard({ compact = false }: Props) {
       });
       await saveSubscription(subscription, topics);
       setSubscribed(true);
-      setMessage("Pronto! Você receberá somente os avisos escolhidos.");
+      try {
+        await sendTestNotification();
+        setMessage("Pronto! Enviamos uma notificação de teste para este aparelho.");
+      } catch (testError: any) {
+        setMessage(`Notificações ativadas, mas o teste falhou: ${testError.message}`);
+      }
     } catch (error: any) {
       setMessage(error.message || "Não foi possível ativar as notificações.");
     } finally {
@@ -202,6 +230,19 @@ export function PwaEngagementCard({ compact = false }: Props) {
       setMessage("Notificações desativadas neste aparelho.");
     } catch {
       setMessage("Não foi possível desativar agora. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const testNotification = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await sendTestNotification();
+      setMessage("Teste enviado. Verifique a barra de notificações do aparelho.");
+    } catch (testError: any) {
+      setMessage(testError.message || "Não foi possível enviar o teste.");
     } finally {
       setBusy(false);
     }
@@ -234,7 +275,67 @@ export function PwaEngagementCard({ compact = false }: Props) {
   };
 
   if (compact) {
-    if (!platformReady || standalone || installConfirmed || installDismissed) return null;
+    if (!platformReady) return null;
+    const installedForNotice = standalone || installConfirmed;
+
+    if (installedForNotice) {
+      if (loading || subscribed || notificationDismissed) return null;
+
+      return (
+        <section className="overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-[0_10px_28px_rgba(11,37,64,0.08)]">
+          <div className="flex items-center gap-2 p-2">
+            <button
+              type="button"
+              onClick={() => setCompactOpen((open) => !open)}
+              aria-expanded={compactOpen}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 text-left"
+            >
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#FFF0E6] text-[#D96224]">
+                <Bell className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-[#071829]">Ative as notificações</span>
+                <span className="block truncate text-[11px] text-slate-500">Receba vagas, lembretes e benefícios</span>
+              </span>
+              <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${compactOpen ? "rotate-180" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={dismissNotificationNotice}
+              aria-label="Fechar aviso de notificações"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {compactOpen ? (
+            <div className="space-y-3 border-t border-slate-100 bg-[#FFFBF7] p-4">
+              <p className="text-xs leading-relaxed text-slate-600">
+                Toque abaixo e permita os avisos do aplicativo. Em seguida enviaremos um teste para confirmar.
+              </p>
+              {message ? <p className="rounded-xl bg-white p-3 text-center text-xs font-bold text-slate-700">{message}</p> : null}
+              {permission === "denied" ? (
+                <p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">
+                  O Android bloqueou os avisos. Abra as configurações do aplicativo e permita notificações.
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={subscribe}
+                disabled={busy || !configured || permission === "denied"}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D96224] py-3.5 text-sm font-black text-white disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bell className="h-5 w-5" />}
+                Ativar e enviar teste
+              </button>
+            </div>
+          ) : null}
+        </section>
+      );
+    }
+
+    if (installDismissed) return null;
 
     return (
       <section className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_10px_28px_rgba(11,37,64,0.08)]">
@@ -279,6 +380,18 @@ export function PwaEngagementCard({ compact = false }: Props) {
               >
                 <Download className="h-5 w-5" /> Instalar agora
               </button>
+            ) : isAndroid ? (
+              <div className="space-y-3">
+                <a
+                  href="/api/app/android"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 text-sm font-black text-white"
+                >
+                  <Download className="h-5 w-5" /> Baixar instalador Android
+                </a>
+                <p className="rounded-2xl bg-white p-3 text-xs leading-relaxed text-slate-600">
+                  Você também pode abrir o menu do Chrome e escolher “Instalar aplicativo”.
+                </p>
+              </div>
             ) : (
               <p className="rounded-2xl bg-white p-3 text-xs leading-relaxed text-slate-600">
                 Abra o menu do navegador e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.
@@ -347,6 +460,21 @@ export function PwaEngagementCard({ compact = false }: Props) {
           </button>
         ) : null}
 
+        {isAndroid && !standalone ? (
+          <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <p className="text-xs font-black uppercase tracking-wider text-[#0B2540]">Instalador Android</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Instale a versão APK ligada ao site oficial para usar o app em tela cheia e receber notificações.
+            </p>
+            <a
+              href="/api/app/android"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 text-sm font-black text-white"
+            >
+              <Download className="h-5 w-5" /> Baixar APK oficial
+            </a>
+          </div>
+        ) : null}
+
         {!compact || !subscribed ? (
           <div className="space-y-2">
             {topicOptions.map((option) => {
@@ -380,6 +508,18 @@ export function PwaEngagementCard({ compact = false }: Props) {
 
         {message ? (
           <p aria-live="polite" className="text-center text-xs font-bold text-slate-600">{message}</p>
+        ) : null}
+
+        {subscribed ? (
+          <button
+            type="button"
+            onClick={testNotification}
+            disabled={busy || !configured}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D96224] py-4 text-sm font-black text-white disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bell className="h-5 w-5" />}
+            Enviar notificação de teste
+          </button>
         ) : null}
 
         <button

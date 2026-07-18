@@ -1,0 +1,59 @@
+{
+  "packageId": "com.maistrilhasmenosestresse.app",
+  "host": "www.maistrilhasmenosestresse.com",
+  "name": "Mais Trilha Menos Estresse",
+  "launcherName": "Mais Trilha",
+  "display": "standalone",
+  "themeColor": "#071829",
+  "themeColorDark": "#071829",
+  "navigationColor": "#071829",
+  "navigationColorDark": "#071829",
+  "navigationDividerColor": "#071829",
+  "navigationDividerColorDark": "#071829",
+  "backgroundColor": "#F4F7FA",
+  "enableNotifications": true,
+  "startUrl": "/app",
+  "iconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/512",
+  "maskableIconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/512",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./mais-trilha-release.p12",
+    "alias": "mais-trilha"
+  },
+  "appVersion": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Comprar trilha",
+      "shortName": "Trilhas",
+      "url": "/app/trilhas",
+      "chosenIconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/192"
+    },
+    {
+      "name": "Meus benefícios",
+      "shortName": "Benefícios",
+      "url": "/app/beneficios",
+      "chosenIconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/192"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://www.maistrilhasmenosestresse.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 23,
+  "orientation": "portrait",
+  "fingerprints": [
+    {
+      "name": "release",
+      "value": "13:96:16:2D:D8:28:00:E6:1D:DB:CA:E2:EC:C9:50:6D:F8:0B:37:44:15:08:8E:49:B9:1E:32:B1:E9:1C:AF:7E"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "features": {}
+}

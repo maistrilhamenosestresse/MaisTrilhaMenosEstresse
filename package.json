@@ -18,7 +18,8 @@
     "db:migrate": "node scripts/apply-supabase-migration.mjs",
     "readiness:check": "node scripts/verify-production-readiness.mjs",
     "readiness:test": "node scripts/verify-production-readiness.mjs --allow-sandbox",
-    "push:setup": "node scripts/setup-web-push.mjs"
+    "push:setup": "node scripts/setup-web-push.mjs",
+    "android:upload": "node scripts/upload-android-apk.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1087.0",

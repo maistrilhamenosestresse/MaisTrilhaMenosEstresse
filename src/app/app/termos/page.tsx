@@ -140,7 +140,7 @@ export default function AppTermsPage() {
           <ChevronLeft className="w-5 h-5 text-gray-700" />
         </button>
         <div className="min-w-0">
-          <h1 className="font-black text-gray-900">Termos e documentos</h1>
+          <h1 className="font-black text-gray-900">Termos e contratos</h1>
           <p className="text-xs text-gray-500">Seus aceites e contratos assinados</p>
         </div>
       </header>

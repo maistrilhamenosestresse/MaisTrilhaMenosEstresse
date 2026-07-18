@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+/.android-signing/
+/android/*.p12
 
 # debug
 npm-debug.log*

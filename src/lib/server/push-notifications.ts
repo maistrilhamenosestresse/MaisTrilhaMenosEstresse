@@ -23,6 +23,7 @@ type PushPayload = {
 type PushCampaignInput = PushPayload & {
   topic?: PushTopic;
   clientIds?: string[];
+  authUserIds?: string[];
   createdBy?: string;
   dedupeKey?: string;
   audience?: string;
@@ -88,6 +89,9 @@ export async function sendPushCampaign(input: PushCampaignInput) {
     if (input.topic) query = query.contains("topics", [input.topic]);
     if (input.clientIds?.length) {
       query = query.in("client_id", [...new Set(input.clientIds)].slice(0, 1000));
+    }
+    if (input.authUserIds?.length) {
+      query = query.in("auth_user_id", [...new Set(input.authUserIds)].slice(0, 1000));
     }
 
     const { data, error } = await query;

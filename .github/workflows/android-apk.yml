@@ -1,0 +1,77 @@
+name: Gerar instalador Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: APK e Android App Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Preparar Android e Bubblewrap
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          npm install --global @bubblewrap/cli@1.24.1
+          mkdir -p "$HOME/.bubblewrap"
+          printf '{"jdkPath":"%s","androidSdkPath":"%s"}\n' "$JAVA_HOME" "$ANDROID_SDK_ROOT" > "$HOME/.bubblewrap/config.json"
+
+      - name: Restaurar chave de assinatura
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/mais-trilha-release.p12
+
+      - name: Gerar projeto Android
+        shell: bash
+        run: |
+          cd android
+          bubblewrap update \
+            --manifest="$PWD/twa-manifest.json" \
+            --directory="$PWD" \
+            --skipVersionUpgrade
+
+      - name: Compilar e assinar APK
+        shell: bash
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd android
+          bubblewrap build \
+            --manifest="$PWD/twa-manifest.json" \
+            --directory="$PWD" \
+            --skipPwaValidation \
+            --signingKeyPath="$PWD/mais-trilha-release.p12" \
+            --signingKeyAlias="${{ secrets.ANDROID_KEY_ALIAS }}"
+
+      - name: Publicar arquivos para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: mais-trilha-android
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            android/app-release-signed.apk
+            android/app-release-bundle.aab
