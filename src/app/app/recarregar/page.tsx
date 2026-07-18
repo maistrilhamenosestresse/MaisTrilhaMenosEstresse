@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
+import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function PwaRecarregar() {
   const router = useRouter();
@@ -16,8 +17,8 @@ export default function PwaRecarregar() {
   useEffect(() => {
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        const { data: client } = await supabase.from('clients').select('id').eq('email', user.email).single();
+      if (user) {
+        const client = await fetchCurrentClient<{ id: string }>();
         if (client) setClientId(client.id);
       }
     }

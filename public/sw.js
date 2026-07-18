@@ -26,7 +26,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body,
     icon: '/api/pwa/icon/192',
-    badge: '/api/pwa/icon/192',
+    badge: '/api/pwa/icon/192?purpose=badge',
     tag: String(payload.tag || 'mais-trilha').slice(0, 100),
     renotify: true,
     data: { url },

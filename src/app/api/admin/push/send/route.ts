@@ -15,6 +15,16 @@ type SendBody = {
   topic?: string;
 };
 
+const ALLOWED_DESTINATIONS = new Set([
+  "/app",
+  "/app/trilhas",
+  "/app/passaporte",
+  "/app/beneficios",
+  "/app/loja",
+  "/app/extratos",
+  "/app/configuracoes",
+]);
+
 export async function POST(request: Request) {
   const originError = assertSameOrigin(request);
   if (originError) return originError;
@@ -30,12 +40,16 @@ export async function POST(request: Request) {
   if (!PUSH_TOPICS.includes(topic as PushTopic)) {
     return NextResponse.json({ error: "Categoria de notificação inválida" }, { status: 400 });
   }
+  const url = String(parsed.data.url || "/app");
+  if (!ALLOWED_DESTINATIONS.has(url)) {
+    return NextResponse.json({ error: "Destino da notificação inválido" }, { status: 400 });
+  }
 
   try {
     const result = await sendPushCampaign({
       title: String(parsed.data.title || ""),
       body: String(parsed.data.body || ""),
-      url: String(parsed.data.url || "/app"),
+      url,
       topic: topic as PushTopic,
       createdBy: auth.user.id,
       audience: "manual_admin_broadcast",

@@ -4,6 +4,7 @@ import { ChevronLeft, History, ArrowUpRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function PwaExtratos() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function PwaExtratos() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       
-      const { data: client } = await supabase.from('clients').select('*').eq('email', user.email).single();
+      const client = await fetchCurrentClient<any>();
       
       if (client) {
         setSaldo(client.cashback_saldo || 0);

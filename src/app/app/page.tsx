@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDownRight, Plus, History, Star, ChevronRight, Gift, ShoppingBag, PackageOpen } from "lucide-react";
+import { ArrowDownRight, Plus, History, Star, ChevronRight, Gift, ShoppingBag, PackageOpen, Stamp } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -45,12 +45,10 @@ export default function PwaDashboard() {
       setFeaturedProducts((products || []) as FeaturedProduct[]);
       setProductsLoading(false);
       
-      if (user?.email) {
-        const { data: client } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('email', user.email)
-          .single();
+      if (user) {
+        const profileResponse = await fetch("/api/clients/me", { cache: "no-store" });
+        const profileResult = await profileResponse.json().catch(() => ({}));
+        const client = profileResponse.ok ? profileResult.client : null;
             
         if (client) {
           setClientData(client);
@@ -185,6 +183,23 @@ export default function PwaDashboard() {
       {/* Seção Loja / Benefícios */}
       <div className="mt-8 flex-1 space-y-7 px-4 pb-8 sm:px-6">
         <PwaEngagementCard compact />
+
+        <button
+          type="button"
+          onClick={() => router.push("/app/passaporte")}
+          className="relative flex w-full items-center gap-4 overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#071829,#12385E)] p-5 text-left text-white shadow-xl"
+        >
+          <span className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-400/15 blur-2xl" />
+          <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10">
+            <Stamp className="h-7 w-7 text-orange-200" />
+          </span>
+          <span className="relative min-w-0 flex-1">
+            <span className="block text-[10px] font-black uppercase tracking-[0.2em] text-orange-200">Sua jornada</span>
+            <span className="mt-1 block text-lg font-black">Passaporte de Trilhas</span>
+            <span className="mt-1 block text-xs text-blue-100/70">Colecione selos e acompanhe suas conquistas.</span>
+          </span>
+          <ChevronRight className="relative h-5 w-5 shrink-0 text-white/70" />
+        </button>
 
         <div>
           <div className="flex justify-between items-end mb-4">

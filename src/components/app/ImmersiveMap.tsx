@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, useMap, LayersControl, Tooltip, Circle } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, Polyline, Marker, useMap, Tooltip, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Camera, Droplets, Eye } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { renderToStaticMarkup } from "react-dom/server";
+import { getOfflineTrail, saveOfflineTrail } from "@/lib/app/offline-trails";
 
 // ---------------------------------------------------------
 // Ícones Customizados
@@ -29,28 +28,6 @@ const endIcon = createHtmlIcon(
   `<div style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 4px; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;"><div style="width: 8px; height: 8px; background-color: white; border-radius: 1px;"></div></div>`,
   [24, 24], [12, 12]
 );
-
-// POIs
-const cameraIconHtml = renderToStaticMarkup(
-  <div className="bg-white/90 backdrop-blur text-blue-600 p-2 rounded-full shadow-lg border border-gray-100 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-    <Camera className="w-5 h-5" />
-  </div>
-);
-const cameraIcon = createHtmlIcon(cameraIconHtml, [40, 40], [20, 20]);
-
-const waterIconHtml = renderToStaticMarkup(
-  <div className="bg-white/90 backdrop-blur text-cyan-500 p-2 rounded-full shadow-lg border border-gray-100 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-    <Droplets className="w-5 h-5" />
-  </div>
-);
-const waterIcon = createHtmlIcon(waterIconHtml, [40, 40], [20, 20]);
-
-const viewpointIconHtml = renderToStaticMarkup(
-  <div className="bg-white/90 backdrop-blur text-purple-600 p-2 rounded-full shadow-lg border border-gray-100 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-    <Eye className="w-5 h-5" />
-  </div>
-);
-const viewpointIcon = createHtmlIcon(viewpointIconHtml, [40, 40], [20, 20]);
 
 // Cursor de Elevação (Bolinha Laranja que anda pelo mapa)
 const cursorIcon = createHtmlIcon(
@@ -90,11 +67,12 @@ export interface ImmersiveMapProps {
   agendaId?: string;
   onElevationData?: (data: { distance: number, elevation: number, lat: number, lng: number }[]) => void;
   hoverIndex?: number | null;
-  layerMode?: "satellite" | "topo";
+  layerMode?: "street" | "satellite" | "topo";
   trackingPos?: { lat: number; lng: number; heading?: number | null } | null;
   walkedIndex?: number;
   isTracking?: boolean;
   centerRequest?: number;
+  onOfflineAvailabilityChange?: (available: boolean, usingOfflineCopy: boolean) => void;
 }
 
 // Ícone de posição do usuário - agora gerado dinamicamente com SVG
@@ -113,7 +91,17 @@ const getUserPosIcon = (heading: number | null | undefined) => {
   });
 };
 
-export default function ImmersiveMap({ agendaId, onElevationData, hoverIndex, layerMode = "satellite", trackingPos, walkedIndex = 0, isTracking = false, centerRequest = 0 }: ImmersiveMapProps) {
+export default function ImmersiveMap({
+  agendaId,
+  onElevationData,
+  hoverIndex,
+  layerMode = "street",
+  trackingPos,
+  walkedIndex = 0,
+  isTracking = false,
+  centerRequest = 0,
+  onOfflineAvailabilityChange,
+}: ImmersiveMapProps) {
   const [coordinates, setCoordinates] = useState<[number, number, number?][]>([]);
   const [elevationProfile, setElevationProfile] = useState<any[]>([]);
 
@@ -122,12 +110,23 @@ export default function ImmersiveMap({ agendaId, onElevationData, hoverIndex, la
       if (!agendaId) return;
       try {
         const { data, error } = await supabase.from('trilha_gpx').select('geojson').eq('agenda_id', agendaId).single();
-        if (error || !data?.geojson) return;
+        let geojson = data?.geojson;
+        let usingOfflineCopy = false;
+        if (error || !geojson) {
+          const offline = await getOfflineTrail(agendaId).catch(() => null);
+          geojson = offline?.geojson;
+          usingOfflineCopy = Boolean(offline);
+        } else {
+          await saveOfflineTrail(agendaId, geojson).catch(() => undefined);
+        }
+        if (!geojson) return;
+        onOfflineAvailabilityChange?.(true, usingOfflineCopy);
 
         let rawCoordinates: number[][] | null = null;
-        if (Array.isArray(data.geojson.coordinates)) rawCoordinates = data.geojson.coordinates;
-        else if (data.geojson.type === "FeatureCollection" && data.geojson.features?.[0]?.geometry?.coordinates) rawCoordinates = data.geojson.features[0].geometry.coordinates;
-        else if (data.geojson.type === "Feature" && data.geojson.geometry?.coordinates) rawCoordinates = data.geojson.geometry.coordinates;
+        const route = geojson as any;
+        if (Array.isArray(route.coordinates)) rawCoordinates = route.coordinates;
+        else if (route.type === "FeatureCollection" && route.features?.[0]?.geometry?.coordinates) rawCoordinates = route.features[0].geometry.coordinates;
+        else if (route.type === "Feature" && route.geometry?.coordinates) rawCoordinates = route.geometry.coordinates;
 
         if (rawCoordinates && Array.isArray(rawCoordinates)) {
           const leafletCoords = rawCoordinates.map(c => [c[1], c[0], c[2] || 0] as [number, number, number?]);
@@ -160,7 +159,7 @@ export default function ImmersiveMap({ agendaId, onElevationData, hoverIndex, la
       }
     }
     fetchGpxData();
-  }, [agendaId, onElevationData]);
+  }, [agendaId, onElevationData, onOfflineAvailabilityChange]);
 
   if (coordinates.length === 0) {
     return <div className="w-full h-full bg-gray-900 animate-pulse flex items-center justify-center text-gray-500">Carregando mapa orbital...</div>;
@@ -169,11 +168,6 @@ export default function ImmersiveMap({ agendaId, onElevationData, hoverIndex, la
   const startPoint = coordinates[0];
   const endPoint = coordinates[coordinates.length - 1];
   
-  // Encontrar alguns pontos no meio para simular POIs
-  const midPoint1 = coordinates[Math.floor(coordinates.length * 0.25)];
-  const midPoint2 = coordinates[Math.floor(coordinates.length * 0.5)];
-  const midPoint3 = coordinates[Math.floor(coordinates.length * 0.75)];
-
   const cursorPoint = (hoverIndex !== null && hoverIndex !== undefined && elevationProfile[hoverIndex]) 
     ? [elevationProfile[hoverIndex].lat, elevationProfile[hoverIndex].lng] as [number, number]
     : null;
@@ -203,11 +197,17 @@ export default function ImmersiveMap({ agendaId, onElevationData, hoverIndex, la
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             maxZoom={18}
           />
-        ) : (
+        ) : layerMode === "topo" ? (
           <TileLayer
             attribution='&copy; OpenTopoMap'
             url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
             maxZoom={17}
+          />
+        ) : (
+          <TileLayer
+            attribution='&copy; OpenStreetMap &copy; CARTO'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            maxZoom={20}
           />
         )}
 
@@ -240,36 +240,6 @@ export default function ImmersiveMap({ agendaId, onElevationData, hoverIndex, la
         <Marker position={[endPoint[0], endPoint[1]]} icon={endIcon}>
           <Tooltip direction="top" offset={[0, -10]} className="bg-gray-900 text-white font-bold border-none shadow-xl">Cachoeira (Fim)</Tooltip>
         </Marker>
-
-        {/* Marcadores de POIs Flutuantes */}
-        {midPoint1 && (
-          <Marker position={[midPoint1[0], midPoint1[1]]} icon={viewpointIcon}>
-            <Tooltip direction="top" offset={[0, -20]} className="bg-white/90 backdrop-blur font-bold border-none shadow-xl p-3 rounded-xl text-gray-800">
-              <span className="flex items-center gap-2"><Eye className="w-4 h-4 text-purple-600"/> Mirante do Vale</span>
-              <p className="text-xs text-gray-500 font-normal mt-1">Passe o mouse sobre os ícones de câmera para ver fotos!</p>
-            </Tooltip>
-          </Marker>
-        )}
-
-        {midPoint2 && (
-          <Marker position={[midPoint2[0], midPoint2[1]]} icon={waterIcon}>
-            <Tooltip direction="top" offset={[0, -20]} className="bg-white/90 backdrop-blur font-bold border-none shadow-xl p-3 rounded-xl text-gray-800">
-              <span className="flex items-center gap-2"><Droplets className="w-4 h-4 text-cyan-500"/> Ponto de Água Potável</span>
-            </Tooltip>
-          </Marker>
-        )}
-
-        {midPoint3 && (
-          <Marker position={[midPoint3[0], midPoint3[1]]} icon={cameraIcon}>
-            <Tooltip direction="top" offset={[0, -20]} className="bg-white/90 backdrop-blur font-bold border-none shadow-xl p-3 rounded-xl text-gray-800">
-               <span className="flex items-center gap-2"><Camera className="w-4 h-4 text-blue-600"/> Ponto de Foto Clássica</span>
-               <div className="w-32 h-20 bg-gray-200 mt-2 rounded-lg overflow-hidden">
-                 {/* Placeholder for photo preview */}
-                 <img src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/paisagem/IMG_0220.JPG" alt="Preview" className="w-full h-full object-cover" />
-               </div>
-            </Tooltip>
-          </Marker>
-        )}
 
         {/* Cursor do Gráfico de Elevação */}
         {cursorPoint && (

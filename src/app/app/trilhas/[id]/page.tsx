@@ -9,6 +9,7 @@ import ImmersiveMapModal from "@/components/app/ImmersiveMapModal";
 import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { fetchCurrentClient } from "@/lib/app/current-client";
 
 const DynamicMap = dynamic(() => import('@/components/GpsMap'), { 
   ssr: false,
@@ -53,12 +54,8 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
 
         // 2. Buscar dados do cliente logado
         const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) {
-          const { data: client } = await supabase
-            .from('clients')
-            .select('id, full_name, email, cpf, phone')
-            .eq('email', user.email)
-            .single();
+        if (user) {
+          const client = await fetchCurrentClient<{ id: string }>();
           
           if (client) {
             // 3. O mapa e os dados operacionais são exclusivos de reservas pagas.

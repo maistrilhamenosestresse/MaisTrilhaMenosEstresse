@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState, useRef } from "react";
+import { LayersControl, MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabase";
-import { AlertTriangle, MapPin, Play, Square, Navigation, Crosshair, Map as MapIcon } from "lucide-react";
+import { AlertTriangle, Play, Square, Crosshair, Map as MapIcon } from "lucide-react";
 
 // Ícones HTML customizados
 const startIcon = L.divIcon({
@@ -206,12 +206,29 @@ export default function GpsMap({ agendaId, onElevationData }: GpsMapProps) {
       <MapContainer center={mapCenter} zoom={15} scrollWheelZoom={false} className="w-full h-full min-h-[400px]">
         {focusUser && <MapController center={mapCenter} zoom={16} />}
         
-        {/* OpenTopoMap (Relevo e Montanhas) */}
-        <TileLayer
-          attribution='Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
-          url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-          maxZoom={17}
-        />
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Ruas">
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              maxZoom={20}
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Satélite">
+            <TileLayer
+              attribution='Tiles &copy; Esri'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={18}
+            />
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="Relevo">
+            <TileLayer
+              attribution='Map data &copy; OpenStreetMap contributors | Map style &copy; OpenTopoMap'
+              url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+              maxZoom={17}
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
         
         {/* Rota Original do Guia */}
         <Polyline positions={coordinates as [number, number][]} pathOptions={{ color: '#3b82f6', weight: 5, opacity: 0.7, dashArray: '10, 10' }} />

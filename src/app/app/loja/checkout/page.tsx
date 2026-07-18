@@ -9,6 +9,7 @@ import {
   AsaasPaymentStatus,
   type AsaasPaymentResult,
 } from "@/components/payments/AsaasPaymentStatus";
+import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function LojaCheckoutPage() {
   const router = useRouter();
@@ -43,11 +44,11 @@ export default function LojaCheckoutPage() {
 
       const [prodRes, clientRes] = await Promise.all([
         supabase.from('produtos').select('*').eq('id', produtoId).single(),
-        supabase.from('clients').select('*').eq('email', user.email).single()
+        fetchCurrentClient<any>(),
       ]);
 
       if (prodRes.data) setProduct(prodRes.data);
-      if (clientRes.data) setClient(clientRes.data);
+      if (clientRes) setClient(clientRes);
       
       setLoading(false);
     }

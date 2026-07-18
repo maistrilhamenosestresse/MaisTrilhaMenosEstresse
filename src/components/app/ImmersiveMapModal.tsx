@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Map, Compass, Navigation, Mountain, Route, Info, ChevronUp, ChevronDown, Play, Square, AlertTriangle } from "lucide-react";
+import { X, Layers3, Compass, Navigation, Mountain, Route, Info, ChevronUp, ChevronDown, Play, Square, AlertTriangle, WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
 import ElevationProfile from "./ElevationProfile";
 
@@ -39,7 +39,9 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
   const [elevationData, setElevationData] = useState<any[]>([]);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [layerMode, setLayerMode] = useState<"satellite" | "topo">("satellite");
+  const [layerMode, setLayerMode] = useState<"street" | "satellite" | "topo">("street");
+  const [offlineRoute, setOfflineRoute] = useState(false);
+  const [usingOfflineCopy, setUsingOfflineCopy] = useState(false);
 
   const [tracking, setTracking] = useState(false);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number; heading: number | null } | null>(null);
@@ -53,6 +55,10 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
     ? Math.round(Math.max(...elevationData.map(d => d.elevation)) - Math.min(...elevationData.map(d => d.elevation)))
     : null;
   const totalDist = elevationData.length > 0 ? elevationData[elevationData.length - 1].distance : null;
+  const handleOfflineAvailability = useCallback((available: boolean, usingCopy: boolean) => {
+    setOfflineRoute(available);
+    setUsingOfflineCopy(usingCopy);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 400);
@@ -129,6 +135,7 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
           walkedIndex={walkedIndex}
           isTracking={tracking}
           centerRequest={centerRequest}
+          onOfflineAvailabilityChange={handleOfflineAvailability}
         />
       </div>
 
@@ -152,11 +159,16 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
         {/* CONTROLES DIREITA */}
         <div className="absolute right-4 top-28 flex flex-col gap-2.5 pointer-events-auto">
           <button
-            onClick={() => setLayerMode(l => l === "satellite" ? "topo" : "satellite")}
-            className={`w-11 h-11 backdrop-blur-md border rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all ${layerMode === "topo" ? "bg-blue-500 border-blue-400 text-white" : "bg-black/60 border-white/20 text-white"}`}
-            title="Alternar Camada"
+            onClick={() => setLayerMode((layer) => (
+              layer === "street" ? "satellite" : layer === "satellite" ? "topo" : "street"
+            ))}
+            className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur-md transition-all active:scale-95"
+            title={`Mapa atual: ${layerMode === "street" ? "Ruas" : layerMode === "satellite" ? "Satélite" : "Relevo"}`}
           >
-            <Map className="w-5 h-5" />
+            <Layers3 className="h-5 w-5" />
+            <span className="absolute -bottom-5 right-0 rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-black uppercase text-white/90">
+              {layerMode === "street" ? "Ruas" : layerMode === "satellite" ? "Satélite" : "Relevo"}
+            </span>
           </button>
           <button
             onClick={() => setCenterRequest(r => r + 1)}
@@ -288,6 +300,20 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-2 bg-green-400 rounded-full" />
                         <span className="text-xs text-white/60">À frente</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {offlineRoute && (
+                    <div className="flex items-start gap-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3">
+                      <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                      <div>
+                        <p className="text-xs font-black text-cyan-100">
+                          {usingOfflineCopy ? "Usando rota salva no aparelho" : "Rota GPS salva neste aparelho"}
+                        </p>
+                        <p className="mt-1 text-[10px] leading-relaxed text-cyan-100/60">
+                          A linha da rota e o GPS funcionam sem internet. As imagens de ruas e satélite ainda precisam de conexão.
+                        </p>
                       </div>
                     </div>
                   )}

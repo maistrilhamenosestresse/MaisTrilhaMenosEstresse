@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Coins, MapPin, Award, ArrowRight, User, Lock, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { hasMemberAccess, REQUIRED_PAID_TRAILS } from "@/lib/member-access";
+import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function MembrosPage() {
   const router = useRouter();
@@ -43,12 +44,7 @@ export default function MembrosPage() {
         });
         const hasAdministrativeAccess = adminResponse.ok;
 
-        // Buscar dados do cliente pelo email
-        const { data: client } = await supabase
-          .from('clients')
-          .select('id, full_name, email, pontos, cashback_saldo, membro_vip, photo_url')
-          .eq('email', user.email)
-          .maybeSingle();
+        const client = await fetchCurrentClient<any>();
 
         if (!client) {
           setClientData({

@@ -23,6 +23,40 @@ const REGISTRATION_CONTRACTS = [
   getContractDefinition("insurance"),
 ];
 
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+  "image/avif": "avif",
+};
+
+async function detectImageMime(blob: Blob) {
+  const bytes = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 8 &&
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((value, index) => bytes[index] === value)
+  ) {
+    return "image/png";
+  }
+  const ascii = String.fromCharCode(...bytes);
+  if (ascii.startsWith("RIFF") && ascii.slice(8, 12) === "WEBP") {
+    return "image/webp";
+  }
+  if (ascii.slice(4, 8) === "ftyp") {
+    const brand = ascii.slice(8, 12);
+    if (["avif", "avis"].includes(brand)) return "image/avif";
+    if (["heic", "heix", "hevc", "hevx", "heif", "heis", "mif1", "msf1"].includes(brand)) {
+      return blob.type === "image/heif" ? "image/heif" : "image/heic";
+    }
+  }
+  return null;
+}
+
 function CadastroContent() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -181,12 +215,25 @@ function CadastroContent() {
           fileType: "image/webp"
         };
         
-        const compressedFile = await imageCompression(formData.photo, compressOptions);
-        const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.webp`;
+        let uploadBlob: Blob;
+        try {
+          uploadBlob = await imageCompression(formData.photo, compressOptions);
+        } catch {
+          uploadBlob = formData.photo;
+        }
+        let detectedPhotoType = await detectImageMime(uploadBlob);
+        if (!detectedPhotoType && uploadBlob !== formData.photo) {
+          uploadBlob = formData.photo;
+          detectedPhotoType = await detectImageMime(uploadBlob);
+        }
+        if (!detectedPhotoType) {
+          throw new Error("A foto selecionada não está em um formato reconhecido. Escolha uma foto JPG, PNG, WebP ou HEIC.");
+        }
+        const fileName = `client_${Math.random().toString(36).substring(2)}_${Date.now()}.${IMAGE_EXTENSIONS[detectedPhotoType]}`;
 
         const photoFormData = new FormData();
         photoFormData.append('folder', 'cadastro-docs');
-        photoFormData.append('file', new File([compressedFile], fileName, { type: 'image/webp' }));
+        photoFormData.append('file', new File([uploadBlob], fileName, { type: detectedPhotoType }));
 
         const res = await fetch('/api/upload/image', {
           method: 'POST',
@@ -202,6 +249,10 @@ function CadastroContent() {
       if (signatureData) {
         const resSigBlob = await fetch(signatureData);
         const blob = await resSigBlob.blob();
+        const detectedSignatureType = await detectImageMime(blob);
+        if (detectedSignatureType !== "image/png") {
+          throw new Error("Não foi possível preparar a assinatura. Limpe e assine novamente.");
+        }
         
         const signatureName = `signature_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
 

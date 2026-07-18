@@ -7,7 +7,14 @@ import { enforceRateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
-const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+const IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'image/avif',
+]);
 const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
 const FOLDER_RULES = {
@@ -100,6 +107,8 @@ function extensionFor(contentType: string) {
     'image/png': 'png',
     'image/webp': 'webp',
     'image/heic': 'heic',
+    'image/heif': 'heif',
+    'image/avif': 'avif',
   } as Record<string, string>)[contentType] || 'jpg';
 }
 
@@ -116,11 +125,14 @@ function hasExpectedImageSignature(buffer: Buffer, contentType: string) {
       buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
       buffer.subarray(8, 12).toString('ascii') === 'WEBP';
   }
-  if (contentType === 'image/heic') {
+  if (contentType === 'image/heic' || contentType === 'image/heif' || contentType === 'image/avif') {
     const brand = buffer.length >= 12 ? buffer.subarray(8, 12).toString('ascii') : '';
+    const allowedBrands = contentType === 'image/avif'
+      ? ['avif', 'avis']
+      : ['heic', 'heix', 'hevc', 'hevx', 'heif', 'heis', 'mif1', 'msf1'];
     return buffer.length >= 12 &&
       buffer.subarray(4, 8).toString('ascii') === 'ftyp' &&
-      ['heic', 'heix', 'hevc', 'hevx', 'mif1'].includes(brand);
+      allowedBrands.includes(brand);
   }
   return false;
 }

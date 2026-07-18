@@ -8,6 +8,7 @@ import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function PwaTrilhas() {
   const [activeTab, setActiveTab] = useState<"euVou" | "explorar">("euVou");
@@ -34,11 +35,7 @@ export default function PwaTrilhas() {
         }
 
         // 1. Busca o client_id
-        const { data: client } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('email', session.user.email)
-          .single();
+        const client = await fetchCurrentClient<{ id: string }>();
           
         if (client) {
           // 2. Busca Reservas (Eu Vou) - Apenas pagas

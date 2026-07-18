@@ -23,17 +23,19 @@ export default function PwaPerfil() {
         return;
       }
       
-      const { data } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('email', user.email)
-        .single();
+      const profileResponse = await fetch("/api/clients/me", { cache: "no-store" });
+      const profileResult = await profileResponse.json().catch(() => ({}));
+      const data = profileResponse.ok ? profileResult.client : null;
         
       if (data) {
         setClient(data);
       } else {
-        // Fallback for users that exist in auth but not in clients table yet
-        setClient({ full_name: 'Usuário', email: user.email, pontos: 0, cashback_saldo: 0 });
+        setClient({
+          full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Aventureiro",
+          email: user.email,
+          pontos: 0,
+          cashback_saldo: 0,
+        });
       }
       setLoading(false);
     }

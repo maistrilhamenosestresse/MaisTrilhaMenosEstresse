@@ -1,7 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, BellRing, Loader2, Send, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  BellRing,
+  Gift,
+  Home,
+  Loader2,
+  Map,
+  Settings,
+  Send,
+  ShoppingBag,
+  Stamp,
+  Users,
+  WalletCards,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const categories = [
@@ -9,6 +22,16 @@ const categories = [
   { value: "reservation_reminders", label: "Lembretes de reservas" },
   { value: "benefits", label: "Pontos e benefícios" },
 ];
+
+const destinations = [
+  { value: "/app", label: "Início do app", description: "Saldo, pontos e atalhos", icon: Home },
+  { value: "/app/trilhas", label: "Comprar trilhas", description: "Próximas aventuras", icon: Map },
+  { value: "/app/passaporte", label: "Passaporte de trilhas", description: "Selos e progresso", icon: Stamp },
+  { value: "/app/beneficios", label: "Pontos e benefícios", description: "Vantagens do cliente", icon: Gift },
+  { value: "/app/loja", label: "Loja", description: "Produtos e equipamentos", icon: ShoppingBag },
+  { value: "/app/extratos", label: "Extrato", description: "Compras e movimentações", icon: WalletCards },
+  { value: "/app/configuracoes", label: "Configurações", description: "Notificações e instalação", icon: Settings },
+] as const;
 
 export default function AdminPushNotificationsPage() {
   const router = useRouter();
@@ -98,16 +121,40 @@ export default function AdminPushNotificationsPage() {
               <span className="mt-1 block text-right text-[10px] text-slate-400">{body.length}/240</span>
             </label>
 
-            <label className="block">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-500">Destino dentro do app</span>
-              <input
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
-                maxLength={500}
-                placeholder="/app/trilhas"
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm outline-none focus:ring-2 focus:ring-orange-300"
-              />
-            </label>
+            <fieldset>
+              <legend className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Ao tocar, qual página deve abrir?
+              </legend>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {destinations.map((destination) => {
+                  const Icon = destination.icon;
+                  const selected = url === destination.value;
+                  return (
+                    <button
+                      key={destination.value}
+                      type="button"
+                      onClick={() => setUrl(destination.value)}
+                      aria-pressed={selected}
+                      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                        selected
+                          ? "border-[#D96224] bg-orange-50 ring-2 ring-orange-100"
+                          : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                      }`}
+                    >
+                      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${
+                        selected ? "bg-[#D96224] text-white" : "bg-white text-[#0B2540]"
+                      }`}>
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-black text-slate-800">{destination.label}</span>
+                        <span className="block text-xs text-slate-500">{destination.description}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             <div className="flex gap-3 rounded-2xl bg-blue-50 p-4 text-xs leading-relaxed text-blue-900">
               <Users className="h-5 w-5 shrink-0" />

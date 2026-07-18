@@ -14,14 +14,15 @@
   "enableNotifications": true,
   "startUrl": "/app",
   "iconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/512",
-  "maskableIconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/512",
+  "maskableIconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/512?purpose=maskable",
+  "monochromeIconUrl": "https://www.maistrilhasmenosestresse.com/api/pwa/icon/192?purpose=badge",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "./mais-trilha-release.p12",
     "alias": "mais-trilha"
   },
-  "appVersion": "1.0.0",
-  "appVersionCode": 1,
+  "appVersion": "1.0.1",
+  "appVersionCode": 2,
   "shortcuts": [
     {
       "name": "Comprar trilha",

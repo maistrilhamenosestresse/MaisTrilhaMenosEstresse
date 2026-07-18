@@ -21,7 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
       {
-        src: "/api/pwa/icon/512",
+        src: "/api/pwa/icon/512?purpose=maskable",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
@@ -38,6 +38,12 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "Meus benefícios",
         short_name: "Benefícios",
         url: "/app/beneficios",
+        icons: [{ src: "/api/pwa/icon/192", sizes: "192x192", type: "image/png" }],
+      },
+      {
+        name: "Passaporte de trilhas",
+        short_name: "Passaporte",
+        url: "/app/passaporte",
         icons: [{ src: "/api/pwa/icon/192", sizes: "192x192", type: "image/png" }],
       },
     ],
