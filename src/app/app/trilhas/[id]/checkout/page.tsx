@@ -16,6 +16,7 @@ import { BoletoInstallmentSelector } from "@/components/payments/BoletoInstallme
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
+import { discountToPoints, pointsToDiscount } from "@/lib/gamification";
 
 function TrailCheckoutContent() {
   const router = useRouter();
@@ -184,9 +185,13 @@ function TrailCheckoutContent() {
   const pointsAvailable = Math.max(0, Number(client?.pontos || 0));
   const cashbackApplied = useCashback ? Math.min(cashbackAvailable, grossPrice) : 0;
   const pointsApplied = usePoints
-    ? Math.min(pointsAvailable, Math.floor(Math.max(0, grossPrice - cashbackApplied) * 100))
+    ? Math.min(
+        discountToPoints(pointsToDiscount(pointsAvailable)),
+        discountToPoints(Math.max(0, grossPrice - cashbackApplied)),
+      )
     : 0;
-  const netAmountDue = Math.max(0, grossPrice - cashbackApplied - pointsApplied / 100);
+  const pointsDiscount = pointsToDiscount(pointsApplied);
+  const netAmountDue = Math.max(0, grossPrice - cashbackApplied - pointsDiscount);
   const amountDue = netAmountDue;
   const chargedAmount = amountDue <= 0 || agenda?.taxa_gratis
     ? amountDue
@@ -291,7 +296,7 @@ function TrailCheckoutContent() {
             <span className="flex-1">
               <span className="block text-sm font-black text-gray-800">Pontos</span>
               <span className="block text-xs text-gray-500">
-                {pointsAvailable} pontos = {formatCurrency(pointsAvailable / 100)}
+                {pointsAvailable} pontos = até {formatCurrency(pointsToDiscount(pointsAvailable))} de desconto
               </span>
             </span>
             <span className={`w-11 h-6 rounded-full p-1 transition ${usePoints ? "bg-amber-500" : "bg-gray-300"}`}>
@@ -309,7 +314,7 @@ function TrailCheckoutContent() {
             {pointsApplied > 0 && (
               <div className="flex justify-between text-amber-300">
                 <span>{pointsApplied} pontos utilizados</span>
-                <span>- {formatCurrency(pointsApplied / 100)}</span>
+                <span>- {formatCurrency(pointsDiscount)}</span>
               </div>
             )}
             <div className="flex justify-between font-black text-base pt-2 border-t border-white/10">
@@ -318,7 +323,7 @@ function TrailCheckoutContent() {
             </div>
           </div>
           <p className="text-[11px] text-gray-500">
-            Compras concluídas nesta tela geram 1 ponto por real efetivamente pago. Compras feitas fora do app não geram pontos.
+            200 pontos valem R$ 1,00 de desconto. Pontos não viram saldo, saque ou dinheiro na carteira.
           </p>
         </div>
 

@@ -11,6 +11,7 @@ import {
 } from "@/components/payments/AsaasPaymentStatus";
 import { BoletoInstallmentSelector } from "@/components/payments/BoletoInstallmentSelector";
 import { fetchCurrentClient } from "@/lib/app/current-client";
+import { discountToPoints, pointsToDiscount } from "@/lib/gamification";
 
 export default function LojaCheckoutPage() {
   const router = useRouter();
@@ -120,14 +121,14 @@ export default function LojaCheckoutPage() {
 
   const formatCurrency = (val: number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const saldo = Number(client?.cashback_saldo || 0);      // Dinheiro real de recarga PIX
-  const pontos = Number(client?.pontos || 0);             // Pontos de fidelidade (100pts = R$1)
-  const pontosEmReais = pontos / 100;                     // Valor dos pontos em R$
+  const pontos = Number(client?.pontos || 0);
+  const descontoDisponivelEmPontos = pointsToDiscount(pontos);
   const price = Number(product.price);
   
   // Abatimento: primeiro usa cashback_saldo (dinheiro real), depois pontos
   const abatimentoCashback = Math.min(saldo, price);
   const restanteAposCashback = price - abatimentoCashback;
-  const abatimentoPontos = Math.min(pontosEmReais, restanteAposCashback);
+  const abatimentoPontos = Math.min(descontoDisponivelEmPontos, restanteAposCashback);
   const totalAbatimento = abatimentoCashback + abatimentoPontos;
   const faltante = Math.max(0, price - totalAbatimento);
   const chargedAmount = faltante <= 0
@@ -215,7 +216,7 @@ export default function LojaCheckoutPage() {
             <div className="flex justify-between items-center text-sm bg-amber-50 px-3 py-2 rounded-xl">
               <div>
                 <span className="text-amber-800 font-bold">⭐ Pontos de Fidelidade</span>
-                <p className="text-xs text-amber-600">{pontos} pts = {formatCurrency(pontosEmReais)} de desconto</p>
+                <p className="text-xs text-amber-600">{pontos} pts = até {formatCurrency(descontoDisponivelEmPontos)} de desconto</p>
               </div>
               <span className="font-bold text-amber-800">{pontos} pts</span>
             </div>
@@ -235,7 +236,7 @@ export default function LojaCheckoutPage() {
             )}
             {abatimentoPontos > 0 && (
               <div className="flex justify-between items-center text-sm text-amber-700 font-bold">
-                <span>- Desconto Pontos ({Math.ceil(abatimentoPontos * 100)} pts):</span>
+                <span>- Desconto em pontos ({discountToPoints(abatimentoPontos)} pts):</span>
                 <span>- {formatCurrency(abatimentoPontos)}</span>
               </div>
             )}

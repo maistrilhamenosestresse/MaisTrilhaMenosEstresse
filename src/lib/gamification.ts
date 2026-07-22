@@ -7,6 +7,18 @@ export const ADVENTURE_LEVELS = [
   { name: "Lenda da Montanha", minExperience: 10000, shortName: "Lenda" },
 ] as const;
 
+export const POINTS_PER_BRL_DISCOUNT = 200;
+
+export function pointsToDiscount(points: number) {
+  const normalizedPoints = Math.max(0, Math.trunc(Number(points) || 0));
+  return Math.floor((normalizedPoints * 100) / POINTS_PER_BRL_DISCOUNT) / 100;
+}
+
+export function discountToPoints(discount: number) {
+  const normalizedCents = Math.max(0, Math.floor(((Number(discount) || 0) + Number.EPSILON) * 100));
+  return Math.floor((normalizedCents * POINTS_PER_BRL_DISCOUNT) / 100);
+}
+
 export function getAdventureProgress(experience: number) {
   const normalized = Math.max(0, Math.trunc(Number(experience) || 0));
   const currentIndex = [...ADVENTURE_LEVELS]

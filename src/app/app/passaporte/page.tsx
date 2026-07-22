@@ -280,7 +280,7 @@ function IdentityPage({ data, goToStamps }: { data: PassportData; goToStamps: ()
     </div>
 
     <div className="grid grid-cols-2 gap-3">
-      <WalletCard icon={Coins} label="Pontos disponíveis" value={`${data.participant.points.toLocaleString("pt-BR")} pts`} note="Podem ser usados" />
+      <WalletCard icon={Coins} label="Pontos disponíveis" value={`${data.participant.points.toLocaleString("pt-BR")} pts`} note="Só desconto; não vira saldo" />
       <WalletCard icon={WalletCards} label="Saldo cashback" value={data.participant.cashbackBalance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} note="Disponível na carteira" />
     </div>
 

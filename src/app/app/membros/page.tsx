@@ -6,6 +6,7 @@ import { Coins, MapPin, Award, ArrowRight, User, Lock, ShieldCheck } from "lucid
 import { supabase } from "@/lib/supabase";
 import { hasMemberAccess, REQUIRED_PAID_TRAILS } from "@/lib/member-access";
 import { fetchCurrentClient } from "@/lib/app/current-client";
+import { pointsToDiscount } from "@/lib/gamification";
 
 export default function MembrosPage() {
   const router = useRouter();
@@ -207,7 +208,7 @@ export default function MembrosPage() {
             </div>
             <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Meus Pontos</p>
             <p className="text-xl font-black text-gray-800">{clientData?.pontos || 0}</p>
-            <p className="text-xs text-gray-400">≈ R$ {((clientData?.pontos || 0) / 100).toFixed(2)} desconto</p>
+            <p className="text-xs text-gray-400">Até R$ {pointsToDiscount(clientData?.pontos || 0).toFixed(2)} de desconto</p>
           </div>
         </div>
 
