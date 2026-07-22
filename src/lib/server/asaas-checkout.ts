@@ -1,9 +1,11 @@
 import "server-only";
 
 import {
+  cancelAsaasInstallmentPayments,
   cancelAsaasPayment,
   createOrUpdateCustomer,
   createPayment,
+  getAsaasInstallmentPayments,
   getPixQrCode,
 } from "@/lib/asaas";
 import { calculateGrossPrice, type AsaasPaymentMethod } from "@/lib/fees";
@@ -31,12 +33,20 @@ export async function createAsaasCharge(input: {
   absorbFee?: boolean;
   reference: string;
   description: string;
+  installments?: number;
   postalCode?: string;
   addressNumber?: string;
 }) {
   const netAmount = roundCurrency(input.netAmount);
+  const installments = Math.max(1, Math.trunc(input.installments || 1));
   if (!Number.isFinite(netAmount) || netAmount <= 0) {
     throw new Error("Valor da cobrança inválido");
+  }
+  if (input.method !== "BOLETO" && installments !== 1) {
+    throw new Error("Parcelamento disponível somente para boleto");
+  }
+  if (installments > 12) {
+    throw new Error("O boleto aceita no máximo 12 parcelas");
   }
 
   const customerId = await createOrUpdateCustomer({
@@ -49,7 +59,7 @@ export async function createAsaasCharge(input: {
   });
   const chargedAmount = input.absorbFee
     ? netAmount
-    : calculateGrossPrice(netAmount, input.method, 1);
+    : calculateGrossPrice(netAmount, input.method, installments);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 1);
 
@@ -59,9 +69,17 @@ export async function createAsaasCharge(input: {
     dueDate: dueDate.toISOString().slice(0, 10),
     description: input.description.slice(0, 500),
     externalReference: input.reference.slice(0, 200),
-    value: chargedAmount,
+    ...(installments > 1
+      ? { installmentCount: installments, totalValue: chargedAmount }
+      : { value: chargedAmount }),
   });
   if (!payment?.id) throw new Error("Asaas não retornou o identificador da cobrança");
+
+  const installmentId = payment.installment ? String(payment.installment) : null;
+  const installmentPayments = installmentId
+    ? await getAsaasInstallmentPayments(installmentId)
+    : [];
+  const payments = installmentPayments.length ? installmentPayments : [payment];
 
   const pix = input.method === "PIX"
     ? await getPixQrCode(String(payment.id))
@@ -79,19 +97,34 @@ export async function createAsaasCharge(input: {
       status: String(payment.status || "PENDING"),
       invoiceUrl: payment.invoiceUrl || null,
       bankSlipUrl: payment.bankSlipUrl || null,
+      paymentBookUrl: installmentId
+        ? `/api/checkout-asaas/payment-book?paymentId=${encodeURIComponent(String(payment.id))}`
+        : null,
+      installmentId,
+      installmentCount: installments,
+      installmentValue: Number(payment.value || chargedAmount / installments),
       pixQrCode: pix?.encodedImage || null,
       pixCopyPaste: pix?.payload || null,
       pixExpirationDate: pix?.expirationDate || null,
       netAmount,
       chargedAmount,
     },
+    payments,
+    installmentId,
   };
 }
 
-export async function safelyCancelAsaasPayment(paymentId: string | null) {
-  if (!paymentId) return;
+export async function safelyCancelAsaasPayment(
+  paymentId: string | null,
+  installmentId?: string | null,
+) {
+  if (!paymentId && !installmentId) return;
   try {
-    await cancelAsaasPayment(paymentId);
+    if (installmentId) {
+      await cancelAsaasInstallmentPayments(installmentId);
+    } else if (paymentId) {
+      await cancelAsaasPayment(paymentId);
+    }
   } catch (error) {
     console.error("Falha ao cancelar cobrança Asaas durante compensação:", error);
   }

@@ -12,15 +12,19 @@ import {
   AsaasPaymentStatus,
   type AsaasPaymentResult,
 } from "@/components/payments/AsaasPaymentStatus";
+import { BoletoInstallmentSelector } from "@/components/payments/BoletoInstallmentSelector";
 
 function CheckoutAuthContent() {
   const router = useRouter();
   const { items, clearCart, getTotalPrice } = useCartStore();
 
   const cartNetTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const [boletoInstallments, setBoletoInstallments] = useState(1);
 
   const calculateTotalWithMethod = (method: 'INFINITEPAY' | 'BOLETO') =>
-    method === 'BOLETO' ? calculateGrossPrice(cartNetTotal, 'BOLETO', 1) : cartNetTotal;
+    method === 'BOLETO'
+      ? calculateGrossPrice(cartNetTotal, 'BOLETO', boletoInstallments)
+      : cartNetTotal;
   
   const [step, setStep] = useState<'email' | 'otp' | 'cart' | 'edit' | 'payment' | 'success'>('email');
   const [email, setEmail] = useState('');
@@ -206,7 +210,7 @@ function CheckoutAuthContent() {
             addressNumber: clientData.addressNumber || '1'
           },
           payment_method: paymentMethod,
-          installments: 1,
+          installments: paymentMethod === 'BOLETO' ? boletoInstallments : 1,
         })
       });
 
@@ -380,9 +384,21 @@ function CheckoutAuthContent() {
                   <button onClick={() => setPaymentMethod('BOLETO')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 transition ${paymentMethod === 'BOLETO' ? 'bg-[#0B2540] border-blue-300 text-white' : 'bg-[#0F1722]/50 border-white/10 text-gray-400'}`}>
                     <FileText className="w-6 h-6" />
                     <span className="text-xs font-bold">Boleto</span>
+                    <span className="text-[10px] opacity-70">Asaas · em até 12x</span>
                   </button>
                 )}
               </div>
+
+              {paymentMethod === 'BOLETO' && (
+                <div className="mb-4">
+                  <BoletoInstallmentSelector
+                    netAmount={cartNetTotal}
+                    installments={boletoInstallments}
+                    onChange={setBoletoInstallments}
+                    dark
+                  />
+                </div>
+              )}
 
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-6">
                 <div className="bg-white/5 p-4 rounded-xl border border-white/10 flex items-center justify-between">

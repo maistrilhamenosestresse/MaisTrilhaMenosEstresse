@@ -19,6 +19,10 @@ export type AsaasPaymentResult = {
   status?: string;
   invoiceUrl?: string | null;
   bankSlipUrl?: string | null;
+  paymentBookUrl?: string | null;
+  installmentId?: string | null;
+  installmentCount?: number;
+  installmentValue?: number;
   pixQrCode?: string | null;
   pixCopyPaste?: string | null;
   pixExpirationDate?: string | null;
@@ -36,6 +40,11 @@ export function AsaasPaymentStatus({
   const [checking, setChecking] = useState(false);
   const [status, setStatus] = useState(payment.status || "PENDING");
   const [message, setMessage] = useState("");
+  const [installmentProgress, setInstallmentProgress] = useState(
+    payment.installmentCount && payment.installmentCount > 1
+      ? { count: payment.installmentCount, paid: 0 }
+      : null,
+  );
   const confirmedRef = useRef(false);
 
   const checkPayment = useCallback(async (quiet = false) => {
@@ -49,6 +58,7 @@ export function AsaasPaymentStatus({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Falha ao consultar pagamento");
       setStatus(String(result.status || "PENDING"));
+      if (result.installment) setInstallmentProgress(result.installment);
       if (result.confirmed) {
         confirmedRef.current = true;
         setMessage("Pagamento confirmado pelo Asaas.");
@@ -66,9 +76,12 @@ export function AsaasPaymentStatus({
   }, [onConfirmed, payment.paymentId]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => void checkPayment(true), 5000);
+    const interval = payment.installmentCount && payment.installmentCount > 1
+      ? 30000
+      : 5000;
+    const timer = window.setInterval(() => void checkPayment(true), interval);
     return () => window.clearInterval(timer);
-  }, [checkPayment]);
+  }, [checkPayment, payment.installmentCount]);
 
   const copyPix = async () => {
     if (!payment.pixCopyPaste) return;
@@ -139,16 +152,39 @@ export function AsaasPaymentStatus({
         </a>
       )}
 
-      {payment.type === "BOLETO" && (payment.bankSlipUrl || payment.invoiceUrl) && (
-        <a
-          href={payment.bankSlipUrl || payment.invoiceUrl || "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] px-4 py-4 font-black text-white"
-        >
-          <FileText className="h-5 w-5" />
-          Abrir boleto
-        </a>
+      {payment.type === "BOLETO" && (payment.paymentBookUrl || payment.bankSlipUrl || payment.invoiceUrl) && (
+        <div className="space-y-3">
+          {installmentProgress && installmentProgress.count > 1 && (
+            <div className="rounded-2xl border border-blue-100 bg-[#E7EEF6] p-4 text-left">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-[#0B2540]">
+                Progresso do carnê
+              </p>
+              <p className="mt-1 text-sm font-bold text-gray-700">
+                {installmentProgress.paid} de {installmentProgress.count} parcelas pagas
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                <div
+                  className="h-full rounded-full bg-[#0B2540] transition-all"
+                  style={{
+                    width: `${Math.min(100, (installmentProgress.paid / installmentProgress.count) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-gray-500">
+                A compra será marcada como paga após a quitação de todas as parcelas.
+              </p>
+            </div>
+          )}
+          <a
+            href={payment.paymentBookUrl || payment.bankSlipUrl || payment.invoiceUrl || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] px-4 py-4 font-black text-white"
+          >
+            <FileText className="h-5 w-5" />
+            {payment.paymentBookUrl ? "Abrir carnê completo" : "Abrir boleto"}
+          </a>
+        </div>
       )}
 
       <button

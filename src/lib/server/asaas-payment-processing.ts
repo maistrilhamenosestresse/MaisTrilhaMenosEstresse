@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { getAsaasInstallmentPayments } from '@/lib/asaas';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { REQUIRED_PAID_TRAILS } from '@/lib/member-access';
 import { sendPurchaseEmail } from '@/lib/email';
@@ -8,10 +9,75 @@ import { sendWhatsAppText } from '@/lib/whatsapp';
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdmin>;
 type PaymentProvider = 'ASAAS' | 'INFINITEPAY' | 'INTERNAL';
 
+const SETTLED_ASAAS_STATUSES = new Set(['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH']);
+const REVERSED_ASAAS_STATUSES = new Set([
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+  'CHARGEBACK_REQUESTED',
+  'CHARGEBACK_DISPUTE',
+]);
+
+export type AsaasInstallmentProgress = {
+  installmentId: string;
+  installmentCount: number;
+  paidInstallments: number;
+  totalValue: number;
+  paidValue: number;
+  complete: boolean;
+  reversed: boolean;
+  allUnavailable: boolean;
+};
+
+export async function getAsaasInstallmentProgress(
+  payment: any,
+): Promise<AsaasInstallmentProgress | null> {
+  const installmentId = String(payment?.installment || '');
+  if (!installmentId) return null;
+
+  const payments = await getAsaasInstallmentPayments(installmentId);
+  if (!payments.length) throw new Error('Parcelas do carnê não encontradas no Asaas');
+
+  const paid = payments.filter((item: any) =>
+    SETTLED_ASAAS_STATUSES.has(String(item.status || ''))
+  );
+  const reversed = payments.some((item: any) =>
+    REVERSED_ASAAS_STATUSES.has(String(item.status || ''))
+  );
+  const allUnavailable = payments.every((item: any) =>
+    ['DELETED', ...REVERSED_ASAAS_STATUSES].includes(String(item.status || ''))
+  );
+
+  return {
+    installmentId,
+    installmentCount: payments.length,
+    paidInstallments: paid.length,
+    totalValue: roundCurrency(payments.reduce(
+      (sum: number, item: any) => sum + Number(item.value || 0),
+      0,
+    )),
+    paidValue: roundCurrency(paid.reduce(
+      (sum: number, item: any) => sum + Number(item.value || 0),
+      0,
+    )),
+    complete: paid.length === payments.length && !reversed,
+    reversed,
+    allUnavailable,
+  };
+}
+
 export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, payment: any) {
-  const reference = String(payment.externalReference || '');
-  const paymentId = String(payment.id || '');
-  const paidValue = Number(payment.value || 0);
+  const installment = await getAsaasInstallmentProgress(payment);
+  if (installment && !installment.complete) return 'pending';
+  const normalizedPayment = installment
+    ? {
+        ...payment,
+        id: `INSTALLMENT:${installment.installmentId}`,
+        value: installment.totalValue,
+      }
+    : payment;
+  const reference = String(normalizedPayment.externalReference || '');
+  const paymentId = String(normalizedPayment.id || '');
+  const paidValue = Number(normalizedPayment.value || 0);
   const isInternalAppCheckout = reference.startsWith('TRILHA_APP:') && paymentId.startsWith('INTERNAL:');
   if (
     !reference ||
@@ -28,7 +94,7 @@ export async function processConfirmedAsaasPayment(supabase: SupabaseAdmin, paym
     paymentId,
     paidValue,
     customerChargedValue: paidValue,
-    billingType: payment.billingType || 'ASAAS',
+    billingType: normalizedPayment.billingType || 'ASAAS',
     provider: isInternalAppCheckout ? 'INTERNAL' : 'ASAAS',
   });
 }
@@ -166,6 +232,16 @@ export async function processConfirmedProviderPayment(
 }
 
 export async function processCanceledAsaasPayment(supabase: SupabaseAdmin, payment: any, event: string) {
+  const installment = await getAsaasInstallmentProgress(payment);
+  if (installment) {
+    const shouldReverse = installment.reversed || installment.allUnavailable;
+    if (!shouldReverse) return 'pending';
+    payment = {
+      ...payment,
+      id: `INSTALLMENT:${installment.installmentId}`,
+      value: installment.totalValue,
+    };
+  }
   const reference = String(payment.externalReference || '');
   const paymentId = String(payment.id || '');
   if (reference.startsWith('LOJA:')) {
@@ -313,4 +389,8 @@ function providerLabel(provider: PaymentProvider) {
   if (provider === 'INTERNAL') return 'saldo e pontos';
   if (provider === 'INFINITEPAY') return 'InfinitePay';
   return 'Asaas';
+}
+
+function roundCurrency(value: number) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }

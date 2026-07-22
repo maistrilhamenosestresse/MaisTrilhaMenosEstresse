@@ -51,11 +51,43 @@ export async function getAsaasPayment(paymentId: string) {
   return asaasRequest(`/payments/${encodeURIComponent(paymentId)}`);
 }
 
+export async function getAsaasInstallmentPayments(installmentId: string) {
+  const result = await asaasRequest(
+    `/installments/${encodeURIComponent(installmentId)}/payments?limit=100`,
+  );
+  return Array.isArray(result?.data) ? result.data : [];
+}
+
+export async function getAsaasInstallmentPaymentBook(installmentId: string) {
+  return asaasRawRequest(
+    `/installments/${encodeURIComponent(installmentId)}/paymentBook`,
+    { headers: { Accept: 'application/pdf' } },
+  );
+}
+
 export async function cancelAsaasPayment(paymentId: string) {
   return asaasRequest(`/payments/${encodeURIComponent(paymentId)}`, { method: 'DELETE' });
 }
 
+export async function cancelAsaasInstallmentPayments(installmentId: string) {
+  return asaasRequest(`/installments/${encodeURIComponent(installmentId)}/payments`, {
+    method: 'DELETE',
+  });
+}
+
 async function asaasRequest(path: string, init: RequestInit = {}) {
+  const response = await asaasRawRequest(path, init);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const description = Array.isArray(data?.errors)
+      ? data.errors.map((item: any) => item.description).filter(Boolean).join('; ')
+      : data?.message;
+    throw new Error(description || `Asaas respondeu com HTTP ${response.status}`);
+  }
+  return data;
+}
+
+async function asaasRawRequest(path: string, init: RequestInit = {}) {
   const baseUrl = (process.env.ASAAS_API_URL || 'https://api.asaas.com/v3').replace(/\/$/, '');
   const accessToken = requireServerEnv('ASAAS_API_KEY').replace(/^\\(?=\$aact_)/, '');
   const response = await fetch(`${baseUrl}${path}`, {
@@ -68,12 +100,12 @@ async function asaasRequest(path: string, init: RequestInit = {}) {
     },
     cache: 'no-store',
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
+  if (!response.ok && init.headers && new Headers(init.headers).get('Accept') === 'application/pdf') {
+    const data = await response.clone().json().catch(() => ({}));
     const description = Array.isArray(data?.errors)
       ? data.errors.map((item: any) => item.description).filter(Boolean).join('; ')
       : data?.message;
     throw new Error(description || `Asaas respondeu com HTTP ${response.status}`);
   }
-  return data;
+  return response;
 }

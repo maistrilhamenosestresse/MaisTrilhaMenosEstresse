@@ -124,11 +124,14 @@ export default function CobrancasDashboard() {
   };
 
   const formatCurrency = (val: number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const isPaidStatus = (status: string) =>
+    ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(status);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'RECEIVED':
       case 'CONFIRMED':
+      case 'RECEIVED_IN_CASH':
         return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit"><CheckCircle2 className="w-3 h-3"/> Pago</span>;
       case 'PENDING':
         return <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 w-fit"><Clock className="w-3 h-3"/> Aguardando</span>;
@@ -252,7 +255,7 @@ export default function CobrancasDashboard() {
                 const totalGroupValue = groupItems.reduce((acc, curr) => acc + curr.value, 0);
                 
                 // Analisar status do grupo
-                const paidCount = groupItems.filter(i => i.status === 'RECEIVED' || i.status === 'CONFIRMED').length;
+                const paidCount = groupItems.filter(i => isPaidStatus(i.status)).length;
                 const overdueCount = groupItems.filter(i => i.status === 'OVERDUE').length;
                 // Agrupamento interno por carnê/pedido (installment)
                 const displayItems: any[] = [];
@@ -263,10 +266,13 @@ export default function CobrancasDashboard() {
                     if (!processedInstallments.has(p.installment)) {
                       processedInstallments.add(p.installment);
                       const installments = groupItems.filter(x => x.installment === p.installment);
+                      const paidInstallments = installments.filter(x => isPaidStatus(x.status)).length;
+                      const overdueInstallments = installments.filter(x => x.status === 'OVERDUE').length;
+                      const nextInstallment = installments.find(x => !isPaidStatus(x.status));
                       
                       let representedStatus = p.status;
                       if (installments.some(x => x.status === 'OVERDUE')) representedStatus = 'OVERDUE';
-                      else if (installments.every(x => x.status === 'RECEIVED' || x.status === 'CONFIRMED')) representedStatus = 'RECEIVED';
+                      else if (installments.every(x => isPaidStatus(x.status))) representedStatus = 'RECEIVED';
                       else if (installments.some(x => x.status === 'PENDING')) representedStatus = 'PENDING';
                       
                       const totalValue = installments.reduce((acc, curr) => acc + curr.value, 0);
@@ -282,7 +288,12 @@ export default function CobrancasDashboard() {
                         dueDate: p.dueDate,
                         status: representedStatus,
                         isInstallmentGroup: true,
-                        invoiceUrl: p.invoiceUrl
+                        invoiceUrl: p.invoiceUrl,
+                        installmentCount: installments.length,
+                        paidInstallments,
+                        overdueInstallments,
+                        nextDueDate: nextInstallment?.dueDate || null,
+                        paymentBookUrl: `/api/admin/asaas/installments/${encodeURIComponent(p.installment)}/payment-book`,
                       });
                     }
                   } else {
@@ -355,8 +366,18 @@ export default function CobrancasDashboard() {
                             <tbody>
                               {displayItems.map((item) => (
                                 <tr key={item.id} onClick={() => openModal(item.rawPayment)} className="border-b border-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
-                                  <td className="p-3 text-xs text-gray-700 font-medium max-w-[200px] truncate" title={item.description}>
-                                    {item.description}
+                                  <td className="p-3 text-xs text-gray-700 font-medium max-w-[240px]" title={item.description}>
+                                    <span className="block truncate">{item.description}</span>
+                                    {item.isInstallmentGroup && (
+                                      <span className="mt-1 block text-[10px] font-bold text-blue-700">
+                                        {item.paidInstallments}/{item.installmentCount} pagas
+                                        {item.overdueInstallments > 0
+                                          ? ` · ${item.overdueInstallments} em atraso`
+                                          : item.nextDueDate
+                                            ? ` · próxima ${format(new Date(item.nextDueDate), "dd/MM/yyyy")}`
+                                            : ' · carnê quitado'}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="p-3">{getBillingTypeIcon(item.billingType)}</td>
                                   <td className="p-3 font-black text-gray-900">{formatCurrency(item.value)}</td>
@@ -374,6 +395,17 @@ export default function CobrancasDashboard() {
                                         >
                                           {isAnticipating === (item.isInstallmentGroup ? item.rawPayment.installment : item.rawPayment.id) ? '...' : 'Antecipar'}
                                         </button>
+                                      )}
+                                      {item.paymentBookUrl && (
+                                        <a
+                                          href={item.paymentBookUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="inline-flex items-center gap-1 rounded-lg bg-[#0B2540] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#061B30]"
+                                        >
+                                          <FileText className="h-3 w-3" /> Carnê
+                                        </a>
                                       )}
                                       <a 
                                         href={item.invoiceUrl} 
@@ -406,6 +438,8 @@ export default function CobrancasDashboard() {
         const modalInstallments = selectedPayment.installment ? payments.filter(p => p.installment === selectedPayment.installment) : [];
         const totalGross = selectedPayment.installment ? modalInstallments.reduce((acc, curr) => acc + curr.value, 0) : selectedPayment.value;
         const totalNet = selectedPayment.installment ? modalInstallments.reduce((acc, curr) => acc + curr.netValue, 0) : selectedPayment.netValue;
+        const paidModalInstallments = modalInstallments.filter((item) => isPaidStatus(item.status)).length;
+        const overdueModalInstallments = modalInstallments.filter((item) => item.status === 'OVERDUE').length;
         
         return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedPayment(null)}>
@@ -424,7 +458,7 @@ export default function CobrancasDashboard() {
               <div className="flex items-center gap-3 mb-6">
                 {getStatusBadge(selectedPayment.status)}
                 {getBillingTypeIcon(selectedPayment.billingType)}
-                {selectedPayment.status === 'RECEIVED' || selectedPayment.status === 'CONFIRMED' ? (
+                {isPaidStatus(selectedPayment.status) ? (
                   new Date(selectedPayment.paymentDate) > new Date(selectedPayment.dueDate) ? (
                     <span className="bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200">Pago com Atraso</span>
                   ) : (
@@ -432,6 +466,34 @@ export default function CobrancasDashboard() {
                   )
                 ) : null}
               </div>
+
+              {selectedPayment.installment && (
+                <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wider text-blue-700">Progresso do carnê</p>
+                      <p className="mt-1 text-lg font-black text-[#0B2540]">
+                        {paidModalInstallments} de {modalInstallments.length} parcelas pagas
+                      </p>
+                    </div>
+                    {overdueModalInstallments > 0 && (
+                      <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+                        {overdueModalInstallments} em atraso
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                    <div
+                      className="h-full rounded-full bg-[#0B2540]"
+                      style={{
+                        width: `${modalInstallments.length
+                          ? (paidModalInstallments / modalInstallments.length) * 100
+                          : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
@@ -528,6 +590,16 @@ export default function CobrancasDashboard() {
                   )}
 
                   <div className="flex flex-col gap-2 mt-4">
+                    {selectedPayment.installment && (
+                      <a
+                        href={`/api/admin/asaas/installments/${encodeURIComponent(selectedPayment.installment)}/payment-book`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full rounded-xl bg-[#0B2540] py-3 text-center text-sm font-bold text-white transition-colors hover:bg-[#061B30]"
+                      >
+                        Abrir carnê completo
+                      </a>
+                    )}
                     <a href={selectedPayment.invoiceUrl} target="_blank" rel="noreferrer" className="w-full text-center bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold py-3 rounded-xl transition-colors">
                       Abrir Fatura do Cliente
                     </a>

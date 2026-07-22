@@ -9,6 +9,7 @@ import {
   AsaasPaymentStatus,
   type AsaasPaymentResult,
 } from "@/components/payments/AsaasPaymentStatus";
+import { BoletoInstallmentSelector } from "@/components/payments/BoletoInstallmentSelector";
 import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function LojaCheckoutPage() {
@@ -24,6 +25,7 @@ export default function LojaCheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"infinitepay" | "boleto">("infinitepay");
+  const [boletoInstallments, setBoletoInstallments] = useState(1);
   const [paymentResult, setPaymentResult] = useState<AsaasPaymentResult | null>(null);
 
   const [formaEntrega, setFormaEntrega] = useState<"retirada" | "correios" | "entrega_trilha">("retirada");
@@ -65,6 +67,7 @@ export default function LojaCheckoutPage() {
         produtoId: product.id, 
         clientId: client.id,
         method: faltante > 0 ? paymentMethod : 'cashback',
+        installments: faltante > 0 && paymentMethod === "boleto" ? boletoInstallments : 1,
         forma_entrega: formaEntrega,
         delivery_info: deliveryInfo
       };
@@ -130,7 +133,7 @@ export default function LojaCheckoutPage() {
   const chargedAmount = faltante <= 0
     ? 0
     : paymentMethod === "boleto"
-      ? calculateGrossPrice(faltante, "BOLETO", 1)
+      ? calculateGrossPrice(faltante, "BOLETO", boletoInstallments)
       : faltante;
 
   if (paymentResult) {
@@ -304,7 +307,7 @@ export default function LojaCheckoutPage() {
                   {
                     value: "boleto" as const,
                     label: "Boleto",
-                    detail: "Asaas",
+                    detail: "Asaas · à vista ou em até 12x",
                     icon: <FileText className="h-5 w-5" />,
                   },
                 ].map((option) => (
@@ -324,6 +327,13 @@ export default function LojaCheckoutPage() {
                   </button>
                 ))}
               </div>
+              {paymentMethod === "boleto" && (
+                <BoletoInstallmentSelector
+                  netAmount={faltante}
+                  installments={boletoInstallments}
+                  onChange={setBoletoInstallments}
+                />
+              )}
               <div className="rounded-2xl bg-[#071829] p-4 text-white">
                 <div className="flex justify-between text-sm">
                   <span>
