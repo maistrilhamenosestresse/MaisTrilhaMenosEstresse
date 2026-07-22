@@ -9,7 +9,7 @@ import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { fetchCurrentClient } from "@/lib/app/current-client";
-import { formatOfflineUpdate, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { formatOfflineUpdate, getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
 
 type CachedTrails = { euVou: any[]; explorar: any[] };
@@ -247,7 +247,7 @@ export default function PwaTrilhas() {
                     </div>
 
                     <button 
-                      onClick={() => router.push(`/app/trilhas/${trail.id}`)}
+                      onClick={() => navigateAppOfflineFirst(router, `/app/trilhas/${trail.id}`)}
                       className="relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 font-bold text-white shadow-md transition-all hover:bg-[#061B30] group-hover:scale-[1.01]"
                     >
                       <Navigation className="w-4 h-4" /> Acessar Álbum / Informações
@@ -275,7 +275,7 @@ export default function PwaTrilhas() {
                 {filteredExplorar.length > 0 ? filteredExplorar.map((trail) => (
                   <div 
                     key={trail.id} 
-                    onClick={() => router.push(`/app/trilhas/${trail.id}/carrinho`)}
+                    onClick={() => navigateAppOfflineFirst(router, `/app/trilhas/${trail.id}/carrinho`)}
                     className="mt-surface group flex cursor-pointer items-center gap-4 rounded-[1.5rem] p-4 transition-all hover:-translate-y-0.5 hover:border-orange-200"
                   >
                     <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-4xl">

@@ -609,18 +609,20 @@ export default function AdminPage() {
     }
 
     try {
-      const { data, error } = await supabase.from('reservas').insert([
-        {
+      const response = await fetch('/api/admin/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           agenda_id: selectedAgendaId,
           client_id: novaReservaClientId,
           status_pagamento: novaReservaStatus,
           valor_pago: Number(novaReservaValorPago.replace(',', '.')) || 0,
-          purchase_channel: 'admin',
-        }
-      ]).select('*, clients!reservas_client_id_fkey(*)').single();
-      
-      if (error) throw error;
-      setReservas([...reservas, data]);
+          metodo_pagamento: 'PIX',
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Falha ao criar reserva manual');
+      setReservas([...reservas, result.reservation]);
       setNovaReservaClientId('');
       setNovaReservaValorPago('');
     } catch (err: any) { alert("Erro ao adicionar passageiro: " + err.message); }

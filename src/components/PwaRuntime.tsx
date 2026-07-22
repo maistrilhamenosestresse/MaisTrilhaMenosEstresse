@@ -17,6 +17,7 @@ export default function PwaRuntime() {
     let checking = false;
     let shouldReloadOnControllerChange = false;
     let latestVersion = "";
+    let warmedRoutes = false;
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
 
     const reloadOnce = () => {
@@ -53,9 +54,10 @@ export default function PwaRuntime() {
           { scope: "/", updateViaCache: "none" },
         );
         await registration.update();
-        if (!previousVersion || versionChanged) {
+        if (!warmedRoutes || !previousVersion || versionChanged) {
           const readyRegistration = await navigator.serviceWorker.ready;
           (readyRegistration.active || registration.active)?.postMessage({ type: "WARM_APP_ROUTES" });
+          warmedRoutes = true;
         }
 
         if (!previousVersion) {

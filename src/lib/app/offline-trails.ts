@@ -13,6 +13,7 @@ type OfflineTrail = {
 
 export type OfflineMapPack = {
   agendaId: string;
+  version?: number;
   geojson: unknown;
   bounds: { south: number; west: number; north: number; east: number };
   attribution: string;

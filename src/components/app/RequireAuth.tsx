@@ -19,7 +19,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (error) {
+        if (error && navigator.onLine) {
           await supabase.auth.signOut({ scope: "local" });
         }
 
@@ -28,7 +28,7 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
           return;
         }
 
-        if (!session || error) {
+        if (!session || (error && navigator.onLine)) {
           setAuthenticated(false);
           router.replace("/app/login");
           return;

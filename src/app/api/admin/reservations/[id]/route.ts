@@ -16,6 +16,8 @@ const ALLOWED_METHODS = new Set([
   'PIX',
   'CREDIT_CARD',
   'BOLETO',
+  'DINHEIRO',
+  'TRANSFERENCIA',
   'CORTESIA',
   'SALDO_E_PONTOS',
 ]);
@@ -73,15 +75,25 @@ export async function PUT(
     return NextResponse.json({ error: 'Reserva não encontrada' }, { status: 404 });
   }
 
+  const normalizedAmount = Math.round(amount * 100) / 100;
+  const { data: pointReconciliation, error: reconciliationError } = await supabase.rpc(
+    'admin_update_reservation_payment',
+    {
+      p_reservation_id: id,
+      p_status: status,
+      p_amount: normalizedAmount,
+      p_method: method,
+    },
+  );
+  if (reconciliationError) {
+    console.error('Falha ao reconciliar reserva e pontos:', reconciliationError);
+    return NextResponse.json({ error: 'Não foi possível atualizar a reserva e os pontos' }, { status: 400 });
+  }
+
   const { data: reservation, error } = await supabase
     .from('reservas')
-    .update({
-      status_pagamento: status,
-      valor_pago: Math.round(amount * 100) / 100,
-      metodo_pagamento: method,
-    })
-    .eq('id', id)
     .select('*, clients!reservas_client_id_fkey(*)')
+    .eq('id', id)
     .single();
   if (error) {
     return NextResponse.json({ error: 'Não foi possível atualizar a reserva' }, { status: 400 });
@@ -101,16 +113,18 @@ export async function PUT(
       },
       after: {
         status_pagamento: status,
-        valor_pago: Math.round(amount * 100) / 100,
+        valor_pago: normalizedAmount,
         metodo_pagamento: method,
       },
       reason: reason || null,
       asaasPaymentId: current.nsu_transacao || null,
+      points: pointReconciliation,
     },
   });
 
   return NextResponse.json({
     reservation,
+    points: pointReconciliation,
     warning: current.nsu_transacao
       ? 'A alteração foi registrada no painel, mas não modifica nem estorna a cobrança existente no provedor de pagamento.'
       : null,

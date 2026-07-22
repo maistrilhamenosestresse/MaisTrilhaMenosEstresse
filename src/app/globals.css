@@ -17,6 +17,23 @@
   --brand-shadow-soft: 0 8px 26px rgba(5, 24, 43, 0.08);
 }
 
+/* Mantém os controles do mapa acima do painel inferior no celular. */
+.mt-immersive-map .leaflet-bottom.leaflet-left {
+  bottom: 4.25rem;
+  left: 0.35rem;
+}
+
+.mt-immersive-map .leaflet-control-zoom {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.35) !important;
+  border-radius: 0.8rem !important;
+  box-shadow: 0 8px 24px rgb(7 24 41 / 0.25) !important;
+}
+
+.mt-immersive-map .leaflet-control-zoom a {
+  color: #071829;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

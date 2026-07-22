@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Download, HardDrive, Loader2, RefreshCw, Trash2, WifiOff } from "lucide-react";
 import { deleteOfflineMapPack, getOfflineMapPack, saveOfflineMapPack, type OfflineMapPack } from "@/lib/app/offline-trails";
-import { formatOfflineUpdate } from "@/lib/app/offline-data";
+import { cacheAppRouteForOffline, formatOfflineUpdate } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
 
 type DownloadPayload = {
   agendaId: string;
+  version: number;
   generatedAt: string;
   bounds: OfflineMapPack["bounds"];
   featureCount: number;
@@ -58,6 +59,7 @@ export function OfflineMapDownloadCard({
       setProgress(94);
       const stored = await saveOfflineMapPack({
         agendaId,
+        version: result.version,
         geojson: result.geojson,
         bounds: result.bounds,
         attribution: result.attribution,
@@ -67,6 +69,11 @@ export function OfflineMapDownloadCard({
       setPack(stored);
       setProgress(100);
       onPackChange?.(stored);
+      await Promise.allSettled([
+        cacheAppRouteForOffline(window.location.pathname),
+        cacheAppRouteForOffline(`/app/trilhas/${agendaId}`),
+        cacheAppRouteForOffline('/app/trilhas'),
+      ]);
       window.dispatchEvent(new CustomEvent("mt:offline-map-updated", { detail: { agendaId } }));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Falha ao baixar o mapa offline.");
@@ -87,6 +94,7 @@ export function OfflineMapDownloadCard({
   };
 
   const size = pack ? formatBytes(pack.byteSize) : null;
+  const updateAvailable = Boolean(pack && (pack.version || 1) < 2);
 
   return (
     <section className={`overflow-hidden rounded-2xl border ${pack ? "border-emerald-300/30 bg-emerald-400/10" : "border-cyan-300/20 bg-cyan-400/10"} ${compact ? "p-3.5" : "p-4"}`}>
@@ -95,7 +103,7 @@ export function OfflineMapDownloadCard({
           {pack ? <CheckCircle2 className="h-5 w-5" /> : <Download className="h-5 w-5" />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-black text-white">{pack ? "Mapa baixado neste aparelho" : "Baixar mapa para usar sem internet"}</p>
+          <p className="text-xs font-black text-white">{updateAvailable ? "Atualização do mapa disponível" : pack ? "Mapa baixado neste aparelho" : "Baixar mapa para usar sem internet"}</p>
           <p className="mt-1 text-[10px] leading-relaxed text-white/60">
             {pack
               ? `${pack.featureCount.toLocaleString("pt-BR")} elementos · ${size} · salvo em ${formatOfflineUpdate(pack.savedAt)}`

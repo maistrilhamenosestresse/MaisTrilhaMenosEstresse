@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { PwaEngagementCard } from "@/components/app/PwaEngagementCard";
-import { getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
 
 type FeaturedProduct = {
@@ -93,7 +93,7 @@ export default function PwaDashboard() {
   const handleRecarregar = () => {
     setIsAnimating(true);
     setTimeout(() => {
-      router.push('/app/recarregar');
+      navigateAppOfflineFirst(router, '/app/recarregar');
     }, 1200);
   };
 
@@ -128,7 +128,7 @@ export default function PwaDashboard() {
           </div>
           <button
             type="button"
-            onClick={() => router.push('/app/ranking')}
+            onClick={() => navigateAppOfflineFirst(router, '/app/ranking')}
             aria-label="Ver meu ranking"
             className="rounded-full border border-white/15 bg-white/10 p-2.5 backdrop-blur-md transition-colors hover:bg-white/20"
           >
@@ -170,7 +170,7 @@ export default function PwaDashboard() {
       {/* Main Action Buttons */}
       <div className="relative z-20 -mt-12 px-4 sm:px-6">
         <div className="mt-surface flex justify-between gap-1 rounded-[1.75rem] p-4">
-          <button onClick={() => router.push('/app/loja')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
+          <button onClick={() => navigateAppOfflineFirst(router, '/app/loja')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF0E6] text-[#D96224] transition-colors group-hover:bg-orange-100">
               <ShoppingBag className="w-6 h-6" />
             </div>
@@ -182,13 +182,13 @@ export default function PwaDashboard() {
             </div>
             <span className="text-xs font-bold text-gray-700">Recarregar</span>
           </button>
-          <button onClick={() => router.push('/app/beneficios')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
+          <button onClick={() => navigateAppOfflineFirst(router, '/app/beneficios')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 transition-colors group-hover:bg-amber-100">
               <Gift className="w-6 h-6" />
             </div>
             <span className="text-xs font-bold text-gray-700">Benefícios</span>
           </button>
-          <button onClick={() => router.push('/app/extratos')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
+          <button onClick={() => navigateAppOfflineFirst(router, '/app/extratos')} className="flex flex-col items-center justify-center gap-2 flex-1 group">
             <div className="w-12 h-12 rounded-2xl bg-gray-50 group-hover:bg-gray-100 flex items-center justify-center text-gray-600 transition-colors">
               <History className="w-6 h-6" />
             </div>
@@ -203,7 +203,7 @@ export default function PwaDashboard() {
 
         <button
           type="button"
-          onClick={() => router.push("/app/passaporte")}
+          onClick={() => navigateAppOfflineFirst(router, "/app/passaporte")}
           className="relative flex w-full items-center gap-4 overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#071829,#12385E)] p-5 text-left text-white shadow-xl"
         >
           <span className="absolute -right-10 -top-12 h-32 w-32 rounded-full bg-orange-400/15 blur-2xl" />
@@ -239,7 +239,7 @@ export default function PwaDashboard() {
                 <button
                   type="button"
                   key={product.id}
-                  onClick={() => router.push(`/app/loja/checkout?produtoId=${product.id}`)}
+                  onClick={() => navigateAppOfflineFirst(router, `/app/loja/checkout?produtoId=${product.id}`)}
                   className="mt-surface min-w-[148px] shrink-0 snap-start rounded-2xl p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-orange-200"
                 >
                   <div className="w-full h-24 bg-gray-50 rounded-xl mb-3 flex items-center justify-center overflow-hidden">
@@ -286,7 +286,7 @@ export default function PwaDashboard() {
             </div>
             <h4 className="font-bold text-gray-800 text-sm mb-1">Acompanhe seus gastos</h4>
             <p className="text-xs text-gray-500 mb-4 px-4">Veja seu extrato de compras, uso de saldo e recargas da sua carteira.</p>
-            <button onClick={() => router.push('/app/extratos')} className="rounded-full bg-[#0B2540] px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#061B30]">
+            <button onClick={() => navigateAppOfflineFirst(router, '/app/extratos')} className="rounded-full bg-[#0B2540] px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#061B30]">
               Acessar Meu Extrato
             </button>
           </div>

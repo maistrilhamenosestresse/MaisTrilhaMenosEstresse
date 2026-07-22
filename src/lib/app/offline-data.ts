@@ -53,6 +53,34 @@ export function clearOfflineUserData(userId?: string) {
   navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_PRIVATE_CACHE" });
 }
 
+export async function cacheAppRouteForOffline(path = window.location.pathname) {
+  if (typeof window === "undefined" || !navigator.onLine || !("serviceWorker" in navigator)) return;
+  if (!path.startsWith("/app")) return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    (registration.active || navigator.serviceWorker.controller)?.postMessage({
+      type: "CACHE_APP_ROUTE",
+      path,
+    });
+  } catch (error) {
+    console.warn("Não foi possível preparar esta tela para uso offline.", error);
+  }
+}
+
+export function navigateAppOfflineFirst(
+  router: { push: (href: string) => void; replace: (href: string) => void },
+  href: string,
+  mode: "push" | "replace" = "push",
+) {
+  if (typeof window !== "undefined" && !navigator.onLine && href.startsWith("/app")) {
+    if (mode === "replace") window.location.replace(href);
+    else window.location.assign(href);
+    return;
+  }
+  router[mode](href);
+}
+
 export function formatOfflineUpdate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",

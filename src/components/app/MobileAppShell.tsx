@@ -3,12 +3,32 @@
 import { Home, ShoppingBag, Map, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import RequireAuth from "@/components/app/RequireAuth";
 import { ConnectionStatus } from "@/components/app/ConnectionStatus";
+import { cacheAppRouteForOffline } from "@/lib/app/offline-data";
 
 export default function MobileAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/app/login";
+
+  useEffect(() => {
+    const cacheRoute = () => void cacheAppRouteForOffline(pathname);
+    cacheRoute();
+    window.addEventListener("online", cacheRoute);
+    return () => window.removeEventListener("online", cacheRoute);
+  }, [pathname]);
+
+  const handleOfflineLink = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (navigator.onLine) return;
+    const target = event.target as HTMLElement;
+    const anchor = target.closest<HTMLAnchorElement>('a[href]');
+    if (!anchor) return;
+    const destination = new URL(anchor.href, window.location.origin);
+    if (destination.origin !== window.location.origin || !destination.pathname.startsWith('/app')) return;
+    event.preventDefault();
+    window.location.assign(`${destination.pathname}${destination.search}`);
+  };
 
   const navItems = [
     { name: "Início", path: "/app", icon: Home },
@@ -20,7 +40,7 @@ export default function MobileAppShell({ children }: { children: React.ReactNode
 
   return (
     <RequireAuth>
-      <div className="mt-app-shell h-[100dvh] flex flex-col overflow-hidden">
+      <div className="mt-app-shell h-[100dvh] flex flex-col overflow-hidden" onClickCapture={handleOfflineLink}>
         <ConnectionStatus />
         <main className="mt-app-canvas app-mobile-scroll flex-1 min-h-0 w-full max-w-2xl mx-auto relative overflow-x-hidden overflow-y-auto overscroll-contain">
           {children}

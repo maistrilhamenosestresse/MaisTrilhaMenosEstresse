@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, useMap, Tooltip, Circle, GeoJSON } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, useMap, Tooltip, Circle, GeoJSON, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabase";
@@ -64,6 +64,21 @@ function MapController({ center, zoom, centerRequest }: { center: [number, numbe
   return null;
 }
 
+function RouteViewport({ coordinates, tracking }: { coordinates: [number, number, number?][]; tracking: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (tracking || coordinates.length < 2) return;
+    const bounds = L.latLngBounds(coordinates.map((point) => [point[0], point[1]] as [number, number]));
+    map.fitBounds(bounds, {
+      paddingTopLeft: [34, 118],
+      paddingBottomRight: [34, 168],
+      maxZoom: 16,
+      animate: false,
+    });
+  }, [coordinates, map, tracking]);
+  return null;
+}
+
 export interface ImmersiveMapProps {
   agendaId?: string;
   onElevationData?: (data: { distance: number, elevation: number, lat: number, lng: number }[]) => void;
@@ -97,7 +112,7 @@ export default function ImmersiveMap({
   agendaId,
   onElevationData,
   hoverIndex,
-  layerMode = "street",
+  layerMode = "topo",
   trackingPos,
   walkedIndex = 0,
   isTracking = false,
@@ -219,14 +234,18 @@ export default function ImmersiveMap({
   const aheadCoords = isTracking ? (coordinates.slice(walkedIndex) as [number, number][]) : (coordinates as [number, number][]);
 
   return (
-    <div className="relative z-0 h-full w-full bg-[radial-gradient(circle_at_center,#263849,#101923_70%)]">
+    <div className={`relative z-0 h-full w-full ${effectiveLayerMode === "offline" ? "bg-[#e9ede4]" : "bg-[radial-gradient(circle_at_center,#263849,#101923_70%)]"}`}>
       <MapContainer 
         center={[startPoint[0], startPoint[1]]} 
-        zoom={14} 
+        zoom={13}
         zoomControl={false}
-        className="w-full h-full"
+        preferCanvas
+        zoomSnap={0.5}
+        className="mt-immersive-map w-full h-full"
       >
         <ResizeHandler />
+        <RouteViewport coordinates={coordinates} tracking={isTracking} />
+        <ZoomControl position="bottomleft" zoomInTitle="Aproximar" zoomOutTitle="Afastar" />
         {/* Controla o mapa quando o GPS está rastreando */}
         {isTracking && trackingPos && (
           <MapController center={[trackingPos.lat, trackingPos.lng]} zoom={16} centerRequest={centerRequest} />
@@ -241,9 +260,10 @@ export default function ImmersiveMap({
           />
         ) : effectiveLayerMode === "topo" ? (
           <TileLayer
-            attribution='&copy; OpenTopoMap'
-            url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-            maxZoom={17}
+            attribution='Tiles &copy; Esri'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+            maxNativeZoom={18}
+            maxZoom={20}
           />
         ) : effectiveLayerMode === "street" ? (
           <TileLayer
@@ -267,7 +287,11 @@ export default function ImmersiveMap({
             })}
             onEachFeature={(feature, layer) => {
               const name = feature?.properties?.name;
+              const label = offlineFeatureLabel(feature?.properties?.subtype);
               if (name) layer.bindTooltip(String(name), { sticky: true, direction: "top" });
+              layer.bindPopup(
+                `<div style="min-width:140px"><strong>${escapeMapText(name || label)}</strong><br><span style="color:#64748b;font-size:11px">${escapeMapText(label)}</span></div>`,
+              );
             }}
           />
         ) : null}
@@ -275,16 +299,21 @@ export default function ImmersiveMap({
         {/* Trilha: laranja normal / verde+vermelho quando rastreando */}
         {!isTracking && (
           <>
-            <Polyline positions={coordinates as [number, number][]} pathOptions={{ color: '#f97316', weight: 8, opacity: 0.3 }} />
-            <Polyline positions={coordinates as [number, number][]} pathOptions={{ color: '#f97316', weight: 4, opacity: 1, dashArray: '1, 10', lineCap: 'round', lineJoin: 'round' }} />
-            <Polyline positions={coordinates as [number, number][]} pathOptions={{ color: '#fb923c', weight: 2, opacity: 1 }} />
+            <Polyline positions={coordinates as [number, number][]} pathOptions={{ color: '#ffffff', weight: 10, opacity: 0.92, lineCap: 'round', lineJoin: 'round' }} />
+            <Polyline positions={coordinates as [number, number][]} pathOptions={{ color: '#ea5b20', weight: 5.5, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
           </>
         )}
         {isTracking && walkedCoords.length > 1 && (
-          <Polyline positions={walkedCoords} pathOptions={{ color: '#ef4444', weight: 6, opacity: 0.95 }} />
+          <>
+            <Polyline positions={walkedCoords} pathOptions={{ color: '#ffffff', weight: 10, opacity: 0.9, lineCap: 'round' }} />
+            <Polyline positions={walkedCoords} pathOptions={{ color: '#f97316', weight: 6, opacity: 1, lineCap: 'round' }} />
+          </>
         )}
         {isTracking && aheadCoords.length > 1 && (
-          <Polyline positions={aheadCoords} pathOptions={{ color: '#22c55e', weight: 6, opacity: 0.95, dashArray: '2, 8', lineCap: 'round' }} />
+          <>
+            <Polyline positions={aheadCoords} pathOptions={{ color: '#ffffff', weight: 10, opacity: 0.9, lineCap: 'round' }} />
+            <Polyline positions={aheadCoords} pathOptions={{ color: '#16a34a', weight: 6, opacity: 1, lineCap: 'round' }} />
+          </>
         )}
         {/* Marcador de posição do usuário */}
         {isTracking && trackingPos && (
@@ -299,7 +328,7 @@ export default function ImmersiveMap({
         </Marker>
 
         <Marker position={[endPoint[0], endPoint[1]]} icon={endIcon}>
-          <Tooltip direction="top" offset={[0, -10]} className="bg-gray-900 text-white font-bold border-none shadow-xl">Cachoeira (Fim)</Tooltip>
+          <Tooltip direction="top" offset={[0, -10]} className="bg-gray-900 text-white font-bold border-none shadow-xl">Chegada da trilha</Tooltip>
         </Marker>
 
         {/* Cursor do Gráfico de Elevação */}
@@ -320,11 +349,48 @@ export default function ImmersiveMap({
 }
 
 function offlineFeatureStyle(kind?: string, subtype?: string): L.PathOptions {
-  if (kind === "water") return { color: "#38bdf8", weight: 2.5, fillColor: "#0ea5e9", fillOpacity: 0.22 };
-  if (kind === "nature") return { color: "#4ade80", weight: 1, fillColor: "#166534", fillOpacity: 0.32 };
+  if (kind === "water") return { color: "#3b82c4", weight: 2, fillColor: "#9dd9ee", fillOpacity: 0.72 };
+  if (kind === "nature") return { color: "#9bb889", weight: 0.7, fillColor: "#cdddbf", fillOpacity: 0.62 };
   if (kind === "path") {
     const major = ["primary", "secondary", "tertiary", "residential"].includes(subtype || "");
-    return { color: major ? "#cbd5e1" : "#f8fafc", weight: major ? 3.5 : 2, opacity: 0.82, dashArray: major ? undefined : "5 5" };
+    const trail = ["path", "footway", "track", "bridleway", "steps"].includes(subtype || "");
+    return {
+      color: major ? "#ffffff" : trail ? "#9b7653" : "#c4c8bd",
+      weight: major ? 4 : trail ? 2.2 : 1.2,
+      opacity: major ? 0.96 : trail ? 0.78 : 0.48,
+      dashArray: trail ? "4 4" : undefined,
+    };
   }
-  return { color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.8 };
+  return { color: "#d97706", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.88 };
+}
+
+function offlineFeatureLabel(subtype?: string) {
+  const labels: Record<string, string> = {
+    path: "Trilha",
+    footway: "Caminho a pé",
+    track: "Estrada de terra",
+    steps: "Escadaria",
+    trailhead: "Início de trilha",
+    viewpoint: "Mirante",
+    waterfall: "Cachoeira",
+    spring: "Nascente",
+    cave_entrance: "Entrada de caverna",
+    camp_site: "Área de camping",
+    picnic_site: "Área de descanso",
+    shelter: "Abrigo",
+    drinking_water: "Água potável",
+    toilets: "Banheiro",
+    gate: "Porteira",
+    ford: "Travessia de água",
+  };
+  return labels[subtype || ""] || "Ponto de referência";
+}
+
+function escapeMapText(value: unknown) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }

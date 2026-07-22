@@ -10,7 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { fetchCurrentClient } from "@/lib/app/current-client";
-import { formatOfflineUpdate, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { formatOfflineUpdate, getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
 
 const DynamicMap = dynamic(() => import('@/components/app/ImmersiveMap'), {
@@ -146,7 +146,7 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
           <WifiOff className="h-10 w-10 text-amber-600" />
           <p className="font-black text-[#071829]">Trilha indisponível offline</p>
           <p className="text-sm text-slate-500">{loadError}</p>
-          <button onClick={() => router.push('/app/trilhas')} className="mt-2 rounded-2xl bg-[#0B2540] px-5 py-3 text-sm font-black text-white">Voltar para minhas trilhas</button>
+          <button onClick={() => navigateAppOfflineFirst(router, '/app/trilhas')} className="mt-2 rounded-2xl bg-[#0B2540] px-5 py-3 text-sm font-black text-white">Voltar para minhas trilhas</button>
         </div>
       );
     }
@@ -337,7 +337,7 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
                     Nossa Inteligência Artificial escaneia todas as fotos da trilha e encontra exatamente as que você aparece.
                   </p>
                   <button 
-                    onClick={() => router.push(`/app/album/${unwrappedParams.id}`)}
+                    onClick={() => navigateAppOfflineFirst(router, `/app/album/${unwrappedParams.id}`)}
                     className="relative z-10 w-full rounded-xl bg-white py-3 text-sm font-bold text-[#0B2540] shadow-sm transition-colors hover:bg-gray-50"
                   >
                     Abrir Álbum da Trilha
