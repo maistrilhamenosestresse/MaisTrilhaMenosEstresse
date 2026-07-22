@@ -10,7 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import { PwaEngagementCard } from "@/components/app/PwaEngagementCard";
 import { getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
-import { getAdventureProgress } from "@/lib/gamification";
+import { getAdventureProgress, pointsToDiscount } from "@/lib/gamification";
 
 type FeaturedProduct = {
   id: string;
@@ -164,7 +164,7 @@ export default function PwaDashboard() {
             </button>
           </div>
           <p className="mt-1 text-xs text-blue-100/70">
-            ⭐ {clientData?.pontos || 0} pontos de fidelidade ≈ {formatCurrency((clientData?.pontos || 0) / 100)} de desconto
+            ⭐ {clientData?.pontos || 0} pontos · até {formatCurrency(pointsToDiscount(clientData?.pontos || 0))} de desconto
           </p>
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
             <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-bold">
