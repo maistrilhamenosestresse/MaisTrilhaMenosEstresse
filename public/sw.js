@@ -1,9 +1,23 @@
 const DEPLOY_VERSION = new URL(self.location.href).searchParams.get('v') || 'local';
-const CACHE_VERSION = `mt-pwa-v4-${DEPLOY_VERSION.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48)}`;
+const CACHE_VERSION = `mt-pwa-v5-${DEPLOY_VERSION.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48)}`;
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PRIVATE_PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const MAP_CACHE = `${CACHE_VERSION}-maps`;
-const APP_ROUTES = ['/app', '/app/trilhas', '/app/passaporte', '/app/perfil'];
+const APP_ROUTES = [
+  '/app',
+  '/app/trilhas',
+  '/app/loja',
+  '/app/ranking',
+  '/app/perfil',
+  '/app/perfil/dados',
+  '/app/passaporte',
+  '/app/beneficios',
+  '/app/extratos',
+  '/app/recarregar',
+  '/app/membros',
+  '/app/termos',
+  '/app/configuracoes',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -33,6 +47,9 @@ self.addEventListener('message', (event) => {
   }
   if (event.data && event.data.type === 'WARM_APP_ROUTES') {
     event.waitUntil(warmAppRoutes());
+  }
+  if (event.data && event.data.type === 'CACHE_APP_ROUTE') {
+    event.waitUntil(warmAppRoute(event.data.path));
   }
   if (event.data && event.data.type === 'CLEAR_PRIVATE_CACHE') {
     event.waitUntil(caches.delete(PRIVATE_PAGE_CACHE));
@@ -66,14 +83,17 @@ self.addEventListener('fetch', (event) => {
 });
 
 async function warmAppRoutes() {
+  await Promise.allSettled(APP_ROUTES.map((path) => warmAppRoute(path)));
+}
+
+async function warmAppRoute(value) {
+  const path = safePrivateAppPath(value);
+  if (!path) return;
+  const response = await fetch(path, { credentials: 'include', cache: 'no-store' });
+  if (!response.ok || response.redirected || !isHtml(response)) return;
   const cache = await caches.open(PRIVATE_PAGE_CACHE);
-  await Promise.allSettled(APP_ROUTES.map(async (path) => {
-    const response = await fetch(path, { credentials: 'include', cache: 'no-store' });
-    if (response.ok && !response.redirected && isHtml(response)) {
-      await cache.put(path, response.clone());
-      await warmStaticFromHtml(response);
-    }
-  }));
+  await cache.put(path, response.clone());
+  await warmStaticFromHtml(response);
 }
 
 async function warmStaticFromHtml(response) {
@@ -88,15 +108,16 @@ async function warmStaticFromHtml(response) {
 
 async function networkFirstNavigation(request) {
   const cache = await caches.open(PRIVATE_PAGE_CACHE);
+  const url = new URL(request.url);
   try {
     const response = await fetch(request);
-    const url = new URL(request.url);
     if (response.ok && !response.redirected && url.pathname.startsWith('/app') && isHtml(response)) {
-      await cache.put(request, response.clone());
+      await cache.put(url.pathname, response.clone());
+      await warmStaticFromHtml(response.clone());
     }
     return response;
   } catch {
-    const exact = await cache.match(request, { ignoreSearch: true });
+    const exact = await cache.match(url.pathname, { ignoreSearch: true });
     if (exact) return exact;
     const shell = await cache.match('/app');
     if (shell) return shell;
@@ -132,6 +153,16 @@ function isMapTile(url) {
 
 function isHtml(response) {
   return (response.headers.get('content-type') || '').includes('text/html');
+}
+
+function safePrivateAppPath(value) {
+  try {
+    const url = new URL(String(value || ''), self.location.origin);
+    if (url.origin !== self.location.origin || !url.pathname.startsWith('/app')) return null;
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return null;
+  }
 }
 
 function offlineDocument() {

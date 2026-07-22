@@ -37,7 +37,7 @@ export async function GET(request: Request, context: { params: Promise<{ agendaI
   if (limited) return limited;
 
   const supabase = createSupabaseAdmin();
-  const documentKey = `offline-map:${agendaId}`;
+  const documentKey = `offline-map:v2:${agendaId}`;
   const { data: cached } = await supabase
     .from("content_documents")
     .select("structured_content, updated_at")
@@ -101,6 +101,7 @@ export async function GET(request: Request, context: { params: Promise<{ agendaI
   const featureCollection = toFeatureCollection(elements);
   const result = {
     agendaId,
+    version: 2,
     generatedAt: new Date().toISOString(),
     bounds,
     featureCount: featureCollection.features.length,
@@ -155,6 +156,9 @@ function buildOverpassQuery(bounds: ReturnType<typeof paddedBounds>) {
     node["natural"~"peak|waterfall|spring|cave_entrance"](${bbox});
     node["tourism"~"viewpoint|camp_site|picnic_site|attraction"](${bbox});
     node["amenity"~"shelter|drinking_water|toilets"](${bbox});
+    node["highway"="trailhead"](${bbox});
+    node["ford"](${bbox});
+    node["barrier"="gate"](${bbox});
   );out tags geom qt 3500;`;
 }
 
@@ -187,14 +191,16 @@ function toFeatureCollection(elements: OsmElement[]) {
 
 function sanitizeProperties(element: OsmElement) {
   const tags = element.tags || {};
-  const kind = tags.highway ? "path"
+  const pointOfInterest = element.type === "node";
+  const kind = pointOfInterest ? (tags.natural === "spring" || tags.natural === "waterfall" || tags.amenity === "drinking_water" ? "water" : "landmark")
+    : tags.highway ? "path"
     : tags.waterway || tags.natural === "water" ? "water"
       : tags.natural || tags.landuse ? "nature"
         : "landmark";
   return {
     kind,
     name: String(tags.name || tags["name:pt"] || "").slice(0, 120),
-    subtype: String(tags.highway || tags.waterway || tags.natural || tags.landuse || tags.tourism || tags.amenity || "").slice(0, 60),
+    subtype: String(tags.highway || tags.waterway || tags.natural || tags.landuse || tags.tourism || tags.amenity || tags.barrier || (tags.ford ? "ford" : "")).slice(0, 60),
     surface: String(tags.surface || "").slice(0, 40),
   };
 }

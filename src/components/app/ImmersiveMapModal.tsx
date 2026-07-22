@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Layers3, Compass, Navigation, Mountain, Route, Info, ChevronUp, ChevronDown, Play, Square, AlertTriangle, WifiOff, Wifi, ShieldCheck, LocateFixed } from "lucide-react";
+import { X, Layers3, Compass, Navigation, Mountain, Route, Info, ChevronUp, ChevronDown, Play, Square, AlertTriangle, WifiOff, Wifi, ShieldCheck, LocateFixed, Map as MapIcon, Satellite } from "lucide-react";
 import dynamic from "next/dynamic";
 import ElevationProfile from "./ElevationProfile";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
@@ -43,7 +43,8 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose, initia
   const [elevationData, setElevationData] = useState<{ distance: number; elevation: number; lat: number; lng: number }[]>([]);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen);
-  const [layerMode, setLayerMode] = useState<"street" | "satellite" | "topo" | "offline">("street");
+  const [layerMode, setLayerMode] = useState<"street" | "satellite" | "topo" | "offline">("topo");
+  const [layerPickerOpen, setLayerPickerOpen] = useState(false);
   const [offlineMapPack, setOfflineMapPack] = useState<OfflineMapPack | null>(null);
   const [offlineRoute, setOfflineRoute] = useState(false);
   const [usingOfflineCopy, setUsingOfflineCopy] = useState(false);
@@ -189,21 +190,53 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose, initia
 
         {/* CONTROLES DIREITA */}
         <div className="absolute right-4 top-28 flex flex-col gap-2.5 pointer-events-auto">
-          <button
-            onClick={() => setLayerMode((layer) => {
-              if (layer === "street") return "satellite";
-              if (layer === "satellite") return "topo";
-              if (layer === "topo" && offlineMapPack) return "offline";
-              return "street";
-            })}
-            className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur-md transition-all active:scale-95"
-            title={`Mapa atual: ${layerLabel(layerMode)}`}
-          >
-            <Layers3 className="h-5 w-5" />
-            <span className="absolute -bottom-5 right-0 rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-black uppercase text-white/90">
-              {layerLabel(layerMode)}
-            </span>
-          </button>
+          <div className="relative">
+            <AnimatePresence>
+              {layerPickerOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: 10, scale: 0.96 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 10, scale: 0.96 }}
+                  className="absolute right-14 top-0 w-48 overflow-hidden rounded-2xl border border-white/15 bg-[#071829]/95 p-2 text-white shadow-2xl backdrop-blur-xl"
+                >
+                  <p className="px-2 pb-2 pt-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/45">Escolha o mapa</p>
+                  {([
+                    { value: "topo", label: "Trilha e relevo", icon: Mountain, available: true },
+                    { value: "street", label: "Ruas e acessos", icon: MapIcon, available: true },
+                    { value: "satellite", label: "Satélite", icon: Satellite, available: true },
+                    { value: "offline", label: "Mapa baixado", icon: WifiOff, available: Boolean(offlineMapPack) },
+                  ] as const).map((option) => {
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        disabled={!option.available}
+                        onClick={() => {
+                          setLayerMode(option.value);
+                          setLayerPickerOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-bold transition ${layerMode === option.value ? "bg-orange-500 text-white" : "text-white/75 hover:bg-white/10"} disabled:cursor-not-allowed disabled:opacity-35`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => setLayerPickerOpen((open) => !open)}
+              className={`relative flex h-11 w-11 items-center justify-center rounded-xl border text-white shadow-lg backdrop-blur-md transition-all active:scale-95 ${layerPickerOpen ? "border-orange-300 bg-orange-500" : "border-white/20 bg-black/60"}`}
+              title={`Mapa atual: ${layerLabel(layerMode)}`}
+            >
+              <Layers3 className="h-5 w-5" />
+              <span className="absolute -bottom-5 right-0 rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-black uppercase text-white/90">
+                {layerLabel(layerMode)}
+              </span>
+            </button>
+          </div>
           <button
             onClick={() => setCenterRequest(r => r + 1)}
             className="w-11 h-11 bg-black/60 backdrop-blur-md border border-white/20 text-white rounded-xl flex items-center justify-center shadow-lg active:scale-95 transition-all"
@@ -429,6 +462,6 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose, initia
 function layerLabel(layer: "street" | "satellite" | "topo" | "offline") {
   if (layer === "street") return "Ruas";
   if (layer === "satellite") return "Satélite";
-  if (layer === "topo") return "Relevo";
+  if (layer === "topo") return "Trilha";
   return "Offline";
 }

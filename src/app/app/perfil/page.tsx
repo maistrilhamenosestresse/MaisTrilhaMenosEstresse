@@ -5,7 +5,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { ProfilePhotoCropper } from "@/components/app/ProfilePhotoCropper";
-import { clearOfflineUserData, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { clearOfflineUserData, getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
 import { clearAllOfflineTrailData } from "@/lib/app/offline-trails";
 
@@ -181,7 +181,7 @@ export default function PwaPerfil() {
         <div>
           <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 px-2">Minha Conta</h3>
           <div className="mt-surface rounded-3xl p-2">
-            <button onClick={() => router.push('/app/perfil/dados')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
+            <button onClick={() => navigateAppOfflineFirst(router, '/app/perfil/dados')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-blue-50 p-2.5 rounded-xl text-blue-600"><User className="w-5 h-5" /></div>
                 <span className="font-bold text-gray-800 text-sm">Dados Pessoais</span>
@@ -201,14 +201,14 @@ export default function PwaPerfil() {
         <div>
           <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 px-2">Segurança e Mais</h3>
           <div className="mt-surface rounded-3xl p-2">
-            <button onClick={() => router.push('/app/termos')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
+            <button onClick={() => navigateAppOfflineFirst(router, '/app/termos')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-gray-50 p-2.5 rounded-xl text-gray-600"><ShieldCheck className="w-5 h-5" /></div>
                 <span className="font-bold text-gray-800 text-sm">Termos, contratos e seguro</span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-300" />
             </button>
-            <button onClick={() => router.push('/app/configuracoes')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
+            <button onClick={() => navigateAppOfflineFirst(router, '/app/configuracoes')} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
               <div className="flex items-center gap-4">
                 <div className="bg-gray-50 p-2.5 rounded-xl text-gray-600"><Settings className="w-5 h-5" /></div>
                 <span className="font-bold text-gray-800 text-sm">Configurações do aplicativo</span>

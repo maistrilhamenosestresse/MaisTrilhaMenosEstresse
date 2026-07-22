@@ -23,6 +23,8 @@ const methods = [
   { value: "PIX", label: "Pix legado/manual" },
   { value: "CREDIT_CARD", label: "Cartão legado/manual" },
   { value: "BOLETO", label: "Boleto (Asaas)" },
+  { value: "DINHEIRO", label: "Dinheiro" },
+  { value: "TRANSFERENCIA", label: "Transferência bancária" },
   { value: "CORTESIA", label: "Cortesia" },
   { value: "SALDO_E_PONTOS", label: "Saldo e pontos" },
 ];
@@ -69,8 +71,14 @@ export function ReservationPaymentEditor({
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Falha ao salvar");
-      if (result.warning) {
-        setWarning(result.warning);
+      const pointAdjustment = Number(result.points?.points_adjustment || 0);
+      const messages = [
+        pointAdjustment > 0 ? `${pointAdjustment} ponto(s) adicionados ao cliente.` : "",
+        pointAdjustment < 0 ? `${Math.abs(pointAdjustment)} ponto(s) retirados do cliente.` : "",
+        result.warning || "",
+      ].filter(Boolean);
+      if (messages.length > 0) {
+        setWarning(messages.join(" "));
         window.setTimeout(() => {
           onSaved(result.reservation);
           onClose();
