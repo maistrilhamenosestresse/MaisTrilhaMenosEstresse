@@ -1,6 +1,6 @@
 # Mais Trilha Menos Estresse
 
-Plataforma em Next.js 16 com site público, checkout, app móvel do cliente, painel administrativo, loja, pagamentos InfinitePay/Asaas, mídia na AWS e dados no Supabase.
+Plataforma em Next.js 16 com site público, checkout, PWA instalável do cliente, painel administrativo, loja, pagamentos InfinitePay/Asaas, mídia na AWS e dados no Supabase.
 
 ## Arquitetura
 
@@ -17,7 +17,7 @@ Plataforma em Next.js 16 com site público, checkout, app móvel do cliente, pai
 Copie `.env.example` para `.env.local` e preencha todas as variáveis. Em produção, são especialmente obrigatórias:
 
 - `ADMIN_EMAILS`
-- `INFINITEPAY_HANDLE=wellington_oiiveira`, `INFINITEPAY_API_URL=https://api.checkout.infinitepay.io` e `INFINITEPAY_PUBLIC_BASE_URL` com o domínio oficial
+- `INFINITEPAY_HANDLE=nivea-maria-7en`, `INFINITEPAY_API_URL=https://api.checkout.infinitepay.io` e `INFINITEPAY_PUBLIC_BASE_URL` com o domínio oficial
 - `ASAAS_API_URL=https://api.asaas.com/v3`, uma `ASAAS_API_KEY` de produção e `ASAAS_WEBHOOK_TOKEN`
 - `AWS_S3_BUCKET_NAME` e um `AWS_BACKUP_BUCKET_NAME` diferente
 - `CRON_SECRET`, `RATE_LIMIT_SECRET` e `REGISTRATION_SIGNING_SECRET`

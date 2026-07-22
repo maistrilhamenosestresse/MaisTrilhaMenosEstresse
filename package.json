@@ -18,21 +18,13 @@
     "db:migrate": "node scripts/apply-supabase-migration.mjs",
     "readiness:check": "node scripts/verify-production-readiness.mjs",
     "readiness:test": "node scripts/verify-production-readiness.mjs --allow-sandbox",
-    "push:setup": "node scripts/setup-web-push.mjs",
-    "android:upload": "node scripts/upload-android-apk.mjs",
-    "mobile:env": "node scripts/sync-mobile-env.mjs",
-    "mobile:typecheck": "npm --prefix mobile run typecheck",
-    "mobile:test": "npm --prefix mobile run test",
-    "mobile:prebuild:android": "npm --prefix mobile run prebuild -- --platform android --clean",
-    "mobile:guide:web": "npm --prefix mobile run start:guide:web",
-    "mobile:participant:android": "npm --prefix mobile run build:participant:android",
-    "mobile:guide:android": "npm --prefix mobile run build:guide:android"
+    "push:setup": "node scripts/setup-web-push.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1087.0",
     "@aws-sdk/client-s3": "^3.1087.0",
     "@aws-sdk/s3-request-presigner": "^3.1087.0",
-    "@google/genai": "^2.9.0",
+    "@google/genai": "^2.13.0",
     "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
@@ -45,7 +37,7 @@
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
-    "next": "16.2.9",
+    "next": "16.2.11",
     "nodemailer": "^9.0.1",
     "pdf-lib": "^1.17.1",
     "pg": "^8.22.0",
@@ -71,8 +63,15 @@
     "@types/react-signature-canvas": "^1.0.7",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.2.11",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.21",
+      "sharp": "0.35.3"
+    },
+    "protobufjs": "7.6.5"
   }
 }

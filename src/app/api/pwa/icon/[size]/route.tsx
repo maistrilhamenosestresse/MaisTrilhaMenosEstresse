@@ -5,7 +5,7 @@ const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL ||
 
 export async function GET(
   request: Request,
-  context: RouteContext<"/api/pwa/icon/[size]">,
+  context: { params: Promise<{ size: string }> },
 ) {
   const { size: rawSize } = await context.params;
   const size = rawSize === "512" ? 512 : rawSize === "192" ? 192 : 0;

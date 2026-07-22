@@ -381,17 +381,9 @@ export function PwaEngagementCard({ compact = false }: Props) {
                 <Download className="h-5 w-5" /> Instalar agora
               </button>
             ) : isAndroid ? (
-              <div className="space-y-3">
-                <a
-                  href="/api/app/android"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 text-sm font-black text-white"
-                >
-                  <Download className="h-5 w-5" /> Baixar instalador Android
-                </a>
-                <p className="rounded-2xl bg-white p-3 text-xs leading-relaxed text-slate-600">
-                  Você também pode abrir o menu do Chrome e escolher “Instalar aplicativo”.
-                </p>
-              </div>
+              <p className="rounded-2xl bg-white p-3 text-xs leading-relaxed text-slate-600">
+                Abra o menu do Chrome e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.
+              </p>
             ) : (
               <p className="rounded-2xl bg-white p-3 text-xs leading-relaxed text-slate-600">
                 Abra o menu do navegador e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.
@@ -458,21 +450,6 @@ export function PwaEngagementCard({ compact = false }: Props) {
           >
             <Download className="h-5 w-5" /> Instalar app no celular
           </button>
-        ) : null}
-
-        {isAndroid && !standalone ? (
-          <div className="rounded-2xl border border-blue-100 bg-white p-4">
-            <p className="text-xs font-black uppercase tracking-wider text-[#0B2540]">Instalador Android</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Instale a versão APK ligada ao site oficial para usar o app em tela cheia e receber notificações.
-            </p>
-            <a
-              href="/api/app/android"
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 text-sm font-black text-white"
-            >
-              <Download className="h-5 w-5" /> Baixar APK oficial
-            </a>
-          </div>
         ) : null}
 
         {!compact || !subscribed ? (

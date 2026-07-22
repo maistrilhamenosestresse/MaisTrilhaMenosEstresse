@@ -19,9 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@trail-core": ["./packages/trail-core/src/index.ts"],
-      "@trail-core/*": ["./packages/trail-core/src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -32,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "mobile"]
+  "exclude": ["node_modules"]
 }
