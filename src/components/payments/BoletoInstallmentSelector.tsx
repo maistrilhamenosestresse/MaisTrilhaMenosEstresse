@@ -1,6 +1,6 @@
 "use client";
 
-import { calculateGrossPrice } from "@/lib/fees";
+import { calculateGrossPrice, getAsaasFeeBreakdown } from "@/lib/fees";
 
 export const MAX_BOLETO_INSTALLMENTS = 12;
 
@@ -19,6 +19,12 @@ export function BoletoInstallmentSelector({
 }) {
   const totalFor = (count: number) =>
     absorbFee ? netAmount : calculateGrossPrice(netAmount, "BOLETO", count);
+  const selectedTotal = totalFor(installments);
+  const selectedFees = getAsaasFeeBreakdown(
+    selectedTotal,
+    "BOLETO",
+    installments,
+  );
 
   return (
     <div className={`rounded-2xl border p-4 ${
@@ -60,6 +66,16 @@ export function BoletoInstallmentSelector({
           ? "Um boleto com vencimento no dia seguinte."
           : `Carnê com ${installments} boletos mensais. A última parcela pode ter ajuste de centavos.`}
       </p>
+      {!absorbFee && (
+        <div className={`mt-3 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed ${
+          dark ? "bg-white/5 text-blue-100" : "bg-blue-50 text-[#0B2540]"
+        }`}>
+          <strong>Total final: {formatCurrency(selectedTotal)}.</strong>{" "}
+          Inclui {formatCurrency(selectedFees.providerFee)} de tarifa dos boletos e uma
+          previsão de {formatCurrency(selectedFees.anticipationFee)} para antecipar os
+          recebíveis conforme cada vencimento.
+        </div>
+      )}
     </div>
   );
 }

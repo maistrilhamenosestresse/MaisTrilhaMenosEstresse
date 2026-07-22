@@ -5,10 +5,15 @@ import {
   cancelAsaasPayment,
   createOrUpdateCustomer,
   createPayment,
+  getAsaasBankSlipAnticipationMonthlyRate,
   getAsaasInstallmentPayments,
   getPixQrCode,
 } from "@/lib/asaas";
-import { calculateGrossPrice, type AsaasPaymentMethod } from "@/lib/fees";
+import {
+  calculateGrossPrice,
+  getAsaasFeeBreakdown,
+  type AsaasPaymentMethod,
+} from "@/lib/fees";
 
 export type AsaasCheckoutMethod = Extract<
   AsaasPaymentMethod,
@@ -57,11 +62,27 @@ export async function createAsaasCharge(input: {
     postalCode: input.postalCode,
     addressNumber: input.addressNumber,
   });
-  const chargedAmount = input.absorbFee
-    ? netAmount
-    : calculateGrossPrice(netAmount, input.method, installments);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + 1);
+  const now = new Date();
+  const anticipationMonthlyRatePercent = input.method === "BOLETO"
+    ? await getAsaasBankSlipAnticipationMonthlyRate()
+    : 0;
+  const pricingOptions = {
+    includeAnticipation: input.method === "BOLETO",
+    anticipationMonthlyRatePercent,
+    firstDueDate: dueDate,
+  };
+  const chargedAmount = input.absorbFee
+    ? netAmount
+    : calculateGrossPrice(netAmount, input.method, installments, now, pricingOptions);
+  const feeBreakdown = getAsaasFeeBreakdown(
+    chargedAmount,
+    input.method,
+    installments,
+    now,
+    pricingOptions,
+  );
 
   const payment = await createPayment({
     customer: customerId,
@@ -108,6 +129,15 @@ export async function createAsaasCharge(input: {
       pixExpirationDate: pix?.expirationDate || null,
       netAmount,
       chargedAmount,
+      fees: {
+        providerFee: feeBreakdown.providerFee,
+        anticipationFee: feeBreakdown.anticipationFee,
+        totalFees: feeBreakdown.totalFees,
+        anticipatedNetAmount: feeBreakdown.netAmount,
+        anticipationMonthlyRatePercent,
+        anticipationDays: feeBreakdown.anticipationDays,
+        absorbedByCompany: input.absorbFee === true,
+      },
     },
     payments,
     installmentId,

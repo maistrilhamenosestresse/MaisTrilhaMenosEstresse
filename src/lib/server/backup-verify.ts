@@ -15,6 +15,8 @@ const REQUIRED_TABLES = [
   "pedidos_loja",
   "wallet_transactions",
   "points_transactions",
+  "experience_transactions",
+  "trail_checkout_benefits",
   "content_documents",
   "profiles",
   "asaas_webhook_events",
