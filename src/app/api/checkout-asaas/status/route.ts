@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getAsaasPayment } from "@/lib/asaas";
 import { requireAuthenticatedUser, resolveAuthenticatedClient } from "@/lib/server/auth";
-import { processCanceledAsaasPayment, processConfirmedAsaasPayment } from "@/lib/server/asaas-payment-processing";
+import {
+  getAsaasInstallmentProgress,
+  processCanceledAsaasPayment,
+  processConfirmedAsaasPayment,
+} from "@/lib/server/asaas-payment-processing";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
-const CONFIRMED_STATUSES = new Set(["RECEIVED", "CONFIRMED"]);
+const CONFIRMED_STATUSES = new Set(["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]);
 
 export async function GET(request: Request) {
   const auth = await requireAuthenticatedUser();
@@ -37,11 +41,15 @@ export async function GET(request: Request) {
     const payment = await getAsaasPayment(paymentId);
     payment.externalReference ||= record.reference;
     const status = String(payment.status || record.status || "PENDING");
+    const installment = await getAsaasInstallmentProgress(payment);
+    const confirmed = installment
+      ? installment.complete
+      : CONFIRMED_STATUSES.has(status);
     let processed = false;
 
-    if (CONFIRMED_STATUSES.has(status)) {
-      await processConfirmedAsaasPayment(supabase, payment);
-      processed = true;
+    if (confirmed || CONFIRMED_STATUSES.has(status)) {
+      const outcome = await processConfirmedAsaasPayment(supabase, payment);
+      processed = outcome === "completed" || outcome === "duplicate";
     } else {
       const event = cancellationEvent(status);
       if (event) {
@@ -63,8 +71,14 @@ export async function GET(request: Request) {
     return NextResponse.json({
       paymentId,
       status,
-      confirmed: CONFIRMED_STATUSES.has(status),
+      confirmed,
       processed,
+      installment: installment ? {
+        count: installment.installmentCount,
+        paid: installment.paidInstallments,
+        paidValue: installment.paidValue,
+        totalValue: installment.totalValue,
+      } : null,
       reservations: reservations || [],
     });
   } catch (error: any) {

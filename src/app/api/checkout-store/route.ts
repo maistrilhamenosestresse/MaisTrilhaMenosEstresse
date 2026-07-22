@@ -20,6 +20,7 @@ type CheckoutBody = {
   produtoId?: string;
   clientId?: string;
   method?: "infinitepay" | "pix" | "cartao" | "boleto" | "cashback";
+  installments?: number;
   forma_entrega?: "retirada" | "correios" | "entrega_trilha";
   delivery_info?: string;
 };
@@ -34,11 +35,16 @@ export async function POST(request: Request) {
 
   const input = parsed.data;
   const requestedMethod = input.method || "infinitepay";
+  const installments = Number(input.installments || 1);
   const deliveryMethod = input.forma_entrega || "retirada";
   if (
     !isUuid(input.produtoId || "") ||
     !isUuid(input.clientId || "") ||
     !["infinitepay", "pix", "cartao", "boleto", "cashback"].includes(requestedMethod) ||
+    !Number.isInteger(installments) ||
+    installments < 1 ||
+    installments > 12 ||
+    (requestedMethod !== "boleto" && installments !== 1) ||
     !["retirada", "correios", "entrega_trilha"].includes(deliveryMethod)
   ) {
     return NextResponse.json({ error: "Dados do pedido inválidos" }, { status: 400 });
@@ -60,6 +66,7 @@ export async function POST(request: Request) {
 
   let orderId: string | null = null;
   let asaasPaymentId: string | null = null;
+  let asaasInstallmentId: string | null = null;
   let infinitePayOrderNsu: string | null = null;
   try {
     const { data: order, error: orderError } = await supabase.rpc("create_store_order", {
@@ -121,18 +128,20 @@ export async function POST(request: Request) {
       netAmount: amountDue,
       reference: `LOJA:${orderId}`,
       description: `Mais Trilha - Pedido #${orderId.slice(0, 8)}`,
+      installments,
     });
     asaasPaymentId = String(charge.payment.id);
+    asaasInstallmentId = charge.installmentId;
 
-    const paymentRecord = await supabase.from("asaas_payments").upsert({
-      id: asaasPaymentId,
+    const paymentRecord = await supabase.from("asaas_payments").upsert(charge.payments.map((payment: any) => ({
+      id: String(payment.id),
       kind: "store",
       reference: `LOJA:${orderId}`,
       client_id: client.id,
-      status: charge.payment.status || "PENDING",
-      amount: charge.chargedAmount,
+      status: payment.status || "PENDING",
+      amount: Number(payment.value || 0),
       updated_at: new Date().toISOString(),
-    });
+    })));
     if (paymentRecord.error) throw paymentRecord.error;
 
     const orderUpdate = await supabase
@@ -150,7 +159,7 @@ export async function POST(request: Request) {
       orderId,
     });
   } catch (error: any) {
-    await safelyCancelAsaasPayment(asaasPaymentId);
+    await safelyCancelAsaasPayment(asaasPaymentId, asaasInstallmentId);
     await failInfinitePayCheckout(infinitePayOrderNsu);
     if (asaasPaymentId) {
       await supabase.from("asaas_payments").update({

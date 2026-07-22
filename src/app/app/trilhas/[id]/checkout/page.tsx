@@ -12,6 +12,7 @@ import {
   AsaasPaymentStatus,
   type AsaasPaymentResult,
 } from "@/components/payments/AsaasPaymentStatus";
+import { BoletoInstallmentSelector } from "@/components/payments/BoletoInstallmentSelector";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -31,6 +32,7 @@ function TrailCheckoutContent() {
   const [useCashback, setUseCashback] = useState(false);
   const [usePoints, setUsePoints] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"INFINITEPAY" | "BOLETO">("INFINITEPAY");
+  const [boletoInstallments, setBoletoInstallments] = useState(1);
   const [paymentResult, setPaymentResult] = useState<AsaasPaymentResult | null>(null);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ function TrailCheckoutContent() {
       const payload: any = {
         reserva_ids: [reservaId],
         payment_method: paymentMethod,
-        installments: 1,
+        installments: paymentMethod === "BOLETO" ? boletoInstallments : 1,
         checkout_source: "app",
         use_cashback: useCashback,
         use_points: usePoints,
@@ -189,7 +191,7 @@ function TrailCheckoutContent() {
   const chargedAmount = amountDue <= 0 || agenda?.taxa_gratis
     ? amountDue
     : paymentMethod === "BOLETO"
-      ? calculateGrossPrice(amountDue, "BOLETO", 1)
+      ? calculateGrossPrice(amountDue, "BOLETO", boletoInstallments)
       : amountDue;
 
   if (paymentResult) {
@@ -342,10 +344,19 @@ function TrailCheckoutContent() {
                   onClick={() => setPaymentMethod("BOLETO")}
                   icon={<FileText className="h-5 w-5" />}
                   title="Boleto"
-                  description="Vencimento no dia seguinte"
+                  description="Asaas · à vista ou em até 12x"
                 />
               )}
             </div>
+          )}
+
+          {amountDue > 0 && paymentMethod === "BOLETO" && acceptsBoleto && (
+            <BoletoInstallmentSelector
+              netAmount={amountDue}
+              installments={boletoInstallments}
+              onChange={setBoletoInstallments}
+              absorbFee={agenda?.taxa_gratis === true}
+            />
           )}
 
           {amountDue > 0 && !acceptsInfinitePay && !acceptsBoleto && (

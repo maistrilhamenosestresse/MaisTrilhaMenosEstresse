@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     !Number.isInteger(installments) ||
     installments < 1 ||
     installments > 12 ||
-    (paymentMethod === "BOLETO" && installments !== 1)
+    (paymentMethod !== "BOLETO" && installments !== 1)
   ) {
     return NextResponse.json(
       { error: "Dados do pagamento inválidos" },
@@ -145,6 +145,7 @@ export async function POST(request: Request) {
   let claimed = false;
   let benefitId: string | null = null;
   let asaasPaymentId: string | null = null;
+  let asaasInstallmentId: string | null = null;
   let asaasRecordCreated = false;
   let infinitePayOrderNsu: string | null = null;
 
@@ -252,20 +253,22 @@ export async function POST(request: Request) {
       absorbFee: agendas.every((agenda) => agenda.taxa_gratis === true),
       reference: trailReference,
       description: `Mais Trilha - ${reservations.length} vaga(s)`,
+      installments,
       postalCode: postalCode || undefined,
       addressNumber: addressNumber || undefined,
     });
     asaasPaymentId = String(charge.payment.id);
+    asaasInstallmentId = charge.installmentId;
 
-    const paymentRecord = await supabase.from("asaas_payments").upsert({
-      id: asaasPaymentId,
+    const paymentRecord = await supabase.from("asaas_payments").upsert(charge.payments.map((payment: any) => ({
+      id: String(payment.id),
       kind: "trail",
       reference: trailReference,
       client_id: principal.id,
-      status: charge.payment.status || "PENDING",
-      amount: charge.chargedAmount,
+      status: payment.status || "PENDING",
+      amount: Number(payment.value || 0),
       updated_at: new Date().toISOString(),
-    });
+    })));
     if (paymentRecord.error) throw paymentRecord.error;
     asaasRecordCreated = true;
 
@@ -293,7 +296,7 @@ export async function POST(request: Request) {
       benefits: benefitSummary,
     });
   } catch (error: any) {
-    await safelyCancelAsaasPayment(asaasPaymentId);
+    await safelyCancelAsaasPayment(asaasPaymentId, asaasInstallmentId);
     if (asaasRecordCreated && asaasPaymentId) {
       await supabase.from("asaas_payments").update({
         status: "DELETED",
