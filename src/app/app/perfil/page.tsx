@@ -1,10 +1,13 @@
 "use client";
 
 import { User, Settings, ShieldCheck, LogOut, Heart, ChevronRight, Camera, Loader2 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { ProfilePhotoCropper } from "@/components/app/ProfilePhotoCropper";
+import { clearOfflineUserData, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { useNetworkStatus } from "@/lib/app/use-network-status";
+import { clearAllOfflineTrailData } from "@/lib/app/offline-trails";
 
 export default function PwaPerfil() {
   const router = useRouter();
@@ -13,22 +16,31 @@ export default function PwaPerfil() {
   const [uploading, setUploading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const online = useNetworkStatus();
 
   useEffect(() => {
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         router.push("/app/login");
         return;
       }
-      
-      const profileResponse = await fetch("/api/clients/me", { cache: "no-store" });
-      const profileResult = await profileResponse.json().catch(() => ({}));
-      const data = profileResponse.ok ? profileResult.client : null;
+
+      const cached = getOfflineData<any>(user.id, "profile");
+      if (cached) setClient(cached.data);
+
+      let data = cached?.data || null;
+      if (navigator.onLine) {
+        const profileResponse = await fetch("/api/clients/me", { cache: "no-store" });
+        const profileResult = await profileResponse.json().catch(() => ({}));
+        data = profileResponse.ok ? profileResult.client : data;
+      }
         
       if (data) {
         setClient(data);
+        saveOfflineData(user.id, "profile", data);
       } else {
         setClient({
           full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Aventureiro",
@@ -40,9 +52,12 @@ export default function PwaPerfil() {
       setLoading(false);
     }
     loadProfile();
-  }, []);
+  }, [online, router, supabase]);
 
   const handleSignOut = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    clearOfflineUserData(session?.user.id);
+    await clearAllOfflineTrailData().catch(() => undefined);
     await supabase.auth.signOut();
     router.push("/app/login");
   };
@@ -85,6 +100,8 @@ export default function PwaPerfil() {
       if (!profileResponse.ok) throw new Error(profileResult.error || 'Falha ao atualizar o perfil.');
 
       setClient(profileResult.client);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) saveOfflineData(session.user.id, "profile", profileResult.client);
       setSelectedPhoto(null);
     } catch (err: any) {
       console.error(err);

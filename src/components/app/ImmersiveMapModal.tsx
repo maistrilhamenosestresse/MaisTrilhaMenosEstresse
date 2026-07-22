@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Layers3, Compass, Navigation, Mountain, Route, Info, ChevronUp, ChevronDown, Play, Square, AlertTriangle, WifiOff } from "lucide-react";
+import { X, Layers3, Compass, Navigation, Mountain, Route, Info, ChevronUp, ChevronDown, Play, Square, AlertTriangle, WifiOff, Wifi, ShieldCheck, LocateFixed } from "lucide-react";
 import dynamic from "next/dynamic";
 import ElevationProfile from "./ElevationProfile";
+import { useNetworkStatus } from "@/lib/app/use-network-status";
+import { OfflineMapDownloadCard } from "@/components/app/OfflineMapDownloadCard";
+import { getOfflineMapPack, type OfflineMapPack } from "@/lib/app/offline-trails";
 
 const ImmersiveMap = dynamic(() => import('./ImmersiveMap'), {
   ssr: false,
@@ -15,6 +18,7 @@ interface ImmersiveMapModalProps {
   agendaId?: string;
   trailName: string;
   onClose: () => void;
+  initialDrawerOpen?: boolean;
 }
 
 function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -35,30 +39,46 @@ function closestPointIndex(userLat: number, userLng: number, trail: { lat: numbe
   return idx;
 }
 
-export default function ImmersiveMapModal({ agendaId, trailName, onClose }: ImmersiveMapModalProps) {
-  const [elevationData, setElevationData] = useState<any[]>([]);
+export default function ImmersiveMapModal({ agendaId, trailName, onClose, initialDrawerOpen = false }: ImmersiveMapModalProps) {
+  const [elevationData, setElevationData] = useState<{ distance: number; elevation: number; lat: number; lng: number }[]>([]);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [layerMode, setLayerMode] = useState<"street" | "satellite" | "topo">("street");
+  const [drawerOpen, setDrawerOpen] = useState(initialDrawerOpen);
+  const [layerMode, setLayerMode] = useState<"street" | "satellite" | "topo" | "offline">("street");
+  const [offlineMapPack, setOfflineMapPack] = useState<OfflineMapPack | null>(null);
   const [offlineRoute, setOfflineRoute] = useState(false);
   const [usingOfflineCopy, setUsingOfflineCopy] = useState(false);
 
   const [tracking, setTracking] = useState(false);
-  const [userPos, setUserPos] = useState<{ lat: number; lng: number; heading: number | null } | null>(null);
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number; heading: number | null; accuracy: number } | null>(null);
   const [centerRequest, setCenterRequest] = useState(0);
   const [walkedIndex, setWalkedIndex] = useState(0);
   const [offTrailAlert, setOffTrailAlert] = useState(false);
+  const [gpsError, setGpsError] = useState("");
+  const [distanceFromTrail, setDistanceFromTrail] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const online = useNetworkStatus();
 
   const maxElev = elevationData.length > 0
     ? Math.round(Math.max(...elevationData.map(d => d.elevation)) - Math.min(...elevationData.map(d => d.elevation)))
     : null;
   const totalDist = elevationData.length > 0 ? elevationData[elevationData.length - 1].distance : null;
+  const progress = elevationData.length > 1 ? Math.min(100, Math.round((walkedIndex / (elevationData.length - 1)) * 100)) : 0;
+  const remainingDistance = totalDist !== null && elevationData[walkedIndex]
+    ? Math.max(0, totalDist - elevationData[walkedIndex].distance)
+    : null;
   const handleOfflineAvailability = useCallback((available: boolean, usingCopy: boolean) => {
     setOfflineRoute(available);
     setUsingOfflineCopy(usingCopy);
   }, []);
+
+  useEffect(() => {
+    if (!agendaId) return;
+    void getOfflineMapPack(agendaId).then((pack) => {
+      setOfflineMapPack(pack);
+      if (!navigator.onLine && pack) setLayerMode("offline");
+    }).catch(() => undefined);
+  }, [agendaId]);
 
   useEffect(() => {
     const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 400);
@@ -78,18 +98,20 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
     setTracking(true);
     setWalkedIndex(0);
     setOffTrailAlert(false);
+    setGpsError("");
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude: lat, longitude: lng, heading } = pos.coords;
-        setUserPos({ lat, lng, heading });
+        const { latitude: lat, longitude: lng, heading, accuracy } = pos.coords;
+        setUserPos({ lat, lng, heading, accuracy });
 
         if (elevationData.length > 0) {
           const nearest = closestPointIndex(lat, lng, elevationData);
           const distToTrail = getDistanceMeters(lat, lng, elevationData[nearest].lat, elevationData[nearest].lng);
+          setDistanceFromTrail(distToTrail);
           setWalkedIndex(nearest);
 
-          if (distToTrail > 50) {
+          if (distToTrail > Math.max(50, accuracy * 1.5)) {
             if (!alertTimerRef.current) {
               alertTimerRef.current = setTimeout(() => {
                 setOffTrailAlert(true);
@@ -102,14 +124,18 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
           }
         }
       },
-      (err) => console.error("Erro de geolocalização:", err),
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+      (err) => {
+        setTracking(false);
+        setGpsError(err.code === 1 ? "Permita o acesso à localização para iniciar a navegação." : "Não foi possível obter sua localização. Verifique o GPS do aparelho.");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
   }, [elevationData]);
 
   const stopTracking = useCallback(() => {
     setTracking(false);
     setOffTrailAlert(false);
+    setDistanceFromTrail(null);
     if (watchIdRef.current !== null) { navigator.geolocation.clearWatch(watchIdRef.current); watchIdRef.current = null; }
     if (alertTimerRef.current) { clearTimeout(alertTimerRef.current); alertTimerRef.current = null; }
   }, []);
@@ -136,6 +162,7 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
           isTracking={tracking}
           centerRequest={centerRequest}
           onOfflineAvailabilityChange={handleOfflineAvailability}
+          offlineContextGeojson={offlineMapPack?.geojson}
         />
       </div>
 
@@ -144,9 +171,13 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
 
         {/* TOP BAR */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-10 pointer-events-auto">
-          <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-2.5 max-w-[55%]">
+          <div className="max-w-[62%] rounded-2xl border border-white/10 bg-black/60 px-4 py-2.5 backdrop-blur-md">
             <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Trilha</p>
             <p className="text-white font-black text-sm leading-tight line-clamp-1">{trailName}</p>
+            <p className={`mt-1 flex items-center gap-1 text-[9px] font-bold ${online ? "text-emerald-300" : "text-amber-200"}`}>
+              {online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+              {online ? "Online" : "Navegação offline"}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -159,15 +190,18 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
         {/* CONTROLES DIREITA */}
         <div className="absolute right-4 top-28 flex flex-col gap-2.5 pointer-events-auto">
           <button
-            onClick={() => setLayerMode((layer) => (
-              layer === "street" ? "satellite" : layer === "satellite" ? "topo" : "street"
-            ))}
+            onClick={() => setLayerMode((layer) => {
+              if (layer === "street") return "satellite";
+              if (layer === "satellite") return "topo";
+              if (layer === "topo" && offlineMapPack) return "offline";
+              return "street";
+            })}
             className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur-md transition-all active:scale-95"
-            title={`Mapa atual: ${layerMode === "street" ? "Ruas" : layerMode === "satellite" ? "Satélite" : "Relevo"}`}
+            title={`Mapa atual: ${layerLabel(layerMode)}`}
           >
             <Layers3 className="h-5 w-5" />
             <span className="absolute -bottom-5 right-0 rounded bg-black/75 px-1.5 py-0.5 text-[8px] font-black uppercase text-white/90">
-              {layerMode === "street" ? "Ruas" : layerMode === "satellite" ? "Satélite" : "Relevo"}
+              {layerLabel(layerMode)}
             </span>
           </button>
           <button
@@ -209,6 +243,18 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
           )}
         </AnimatePresence>
 
+        <AnimatePresence>
+          {gpsError && (
+            <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="pointer-events-auto absolute left-4 right-4 top-28 z-40 rounded-2xl border border-amber-300/30 bg-amber-500/95 p-4 text-[#071829] shadow-2xl">
+              <div className="flex items-start gap-3">
+                <LocateFixed className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="flex-1"><p className="text-sm font-black">GPS precisa de atenção</p><p className="mt-1 text-xs font-medium leading-relaxed">{gpsError}</p></div>
+                <button onClick={() => setGpsError("")}><X className="h-4 w-4" /></button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* BOTÃO INICIAR / PARAR */}
         <div className="absolute bottom-36 left-1/2 -translate-x-1/2 pointer-events-auto">
           <AnimatePresence mode="wait">
@@ -236,7 +282,7 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
               >
                 <div className="flex items-center gap-2 bg-black/80 backdrop-blur border border-green-500/50 text-white px-4 py-3 rounded-2xl shadow-xl">
                   <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" />
-                  <span className="text-xs font-black tracking-wider text-green-400">RASTREANDO</span>
+                  <span className="text-xs font-black tracking-wider text-green-400">{progress}% CONCLUÍDO</span>
                 </div>
                 <button
                   onClick={stopTracking}
@@ -292,6 +338,45 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
                   </div>
 
                   {tracking && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="rounded-xl bg-emerald-400/10 p-3">
+                        <p className="text-[9px] font-bold uppercase text-emerald-200/60">Progresso</p>
+                        <p className="mt-1 text-sm font-black text-emerald-200">{progress}%</p>
+                      </div>
+                      <div className="rounded-xl bg-white/10 p-3">
+                        <p className="text-[9px] font-bold uppercase text-white/45">Restante</p>
+                        <p className="mt-1 text-sm font-black text-white">{remainingDistance !== null ? `${remainingDistance.toFixed(1)} km` : "—"}</p>
+                      </div>
+                      <div className="rounded-xl bg-white/10 p-3">
+                        <p className="text-[9px] font-bold uppercase text-white/45">Precisão</p>
+                        <p className="mt-1 text-sm font-black text-white">{userPos ? `±${Math.round(userPos.accuracy)} m` : "—"}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {tracking && distanceFromTrail !== null && (
+                    <div className={`flex items-center gap-3 rounded-xl border p-3 ${offTrailAlert ? "border-red-400/30 bg-red-400/10" : "border-emerald-400/20 bg-emerald-400/10"}`}>
+                      <ShieldCheck className={`h-5 w-5 ${offTrailAlert ? "text-red-300" : "text-emerald-300"}`} />
+                      <div>
+                        <p className="text-xs font-black text-white">{offTrailAlert ? "Fora do percurso" : "Você está no percurso"}</p>
+                        <p className="text-[10px] text-white/55">Distância da linha: {Math.round(distanceFromTrail)} m</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {agendaId ? (
+                    <OfflineMapDownloadCard
+                      agendaId={agendaId}
+                      compact
+                      onPackChange={(pack) => {
+                        setOfflineMapPack(pack);
+                        if (pack) setLayerMode("offline");
+                        else setLayerMode("street");
+                      }}
+                    />
+                  ) : null}
+
+                  {tracking && (
                     <div className="bg-white/5 rounded-xl p-3 flex items-center gap-6">
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-2 bg-red-500 rounded-full" />
@@ -312,7 +397,9 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
                           {usingOfflineCopy ? "Usando rota salva no aparelho" : "Rota GPS salva neste aparelho"}
                         </p>
                         <p className="mt-1 text-[10px] leading-relaxed text-cyan-100/60">
-                          A linha da rota e o GPS funcionam sem internet. As imagens de ruas e satélite ainda precisam de conexão.
+                          {offlineMapPack
+                            ? "Mapa vetorial, rota, sua posição e alertas estão prontos para funcionar sem internet."
+                            : "A linha, sua posição e os alertas funcionam sem internet. Baixe o mapa para ter também caminhos, água, vegetação e pontos de apoio."}
                         </p>
                       </div>
                     </div>
@@ -337,4 +424,11 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose }: Imme
       </div>
     </motion.div>
   );
+}
+
+function layerLabel(layer: "street" | "satellite" | "topo" | "offline") {
+  if (layer === "street") return "Ruas";
+  if (layer === "satellite") return "Satélite";
+  if (layer === "topo") return "Relevo";
+  return "Offline";
 }

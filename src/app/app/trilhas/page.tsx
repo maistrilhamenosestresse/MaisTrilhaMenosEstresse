@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2 } from "lucide-react";
+import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2, WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -9,21 +9,29 @@ import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { fetchCurrentClient } from "@/lib/app/current-client";
+import { formatOfflineUpdate, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { useNetworkStatus } from "@/lib/app/use-network-status";
+
+type CachedTrails = { euVou: any[]; explorar: any[] };
 
 export default function PwaTrilhas() {
   const [activeTab, setActiveTab] = useState<"euVou" | "explorar">("euVou");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
+  const [usingOfflineCopy, setUsingOfflineCopy] = useState(false);
   
   const [euVouTrails, setEuVouTrails] = useState<any[]>([]);
   const [explorarTrails, setExplorarTrails] = useState<any[]>([]);
   
   const router = useRouter();
-  const supabase = createClient();
+  const online = useNetworkStatus();
 
   useEffect(() => {
     const fetchData = async () => {
+      const supabase = createClient();
+      let hadCachedData = false;
       setLoading(true);
       setLoadError(null);
       try {
@@ -34,8 +42,22 @@ export default function PwaTrilhas() {
           return;
         }
 
+        const cached = getOfflineData<CachedTrails>(session.user.id, "trails");
+        if (cached) {
+          hadCachedData = true;
+          setEuVouTrails(cached.data.euVou);
+          setExplorarTrails(cached.data.explorar);
+          setOfflineSavedAt(cached.savedAt);
+        }
+        if (!navigator.onLine) {
+          setUsingOfflineCopy(Boolean(cached));
+          if (!cached) setLoadError("Abra suas trilhas uma vez com internet para prepará-las para uso offline.");
+          return;
+        }
+
         // 1. Busca o client_id
         const client = await fetchCurrentClient<{ id: string }>();
+        let mappedEuVou: any[] = [];
           
         if (client) {
           // 2. Busca Reservas (Eu Vou) - Apenas pagas
@@ -56,7 +78,7 @@ export default function PwaTrilhas() {
             .eq('status_pagamento', 'pago');
 
           if (reservas) {
-            const mappedEuVou = reservas
+            mappedEuVou = reservas
               .filter(r => r.agendas) // Garante que a agenda existe
               .map(r => ({
                 id: (r.agendas as any).id, // Usa o ID da agenda para roteamento
@@ -92,24 +114,28 @@ export default function PwaTrilhas() {
             imageUrl: a.flyer_url || (Array.isArray(a.images) ? a.images[0] : null)
           }));
           setExplorarTrails(mappedExplorar);
+          saveOfflineData<CachedTrails>(session.user.id, "trails", { euVou: mappedEuVou, explorar: mappedExplorar });
+          setOfflineSavedAt(new Date().toISOString());
         }
+        setUsingOfflineCopy(false);
         
       } catch (error) {
         console.error("Erro ao buscar dados:", error);
-        setLoadError("Não foi possível carregar suas trilhas. Tente novamente.");
+        setUsingOfflineCopy(hadCachedData);
+        if (!hadCachedData) setLoadError("Não foi possível carregar suas trilhas. Tente novamente.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [router, supabase]);
+  }, [router, online]);
 
   const formatCurrency = (val: number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const formatDate = (dateStr: string) => {
     try {
       return format(parseISO(dateStr), "dd MMM yyyy, HH:mm", { locale: ptBR });
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };
@@ -156,6 +182,15 @@ export default function PwaTrilhas() {
 
       {/* Main Content Area */}
       <div className="flex-1 px-4 py-6 pb-24 sm:px-6">
+        {usingOfflineCopy && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-amber-950">
+            <WifiOff className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <p className="text-xs font-black">Suas trilhas estão disponíveis offline</p>
+              <p className="mt-0.5 text-[10px] opacity-70">Dados salvos em {offlineSavedAt ? formatOfflineUpdate(offlineSavedAt) : "este aparelho"}.</p>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40">
             <Loader2 className="mb-4 h-8 w-8 animate-spin text-[#D96224]" />

@@ -1,16 +1,145 @@
+const DEPLOY_VERSION = new URL(self.location.href).searchParams.get('v') || 'local';
+const CACHE_VERSION = `mt-pwa-v4-${DEPLOY_VERSION.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48)}`;
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const PRIVATE_PAGE_CACHE = `${CACHE_VERSION}-pages`;
+const MAP_CACHE = `${CACHE_VERSION}-maps`;
+const APP_ROUTES = ['/app', '/app/trilhas', '/app/passaporte', '/app/perfil'];
+
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(STATIC_CACHE);
+    await Promise.allSettled([
+      cache.add('/manifest.webmanifest'),
+      cache.add('/api/pwa/icon/192'),
+      cache.add('/api/pwa/icon/512'),
+    ]);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names
+      .filter((name) => name.startsWith('mt-pwa-') && !name.startsWith(CACHE_VERSION))
+      .map((name) => caches.delete(name)));
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  if (event.data && event.data.type === 'WARM_APP_ROUTES') {
+    event.waitUntil(warmAppRoutes());
+  }
+  if (event.data && event.data.type === 'CLEAR_PRIVATE_CACHE') {
+    event.waitUntil(caches.delete(PRIVATE_PAGE_CACHE));
+  }
 });
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  if (request.mode === 'navigate' && url.origin === self.location.origin) {
+    event.respondWith(networkFirstNavigation(request));
+    return;
+  }
+
+  if (url.origin === self.location.origin && (
+    url.pathname.startsWith('/_next/static/') ||
+    url.pathname.startsWith('/_next/image') ||
+    url.pathname.startsWith('/api/pwa/icon/') ||
+    url.pathname === '/manifest.webmanifest'
+  )) {
+    event.respondWith(staleWhileRevalidate(request, STATIC_CACHE, 180));
+    return;
+  }
+
+  if (isMapTile(url)) {
+    event.respondWith(staleWhileRevalidate(request, MAP_CACHE, 450));
+  }
+});
+
+async function warmAppRoutes() {
+  const cache = await caches.open(PRIVATE_PAGE_CACHE);
+  await Promise.allSettled(APP_ROUTES.map(async (path) => {
+    const response = await fetch(path, { credentials: 'include', cache: 'no-store' });
+    if (response.ok && !response.redirected && isHtml(response)) {
+      await cache.put(path, response.clone());
+      await warmStaticFromHtml(response);
+    }
+  }));
+}
+
+async function warmStaticFromHtml(response) {
+  const html = await response.text();
+  const assetPaths = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
+    .map((match) => match[1])
+    .filter((path) => path.startsWith('/_next/static/'));
+  if (!assetPaths.length) return;
+  const cache = await caches.open(STATIC_CACHE);
+  await Promise.allSettled([...new Set(assetPaths)].map((path) => cache.add(path)));
+}
+
+async function networkFirstNavigation(request) {
+  const cache = await caches.open(PRIVATE_PAGE_CACHE);
+  try {
+    const response = await fetch(request);
+    const url = new URL(request.url);
+    if (response.ok && !response.redirected && url.pathname.startsWith('/app') && isHtml(response)) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const exact = await cache.match(request, { ignoreSearch: true });
+    if (exact) return exact;
+    const shell = await cache.match('/app');
+    if (shell) return shell;
+    return offlineDocument();
+  }
+}
+
+async function staleWhileRevalidate(request, cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  const network = fetch(request).then(async (response) => {
+    if (response.ok || response.type === 'opaque') {
+      await cache.put(request, response.clone());
+      await trimCache(cacheName, maxEntries);
+    }
+    return response;
+  }).catch(() => cached);
+  return cached || network;
+}
+
+async function trimCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  if (keys.length <= maxEntries) return;
+  await Promise.all(keys.slice(0, keys.length - maxEntries).map((key) => cache.delete(key)));
+}
+
+function isMapTile(url) {
+  return url.hostname.endsWith('basemaps.cartocdn.com') ||
+    url.hostname === 'server.arcgisonline.com' ||
+    url.hostname.endsWith('tile.opentopomap.org');
+}
+
+function isHtml(response) {
+  return (response.headers.get('content-type') || '').includes('text/html');
+}
+
+function offlineDocument() {
+  return new Response(`<!doctype html><html lang="pt-BR"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071829"><title>Mais Trilha offline</title><style>body{margin:0;background:#071829;color:white;font:16px system-ui;min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box}.c{max-width:420px;text-align:center;background:#fff1;border:1px solid #fff2;border-radius:28px;padding:30px}.i{font-size:42px}h1{font-size:25px;margin:14px 0 8px}p{color:#d8e5ef;line-height:1.5}button{border:0;border-radius:16px;background:#f17b37;color:white;font-weight:800;padding:14px 20px;margin-top:10px}</style><body><main class="c"><div class="i">🧭</div><h1>Você está sem internet</h1><p>A rota GPS salva continua disponível. Reconecte-se uma vez e abra as telas importantes para deixá-las prontas neste aparelho.</p><button onclick="location.reload()">Tentar novamente</button></main></body></html>`, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
+}
 
 self.addEventListener('push', (event) => {
   let payload = {};

@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { PwaEngagementCard } from "@/components/app/PwaEngagementCard";
+import { getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { useNetworkStatus } from "@/lib/app/use-network-status";
 
 type FeaturedProduct = {
   id: string;
@@ -27,49 +29,64 @@ export default function PwaDashboard() {
   const [profileImageFailed, setProfileImageFailed] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const online = useNetworkStatus();
 
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
-      const [{ data: { user } }, { data: products }] = await Promise.all([
-        supabase.auth.getUser(),
-        supabase
-          .from("produtos")
-          .select("id, name, category, price, image")
-          .eq("active", true)
-          .gt("stock", 0)
-          .order("created_at", { ascending: false })
-          .limit(4),
-      ]);
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        setProductsLoading(false);
+        return;
+      }
 
-      setFeaturedProducts((products || []) as FeaturedProduct[]);
-      setProductsLoading(false);
-      
-      if (user) {
-        const profileResponse = await fetch("/api/clients/me", { cache: "no-store" });
+      const cached = getOfflineData<{ client: any; products: FeaturedProduct[] }>(user.id, "dashboard");
+      if (cached) {
+        setClientData(cached.data.client);
+        setFeaturedProducts(cached.data.products);
+        applyClient(cached.data.client);
+      }
+
+      if (!navigator.onLine) {
+        setProductsLoading(false);
+        return;
+      }
+
+      try {
+        const [{ data: products }, profileResponse] = await Promise.all([
+          supabase.from("produtos").select("id, name, category, price, image").eq("active", true).gt("stock", 0).order("created_at", { ascending: false }).limit(4),
+          fetch("/api/clients/me", { cache: "no-store" }),
+        ]);
         const profileResult = await profileResponse.json().catch(() => ({}));
-        const client = profileResponse.ok ? profileResult.client : null;
+        const client = profileResponse.ok ? profileResult.client : cached?.data.client;
+        const normalizedProducts = (products || []) as FeaturedProduct[];
+        setFeaturedProducts(normalizedProducts);
             
         if (client) {
           setClientData(client);
-          const pts = client.pontos || 0;
-          if (pts <= 100) setUserRank("Iniciante");
-          else if (pts <= 500) setUserRank("Explorador");
-          else setUserRank("Lenda da Trilha");
-
-          if (client.full_name) {
-            setUserName(client.full_name);
-            const parts = client.full_name.split(' ');
-            const initials = parts.length > 1
-              ? `${parts[0][0]}${parts[parts.length-1][0]}`
-              : parts[0].substring(0, 2);
-            setUserInitials(initials.toUpperCase());
-          }
+          applyClient(client);
+          saveOfflineData(user.id, "dashboard", { client, products: normalizedProducts });
         }
+      } catch (error) {
+        console.warn("Painel usando a última cópia salva no aparelho.", error);
+      } finally {
+        setProductsLoading(false);
       }
     };
-    fetchUser();
-  }, []);
+    const applyClient = (client: any) => {
+      const pts = client?.pontos || 0;
+      if (pts <= 100) setUserRank("Iniciante");
+      else if (pts <= 500) setUserRank("Explorador");
+      else setUserRank("Lenda da Trilha");
+      if (client?.full_name) {
+        setUserName(client.full_name);
+        const parts = client.full_name.split(' ');
+        setUserInitials((parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}` : parts[0].substring(0, 2)).toUpperCase());
+      }
+    };
+    void fetchUser();
+  }, [online]);
 
   const formatCurrency = (val: number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
