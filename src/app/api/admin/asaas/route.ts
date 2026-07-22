@@ -102,5 +102,5 @@ export async function POST(request: Request) {
 }
 
 function isAllowedEndpoint(endpoint: string) {
-  return /^(payments|customers|financialTransactions|finance\/balance|anticipations)(\/[A-Za-z0-9_-]+)?$/.test(endpoint);
+  return /^(payments|customers|financialTransactions|finance\/balance|anticipations)(\/(simulate|[A-Za-z0-9_-]+))?$/.test(endpoint);
 }

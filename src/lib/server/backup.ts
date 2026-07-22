@@ -11,7 +11,8 @@ const BACKUP_TABLES = [
   'agendas', 'global_stats', 'clients', 'avaliacoes', 'trilha_custos', 'reservas',
   'notificacoes', 'coupon_redemptions', 'bolao_apostas', 'settings', 'trilha_gpx',
   'fotos_trilhas', 'produtos', 'pedidos_loja', 'wallet_transactions',
-  'points_transactions', 'content_documents', 'profiles', 'asaas_webhook_events',
+  'points_transactions', 'experience_transactions', 'trail_checkout_benefits',
+  'content_documents', 'profiles', 'asaas_webhook_events',
   'asaas_payments', 'infinitepay_checkouts', 'audit_logs', 'backup_runs',
   'backup_restore_tests', 'dependent_registration_invites',
 ] as const;

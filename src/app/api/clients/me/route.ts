@@ -6,9 +6,21 @@ import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
 export async function GET() {
   const auth = await requireAuthenticatedUser();
   if (auth.response) return auth.response;
-  const client = await resolveAuthenticatedClient(auth.user);
+  const supabase = createSupabaseAdmin();
+  let client = await resolveAuthenticatedClient(auth.user);
   if (!client) return NextResponse.json({ error: 'Cadastro não encontrado' }, { status: 404 });
-  return NextResponse.json({ client });
+
+  const { data: released } = await supabase.rpc('release_stale_app_checkouts', {
+    p_owner_id: client.id,
+  });
+  if (Number(released || 0) > 0) {
+    const refreshed = await supabase.from('clients').select('*').eq('id', client.id).single();
+    if (refreshed.data) client = refreshed.data;
+  }
+
+  return NextResponse.json({ client, releasedCheckouts: Number(released || 0) }, {
+    headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+  });
 }
 
 export async function PUT(request: Request) {

@@ -10,6 +10,7 @@ import { createClient } from "@/utils/supabase/client";
 import { PwaEngagementCard } from "@/components/app/PwaEngagementCard";
 import { getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
+import { getAdventureProgress } from "@/lib/gamification";
 
 type FeaturedProduct = {
   id: string;
@@ -29,7 +30,30 @@ export default function PwaDashboard() {
   const [profileImageFailed, setProfileImageFailed] = useState(false);
   const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
   const online = useNetworkStatus();
+
+  const applyClient = (client: any) => {
+    const progress = getAdventureProgress(Number(client?.experiencia || 0));
+    setUserRank(progress.current.name);
+    if (client?.full_name) {
+      setUserName(client.full_name);
+      const parts = client.full_name.split(" ");
+      setUserInitials((parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}` : parts[0].substring(0, 2)).toUpperCase());
+    }
+  };
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") setRefreshKey((value) => value + 1);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -74,21 +98,11 @@ export default function PwaDashboard() {
         setProductsLoading(false);
       }
     };
-    const applyClient = (client: any) => {
-      const pts = client?.pontos || 0;
-      if (pts <= 100) setUserRank("Iniciante");
-      else if (pts <= 500) setUserRank("Explorador");
-      else setUserRank("Lenda da Trilha");
-      if (client?.full_name) {
-        setUserName(client.full_name);
-        const parts = client.full_name.split(' ');
-        setUserInitials((parts.length > 1 ? `${parts[0][0]}${parts[parts.length - 1][0]}` : parts[0].substring(0, 2)).toUpperCase());
-      }
-    };
     void fetchUser();
-  }, [online]);
+  }, [online, refreshKey]);
 
   const formatCurrency = (val: number) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const adventure = getAdventureProgress(Number(clientData?.experiencia || 0));
 
   const handleRecarregar = () => {
     setIsAnimating(true);
@@ -152,6 +166,21 @@ export default function PwaDashboard() {
           <p className="mt-1 text-xs text-blue-100/70">
             ⭐ {clientData?.pontos || 0} pontos de fidelidade ≈ {formatCurrency((clientData?.pontos || 0) / 100)} de desconto
           </p>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
+            <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-bold">
+              <span className="text-orange-100">{adventure.experience.toLocaleString("pt-BR")} XP de jornada</span>
+              <span className="text-blue-100/65">
+                {adventure.next ? `${adventure.remaining.toLocaleString("pt-BR")} XP para ${adventure.next.name}` : "Nível máximo"}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${adventure.progress}%` }}
+                className="h-full rounded-full bg-[linear-gradient(90deg,#F17B37,#F9C784)]"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

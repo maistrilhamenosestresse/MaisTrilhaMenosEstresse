@@ -98,11 +98,36 @@ export default function CobrancasDashboard() {
   };
 
   const handleAnticipate = async (paymentOrInstallmentId: string, type: 'payment' | 'installment') => {
-    if (!window.confirm("Deseja simular/solicitar a antecipação deste recebível? (Pode estar sujeito a taxas do Asaas)")) return;
-    
     setIsAnticipating(paymentOrInstallmentId);
     try {
       const payload = type === 'payment' ? { payment: paymentOrInstallmentId } : { installment: paymentOrInstallmentId };
+      const simulationResponse = await fetch('/api/admin/asaas?endpoint=anticipations/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const simulation = await simulationResponse.json();
+      if (!simulationResponse.ok || simulation.error) {
+        throw new Error(simulation.error || 'A Asaas não liberou a simulação deste recebível.');
+      }
+
+      const grossValue = Number(simulation.totalValue ?? simulation.value ?? 0);
+      const anticipationFee = Number(simulation.fee ?? 0);
+      const anticipatedNet = Number(simulation.netValue ?? 0);
+      const collectionFee = Math.max(0, grossValue - Number(simulation.value ?? grossValue));
+      const days = Number(simulation.anticipationDays ?? 0);
+      const confirmed = window.confirm([
+        'Simulação oficial da Asaas:',
+        `Valor bruto: ${formatCurrency(grossValue)}`,
+        `Tarifas da cobrança: ${formatCurrency(collectionFee)}`,
+        `Custo da antecipação: ${formatCurrency(anticipationFee)}`,
+        `Líquido a receber: ${formatCurrency(anticipatedNet)}`,
+        days > 0 ? `Prazo antecipado: ${days} dia(s)` : '',
+        '',
+        'Confirmar a solicitação da antecipação agora?'
+      ].filter(Boolean).join('\n'));
+      if (!confirmed) return;
+
       const res = await fetch('/api/admin/asaas?endpoint=anticipations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -111,7 +136,7 @@ export default function CobrancasDashboard() {
       const data = await res.json();
       
       if (res.ok && !data.error) {
-        alert("Antecipação solicitada com sucesso! O valor será creditado conforme o prazo do Asaas.");
+        alert(`Antecipação solicitada. Líquido previsto: ${formatCurrency(anticipatedNet)}.`);
         fetchPayments();
       } else {
         alert("Erro ao solicitar antecipação: " + (data.error || JSON.stringify(data)));
@@ -294,6 +319,10 @@ export default function CobrancasDashboard() {
                         overdueInstallments,
                         nextDueDate: nextInstallment?.dueDate || null,
                         paymentBookUrl: `/api/admin/asaas/installments/${encodeURIComponent(p.installment)}/payment-book`,
+                        anticipationTarget: p.billingType === 'BOLETO'
+                          ? nextInstallment?.id || null
+                          : p.installment,
+                        anticipationType: p.billingType === 'BOLETO' ? 'payment' : 'installment',
                       });
                     }
                   } else {
@@ -306,7 +335,9 @@ export default function CobrancasDashboard() {
                       dueDate: p.dueDate,
                       status: p.status,
                       isInstallmentGroup: false,
-                      invoiceUrl: p.invoiceUrl
+                      invoiceUrl: p.invoiceUrl,
+                      anticipationTarget: p.id,
+                      anticipationType: 'payment',
                     });
                   }
                 });
@@ -387,13 +418,17 @@ export default function CobrancasDashboard() {
                                   <td className="p-3">{getStatusBadge(item.status)}</td>
                                   <td className="p-3 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                      {item.status === 'PENDING' && (item.billingType === 'BOLETO' || item.billingType === 'CREDIT_CARD') && (
+                                      {item.status === 'PENDING' && item.anticipationTarget && (item.billingType === 'BOLETO' || item.billingType === 'CREDIT_CARD') && (
                                         <button 
-                                          onClick={(e) => { e.stopPropagation(); handleAnticipate(item.isInstallmentGroup ? item.rawPayment.installment : item.rawPayment.id, item.isInstallmentGroup ? 'installment' : 'payment'); }}
-                                          disabled={isAnticipating === (item.isInstallmentGroup ? item.rawPayment.installment : item.rawPayment.id)}
+                                          onClick={(e) => { e.stopPropagation(); handleAnticipate(item.anticipationTarget, item.anticipationType); }}
+                                          disabled={isAnticipating === item.anticipationTarget}
                                           className="text-[10px] font-bold text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg transition-colors"
                                         >
-                                          {isAnticipating === (item.isInstallmentGroup ? item.rawPayment.installment : item.rawPayment.id) ? '...' : 'Antecipar'}
+                                          {isAnticipating === item.anticipationTarget
+                                            ? 'Simulando...'
+                                            : item.billingType === 'BOLETO' && item.isInstallmentGroup
+                                              ? 'Antecipar próxima'
+                                              : 'Antecipar'}
                                         </button>
                                       )}
                                       {item.paymentBookUrl && (

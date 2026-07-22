@@ -28,6 +28,15 @@ export type AsaasPaymentResult = {
   pixExpirationDate?: string | null;
   netAmount?: number;
   chargedAmount?: number;
+  fees?: {
+    providerFee: number;
+    anticipationFee: number;
+    totalFees: number;
+    anticipatedNetAmount: number;
+    anticipationMonthlyRatePercent: number;
+    anticipationDays: number[];
+    absorbedByCompany: boolean;
+  };
 };
 
 export function AsaasPaymentStatus({
@@ -111,6 +120,12 @@ export function AsaasPaymentStatus({
             Total da cobrança
           </p>
           <p className="mt-1 text-2xl font-black">{formatCurrency(chargedAmount)}</p>
+          {payment.fees && payment.fees.totalFees > 0 && (
+            <p className="mt-2 text-[11px] leading-relaxed text-blue-100">
+              Total calculado com tarifas Asaas e previsão de antecipação dos
+              recebíveis. Nenhum valor adicional será incluído neste boleto.
+            </p>
+          )}
         </div>
       )}
 

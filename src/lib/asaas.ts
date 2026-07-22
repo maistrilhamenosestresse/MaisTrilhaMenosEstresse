@@ -43,6 +43,29 @@ export async function createPayment(payload: Record<string, unknown>) {
   return asaasRequest('/payments', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+let accountFeesCache: { expiresAt: number; data: any } | null = null;
+
+export async function getAsaasAccountFees() {
+  if (accountFeesCache && accountFeesCache.expiresAt > Date.now()) {
+    return accountFeesCache.data;
+  }
+  const data = await asaasRequest('/myAccount/fees/');
+  accountFeesCache = {
+    data,
+    expiresAt: Date.now() + 15 * 60 * 1000,
+  };
+  return data;
+}
+
+export async function getAsaasBankSlipAnticipationMonthlyRate() {
+  const fees = await getAsaasAccountFees();
+  const rate = Number(fees?.anticipation?.bankSlip?.monthlyFeePercentage);
+  if (!Number.isFinite(rate) || rate < 0) {
+    throw new Error('Asaas nao informou a taxa de antecipacao do boleto');
+  }
+  return rate;
+}
+
 export async function getPixQrCode(paymentId: string) {
   return asaasRequest(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`);
 }
