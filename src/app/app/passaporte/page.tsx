@@ -5,14 +5,21 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, BookOpen, Check, ChevronRight, CircleHelp,
-  Coins, Compass, Crown, Footprints, Gift, History, Loader2, LockKeyhole,
+  Coins, Compass, Crown, Download, Footprints, Gift, History, Loader2, LockKeyhole,
   MapPinned, Medal, Mountain, Share2, ShieldCheck, Sparkles,
-  Stamp, Star, TicketCheck, Trophy, WalletCards, WifiOff, X,
+  Stamp, Star, Sunrise, TicketCheck, TreePine, Trophy, WalletCards, Waves, WifiOff, X,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { formatOfflineUpdate, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
 import { ADVENTURE_LEVELS } from "@/lib/gamification";
+import {
+  createPassportShareImage,
+  createTrailStampShareImage,
+  getTrailStampIdentity,
+  shareOrDownloadImage,
+  type TrailStampIdentity,
+} from "@/lib/passport-share";
 
 type TrailStamp = {
   id: string;
@@ -65,6 +72,14 @@ const PAGE_TABS: Array<{ id: PassportPage; label: string; icon: typeof Stamp }> 
 ];
 
 const LEVEL_ICONS = [Footprints, Medal, Mountain, Compass, Crown, Trophy];
+const STAMP_MOTIF_ICONS: Record<TrailStampIdentity["motif"], typeof Mountain> = {
+  peak: Mountain,
+  forest: TreePine,
+  compass: Compass,
+  river: Waves,
+  sun: Sunrise,
+  footprints: Footprints,
+};
 
 const formatDate = (value: string) => new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
@@ -78,6 +93,9 @@ export default function TrailPassportPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [activePage, setActivePage] = useState<PassportPage>("identidade");
   const [selectedStamp, setSelectedStamp] = useState<TrailStamp | null>(null);
+  const [sharingTarget, setSharingTarget] = useState<"passport" | string | null>(null);
+  const [shareNotice, setShareNotice] = useState("");
+  const [shareError, setShareError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const online = useNetworkStatus();
 
@@ -133,10 +151,45 @@ export default function TrailPassportPage() {
   }, [online, refreshKey]);
 
   const sharePassport = async () => {
-    if (!data) return;
-    const text = `Meu Passaporte Mais Trilha registra ${data.summary.completedCount} trilhas, ${data.summary.totalDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km e o nível ${data.summary.level}.`;
-    if (navigator.share) await navigator.share({ title: "Meu Passaporte de Trilhas", text });
-    else await navigator.clipboard.writeText(text);
+    if (!data || sharingTarget) return;
+    setSharingTarget("passport");
+    setShareNotice("");
+    setShareError("");
+    try {
+      const file = await createPassportShareImage(data);
+      const result = await shareOrDownloadImage(
+        file,
+        "Meu Passaporte de Trilhas",
+        `Meu Passaporte Mais Trilha registra ${data.summary.completedCount} trilhas, ${data.summary.totalDistanceKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km e o nível ${data.summary.level}.`,
+      );
+      if (result === "shared") setShareNotice("Passaporte compartilhado com sucesso.");
+      if (result === "downloaded") setShareNotice("Imagem do Passaporte baixada neste aparelho.");
+    } catch (reason) {
+      setShareError(reason instanceof Error ? reason.message : "Não foi possível gerar a imagem do Passaporte.");
+    } finally {
+      setSharingTarget(null);
+    }
+  };
+
+  const shareTrailStamp = async (trail: TrailStamp) => {
+    if (!data || sharingTarget) return;
+    setSharingTarget(trail.id);
+    setShareNotice("");
+    setShareError("");
+    try {
+      const file = await createTrailStampShareImage(trail, data.participant.fullName);
+      const result = await shareOrDownloadImage(
+        file,
+        `Carimbo da trilha ${trail.title}`,
+        `Conquistei o carimbo oficial da trilha ${trail.title} no meu Passaporte Mais Trilha.`,
+      );
+      if (result === "shared") setShareNotice("Carimbo compartilhado com sucesso.");
+      if (result === "downloaded") setShareNotice("Imagem do carimbo baixada neste aparelho.");
+    } catch (reason) {
+      setShareError(reason instanceof Error ? reason.message : "Não foi possível gerar a imagem do carimbo.");
+    } finally {
+      setSharingTarget(null);
+    }
   };
 
   if (!data && !error) {
@@ -150,7 +203,7 @@ export default function TrailPassportPage() {
       <header className="relative z-20 flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] text-white">
         <Link href="/app" className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-black backdrop-blur"><ArrowLeft className="h-4 w-4" /> App</Link>
         <p className="text-[9px] font-black uppercase tracking-[0.28em] text-[#D9B56D]">Arquivo de expedições</p>
-        <button onClick={sharePassport} disabled={!data} className="grid h-9 w-9 place-items-center rounded-full bg-white/10" aria-label="Compartilhar passaporte"><Share2 className="h-4 w-4" /></button>
+        <button onClick={sharePassport} disabled={!data || sharingTarget === "passport"} className="grid h-9 w-9 place-items-center rounded-full bg-white/10 disabled:opacity-50" aria-label="Gerar imagem do Passaporte para compartilhar">{sharingTarget === "passport" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}</button>
       </header>
 
       <main className="relative z-10 mx-auto max-w-lg px-4">
@@ -165,6 +218,8 @@ export default function TrailPassportPage() {
             Um checkout abandonado foi encerrado e seus pontos reservados voltaram para a carteira.
           </div>
         ) : null}
+        {shareNotice ? <div className="mb-3 flex items-center gap-2 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-3 text-xs font-bold text-emerald-100"><Check className="h-4 w-4 shrink-0" />{shareNotice}</div> : null}
+        {shareError ? <div className="mb-3 rounded-2xl border border-red-300/25 bg-red-300/10 p-3 text-xs font-bold text-red-100">{shareError}</div> : null}
         {error ? <div className="rounded-3xl bg-white p-6 text-center font-bold text-red-600">{error}</div> : null}
 
         {data && !isOpen ? (
@@ -197,7 +252,7 @@ export default function TrailPassportPage() {
               <div className="absolute bottom-0 left-1/2 top-0 w-px bg-gradient-to-b from-transparent via-[#9D855C]/15 to-transparent" />
               <AnimatePresence mode="wait">
                 <motion.div key={activePage} initial={{ opacity: 0, x: 22 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -22 }} transition={{ duration: 0.22 }}>
-                  {activePage === "identidade" ? <IdentityPage data={data} goToStamps={() => setActivePage("vistos")} /> : null}
+                  {activePage === "identidade" ? <IdentityPage data={data} goToStamps={() => setActivePage("vistos")} onShare={sharePassport} isSharing={sharingTarget === "passport"} /> : null}
                   {activePage === "vistos" ? <StampsPage data={data} onStamp={setSelectedStamp} /> : null}
                   {activePage === "diario" ? <JournalPage data={data} /> : null}
                 </motion.div>
@@ -211,7 +266,7 @@ export default function TrailPassportPage() {
       </main>
 
       <AnimatePresence>
-        {selectedStamp ? <StampModal trail={selectedStamp} onClose={() => setSelectedStamp(null)} /> : null}
+        {selectedStamp ? <StampModal trail={selectedStamp} participantName={data?.participant.fullName || ""} onClose={() => setSelectedStamp(null)} onShare={() => shareTrailStamp(selectedStamp)} isSharing={sharingTarget === selectedStamp.id} /> : null}
       </AnimatePresence>
     </div>
   );
@@ -254,7 +309,7 @@ function PassportCover({ data, onOpen }: { data: PassportData; onOpen: () => voi
   );
 }
 
-function IdentityPage({ data, goToStamps }: { data: PassportData; goToStamps: () => void }) {
+function IdentityPage({ data, goToStamps, onShare, isSharing }: { data: PassportData; goToStamps: () => void; onShare: () => void; isSharing: boolean }) {
   return <div className="space-y-5">
     <PageHeading code="P.01" eyebrow="Identificação do aventureiro" title="Titular do passaporte" />
     <div className="relative overflow-hidden rounded-2xl border border-[#9B8256]/35 bg-[#FFF9E9]/80 p-4 shadow-sm">
@@ -283,6 +338,8 @@ function IdentityPage({ data, goToStamps }: { data: PassportData; goToStamps: ()
       <WalletCard icon={Coins} label="Pontos disponíveis" value={`${data.participant.points.toLocaleString("pt-BR")} pts`} note="Só desconto; não vira saldo" />
       <WalletCard icon={WalletCards} label="Saldo cashback" value={data.participant.cashbackBalance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} note="Disponível na carteira" />
     </div>
+
+    <button onClick={onShare} disabled={isSharing} className="flex w-full items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#8B2E28,#B34D35)] p-4 text-left text-[#FFF5DA] shadow-lg disabled:opacity-60"><span className="grid h-11 w-11 place-items-center rounded-full bg-white/10">{isSharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}</span><span className="flex-1"><strong className="block text-sm">Gerar imagem do meu Passaporte</strong><span className="text-[10px] text-white/70">Pronta para compartilhar no WhatsApp, Instagram ou salvar.</span></span><Share2 className="h-5 w-5" /></button>
 
     <button onClick={goToStamps} className="flex w-full items-center gap-3 rounded-2xl border border-[#9B8256]/30 bg-[#FFF9E9] p-4 text-left"><span className="grid h-11 w-11 place-items-center rounded-full border border-dashed border-[#9B302C]/50 text-[#9B302C]"><Stamp className="h-5 w-5" /></span><span className="flex-1"><strong className="block text-sm text-[#132B43]">Folhear vistos e carimbos</strong><span className="text-[10px] text-[#7D6845]">Cada aventura concluída ganha uma marca oficial.</span></span><ChevronRight className="h-5 w-5 text-[#9B8256]" /></button>
   </div>;
@@ -323,12 +380,17 @@ function JournalPage({ data }: { data: PassportData }) {
 }
 
 function VisaStamp({ trail, number, onClick }: { trail: TrailStamp; number: number; onClick: () => void }) {
-  const rotation = number % 2 === 0 ? "rotate-2" : "-rotate-2";
-  return <button onClick={onClick} className={`relative min-h-48 overflow-hidden rounded-xl border border-[#9B8256]/35 bg-[#FFF9E9] p-3 text-center shadow-sm ${rotation}`}><div className="absolute inset-0 bg-cover bg-center opacity-10 grayscale" style={trail.flyer_url ? { backgroundImage: `url(${trail.flyer_url})` } : undefined} /><div className="relative mx-auto grid h-24 w-24 place-items-center rounded-full border-[3px] border-double border-[#9B302C]/65 text-[#9B302C]"><div className="grid h-20 w-20 place-items-center rounded-full border border-dashed border-[#9B302C]/60"><div><Mountain className="mx-auto h-7 w-7" /><span className="mt-1 block font-mono text-[9px] font-black">VISTO {String(number).padStart(2, "0")}</span></div></div></div><p className="relative mt-3 line-clamp-2 font-serif text-sm font-black leading-tight text-[#132B43]">{trail.title}</p><p className="relative mt-1 text-[8px] font-black uppercase tracking-wider text-[#8B795A]">{formatDate(trail.date)}</p></button>;
+  const identity = getTrailStampIdentity(trail);
+  const Icon = STAMP_MOTIF_ICONS[identity.motif];
+  const ringStyle = identity.ringStyle === "dashed" ? "border-dashed" : identity.ringStyle === "double" ? "border-double border-[5px]" : "border-[3px]";
+  return <button onClick={onClick} className="relative min-h-56 overflow-hidden rounded-xl border border-[#9B8256]/35 p-3 text-center shadow-sm transition active:scale-[0.98]" style={{ backgroundColor: identity.paper }}><div className="absolute inset-0 bg-cover bg-center opacity-[0.08] grayscale" style={trail.flyer_url ? { backgroundImage: `url(${trail.flyer_url})` } : undefined} /><span className="absolute left-3 top-3 font-mono text-[7px] font-black" style={{ color: identity.ink }}>VISTO {String(number).padStart(2, "0")}</span><div className={`relative mx-auto mt-3 grid h-28 w-28 place-items-center rounded-full ${ringStyle}`} style={{ borderColor: identity.ink, color: identity.ink, transform: `rotate(${identity.rotation}deg)` }}><div className="grid h-[5.7rem] w-[5.7rem] place-items-center rounded-full border border-dashed" style={{ borderColor: identity.softInk }}><div><span className="block text-[6px] font-black uppercase tracking-[0.14em]">{identity.motto}</span><Icon className="mx-auto my-1 h-8 w-8" /><span className="block font-mono text-[7px] font-black">{identity.serial}</span></div></div></div><p className="relative mt-3 line-clamp-2 font-serif text-sm font-black leading-tight text-[#132B43]">{trail.title}</p><p className="relative mt-1 text-[8px] font-black uppercase tracking-wider text-[#8B795A]">{formatDate(trail.date)}</p><span className="relative mt-2 inline-flex items-center gap-1 text-[8px] font-black uppercase" style={{ color: identity.ink }}><Share2 className="h-3 w-3" /> Abrir carimbo</span></button>;
 }
 
-function StampModal({ trail, onClose }: { trail: TrailStamp; onClose: () => void }) {
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[220] flex items-end bg-[#020A12]/80 p-4 backdrop-blur-md" onClick={onClose}><motion.article initial={{ y: 80, rotate: -2 }} animate={{ y: 0, rotate: 0 }} exit={{ y: 80 }} className="mx-auto w-full max-w-lg overflow-hidden rounded-[2rem] border border-[#D9B56D]/40 bg-[#F8F1DE] shadow-2xl" onClick={(event) => event.stopPropagation()}>{trail.flyer_url ? <div className="h-48 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(0deg,rgba(6,21,38,.72),transparent),url(${trail.flyer_url})` }} /> : <div className="grid h-32 place-items-center bg-[#132B43]"><Mountain className="h-14 w-14 text-[#D9B56D]" /></div>}<div className="relative p-5 text-[#26313A]"><div className="absolute -right-2 -top-12 grid h-24 w-24 rotate-12 place-items-center rounded-full border-[3px] border-double border-[#9B302C] bg-[#F8F1DE] text-[#9B302C]"><div className="text-center"><Check className="mx-auto h-7 w-7" /><span className="text-[8px] font-black uppercase">Conquistado</span></div></div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#9B302C]">Visto oficial de expedição</p><h2 className="mt-2 max-w-[75%] font-serif text-2xl font-black text-[#132B43]">{trail.title}</h2><div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold text-[#66583F]"><span className="rounded-full border border-[#9B8256]/30 px-3 py-2">{formatDate(trail.date)}</span>{trail.distance_km ? <span className="rounded-full border border-[#9B8256]/30 px-3 py-2">{trail.distance_km} km</span> : null}{trail.difficulty ? <span className="rounded-full border border-[#9B8256]/30 px-3 py-2">{trail.difficulty}</span> : null}</div><button onClick={onClose} className="mt-5 w-full rounded-xl bg-[#132B43] py-3.5 text-sm font-black text-[#F3D391]">Carimbar e guardar</button></div></motion.article></motion.div>;
+function StampModal({ trail, participantName, onClose, onShare, isSharing }: { trail: TrailStamp; participantName: string; onClose: () => void; onShare: () => void; isSharing: boolean }) {
+  const identity = getTrailStampIdentity(trail);
+  const Icon = STAMP_MOTIF_ICONS[identity.motif];
+  const ringStyle = identity.ringStyle === "dashed" ? "border-dashed" : identity.ringStyle === "double" ? "border-double border-[6px]" : "border-[4px]";
+  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[220] flex items-end bg-[#020A12]/80 p-4 backdrop-blur-md" onClick={onClose}><motion.article initial={{ y: 80, rotate: -2 }} animate={{ y: 0, rotate: 0 }} exit={{ y: 80 }} className="mx-auto max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-[2rem] border border-[#D9B56D]/40 shadow-2xl" style={{ backgroundColor: identity.paper }} onClick={(event) => event.stopPropagation()}>{trail.flyer_url ? <div className="h-44 bg-cover bg-center" style={{ backgroundImage: `linear-gradient(0deg,${identity.ink}CC,transparent),url(${trail.flyer_url})` }} /> : <div className="grid h-28 place-items-center bg-[#132B43]"><Mountain className="h-12 w-12 text-[#D9B56D]" /></div>}<div className="relative p-5 text-[#26313A]"><div className={`absolute -right-1 -top-16 grid h-32 w-32 place-items-center rounded-full bg-[#F8F1DE] ${ringStyle}`} style={{ borderColor: identity.ink, color: identity.ink, transform: `rotate(${identity.rotation}deg)` }}><div className="grid h-[6.4rem] w-[6.4rem] place-items-center rounded-full border border-dashed text-center" style={{ borderColor: identity.softInk }}><div><span className="block text-[7px] font-black uppercase tracking-wider">{identity.motto}</span><Icon className="mx-auto my-1 h-9 w-9" /><span className="block font-mono text-[7px] font-black">{identity.serial}</span></div></div></div><p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: identity.ink }}>Visto oficial personalizado</p><h2 className="mt-2 max-w-[68%] font-serif text-2xl font-black text-[#132B43]">{trail.title}</h2><p className="mt-2 text-[9px] font-bold uppercase tracking-wide text-[#7D6845]">Conquistado por {participantName}</p><div className="mt-4 flex flex-wrap gap-2 text-[10px] font-bold text-[#66583F]"><span className="rounded-full border border-[#9B8256]/30 px-3 py-2">{formatDate(trail.date)}</span>{trail.distance_km ? <span className="rounded-full border border-[#9B8256]/30 px-3 py-2">{trail.distance_km} km</span> : null}{trail.difficulty ? <span className="rounded-full border border-[#9B8256]/30 px-3 py-2">{trail.difficulty}</span> : null}</div><button onClick={onShare} disabled={isSharing} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-black text-white shadow-lg disabled:opacity-60" style={{ backgroundColor: identity.ink }}>{isSharing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}{isSharing ? "Gerando imagem..." : "Compartilhar meu carimbo"}</button><button onClick={onClose} className="mt-2 w-full rounded-xl border border-[#132B43]/15 py-3 text-xs font-black text-[#132B43]">Guardar no Passaporte</button></div></motion.article></motion.div>;
 }
 
 function PageHeading({ code, eyebrow, title }: { code: string; eyebrow: string; title: string }) { return <div className="flex items-end justify-between border-b border-[#9B8256]/30 pb-3"><div><p className="text-[8px] font-black uppercase tracking-[0.24em] text-[#9B302C]">{eyebrow}</p><h2 className="mt-1 font-serif text-2xl font-black text-[#132B43]">{title}</h2></div><span className="font-mono text-[9px] font-black text-[#8B795A]">{code}</span></div>; }
