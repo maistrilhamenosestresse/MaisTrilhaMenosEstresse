@@ -67,5 +67,7 @@ export async function GET() {
     },
     completed,
     upcoming,
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

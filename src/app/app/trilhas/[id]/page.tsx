@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, MapPin, Calendar, Users, Info, ShieldAlert, CheckCircle2, Navigation, Sparkles, Loader2 } from "lucide-react";
+import { ChevronLeft, MapPin, Calendar, Users, Info, ShieldAlert, CheckCircle2, Navigation, Sparkles, Loader2, WifiOff, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useState, useEffect, use } from "react";
@@ -10,8 +10,10 @@ import { createClient } from "@/utils/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { fetchCurrentClient } from "@/lib/app/current-client";
+import { formatOfflineUpdate, getOfflineData, saveOfflineData } from "@/lib/app/offline-data";
+import { useNetworkStatus } from "@/lib/app/use-network-status";
 
-const DynamicMap = dynamic(() => import('@/components/GpsMap'), { 
+const DynamicMap = dynamic(() => import('@/components/app/ImmersiveMap'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded-2xl flex items-center justify-center text-gray-400 text-xs">Carregando mapa GPS...</div>
 });
@@ -30,30 +32,59 @@ const DEFAULT_CHECKLIST = [
 export default function TrailDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const router = useRouter();
-  const supabase = createClient();
+  const online = useNetworkStatus();
 
   const [activeTab, setActiveTab] = useState<"mapa" | "info">("info");
   const [elevationData, setElevationData] = useState<{ distance: number; elevation: number }[]>([]);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [openOfflineSetup, setOpenOfflineSetup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [agenda, setAgenda] = useState<any>(null);
   const [jaTemReserva, setJaTemReserva] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
+  const [usingOfflineCopy, setUsingOfflineCopy] = useState(false);
+  const [routeOfflineReady, setRouteOfflineReady] = useState(false);
 
   useEffect(() => {
     async function loadData() {
+      const supabase = createClient();
+      let hadCachedData = false;
       setLoading(true);
+      setLoadError("");
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.replace('/app/login');
+          return;
+        }
+
+        const cacheKey = `trail:${unwrappedParams.id}`;
+        const cached = getOfflineData<{ agenda: any; hasPaidReservation: boolean }>(session.user.id, cacheKey);
+        if (cached?.data.hasPaidReservation) {
+          hadCachedData = true;
+          setAgenda(cached.data.agenda);
+          setJaTemReserva(true);
+          setOfflineSavedAt(cached.savedAt);
+        }
+        if (!navigator.onLine) {
+          setUsingOfflineCopy(Boolean(cached?.data.hasPaidReservation));
+          if (!cached?.data.hasPaidReservation) setLoadError("Esta trilha ainda não foi preparada para uso offline neste aparelho.");
+          return;
+        }
+
         // 1. Buscar dados da agenda
-        const { data: agendaData } = await supabase
+        const { data: agendaData, error: agendaError } = await supabase
           .from('agendas')
           .select('*')
           .eq('id', unwrappedParams.id)
           .single();
 
+        if (agendaError) throw agendaError;
         if (agendaData) setAgenda(agendaData);
 
         // 2. Buscar dados do cliente logado
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = session.user;
         if (user) {
           const client = await fetchCurrentClient<{ id: string }>();
           
@@ -70,6 +101,9 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
 
             if (reservaExistente?.status_pagamento === 'pago') {
               setJaTemReserva(true);
+              saveOfflineData(session.user.id, cacheKey, { agenda: agendaData, hasPaidReservation: true });
+              setOfflineSavedAt(new Date().toISOString());
+              setUsingOfflineCopy(false);
             } else {
               router.replace(`/app/trilhas/${unwrappedParams.id}/carrinho`);
             }
@@ -81,13 +115,14 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
         }
       } catch (err) {
         console.error("Erro ao carregar dados da trilha:", err);
+        if (!hadCachedData) setLoadError("Não foi possível carregar os dados desta trilha.");
       } finally {
         setLoading(false);
       }
     }
 
     loadData();
-  }, [unwrappedParams.id]);
+  }, [unwrappedParams.id, online, router]);
 
   const formatDate = (dateStr: string) => {
     try { return format(parseISO(dateStr), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR }); }
@@ -105,6 +140,16 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
   }
 
   if (!jaTemReserva) {
+    if (loadError) {
+      return (
+        <div className="mt-app-page flex min-h-full flex-col items-center justify-center gap-3 p-6 text-center">
+          <WifiOff className="h-10 w-10 text-amber-600" />
+          <p className="font-black text-[#071829]">Trilha indisponível offline</p>
+          <p className="text-sm text-slate-500">{loadError}</p>
+          <button onClick={() => router.push('/app/trilhas')} className="mt-2 rounded-2xl bg-[#0B2540] px-5 py-3 text-sm font-black text-white">Voltar para minhas trilhas</button>
+        </div>
+      );
+    }
     return (
       <div className="mt-app-page flex min-h-full flex-col items-center justify-center gap-3 p-6 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#D96224]" />
@@ -139,6 +184,11 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
 
       {/* Tabs Menu */}
       <div className="relative z-40 border-b border-gray-100 bg-white/95 px-4 pt-2 backdrop-blur-xl">
+        {usingOfflineCopy && (
+          <div className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-900">
+            <WifiOff className="h-4 w-4" /> Modo offline · salvo em {offlineSavedAt ? formatOfflineUpdate(offlineSavedAt) : "este aparelho"}
+          </div>
+        )}
         <div className="flex bg-gray-100 p-1 rounded-2xl mb-4 relative">
           <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-in-out ${activeTab === 'info' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />
           <button 
@@ -169,22 +219,33 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
               exit={{ opacity: 0, x: -20 }}
               className="absolute inset-0 flex flex-col overflow-y-auto p-4 pb-6"
             >
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-4 flex gap-3 items-start shrink-0">
-                <Navigation className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-800 font-medium">
-                  Este mapa é interativo e funciona como um guia GPS para te ajudar na navegação.
-                </p>
+              <div className="mb-4 flex shrink-0 items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-3.5">
+                <Navigation className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
+                <div>
+                  <p className="text-xs font-black text-blue-950">Mapa interativo com navegação GPS</p>
+                  <p className="mt-1 text-[11px] font-medium leading-relaxed text-blue-800/75">Toque no mapa, confira altitude e expanda para iniciar o acompanhamento do percurso.</p>
+                  <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black ${routeOfflineReady ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {routeOfflineReady ? <CheckCircle2 className="h-3 w-3" /> : <Loader2 className="h-3 w-3 animate-spin" />}
+                    {routeOfflineReady ? "ROTA PRONTA PARA USO OFFLINE" : "PREPARANDO ROTA OFFLINE"}
+                  </span>
+                </div>
               </div>
 
               <div className="flex-none h-[400px] w-full bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative group">
+                <button
+                  onClick={() => { setOpenOfflineSetup(true); setIsMapExpanded(true); }}
+                  className="absolute left-4 top-4 z-[10] flex items-center gap-2 rounded-xl border border-cyan-300/30 bg-[#071829]/90 px-3 py-2 text-[10px] font-black text-white shadow-xl backdrop-blur"
+                >
+                  <Download className="h-4 w-4 text-cyan-200" /> Baixar offline
+                </button>
                 <button 
                   onClick={() => setIsMapExpanded(true)}
                   className="absolute top-4 right-4 z-[10] bg-gray-900/80 backdrop-blur text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xl border border-gray-700 opacity-90 hover:opacity-100 transition-opacity flex items-center gap-2"
                 >
                   <Navigation className="w-4 h-4" />
-                  Expandir Mapa Completo
+                  Tela cheia
                 </button>
-                <DynamicMap agendaId={unwrappedParams.id} onElevationData={setElevationData} />
+                <DynamicMap agendaId={unwrappedParams.id} onElevationData={setElevationData} onOfflineAvailabilityChange={(available) => setRouteOfflineReady(available)} />
               </div>
 
               {elevationData.length > 0 && (
@@ -295,7 +356,8 @@ export default function TrailDetailsPage({ params }: { params: Promise<{ id: str
           <ImmersiveMapModal 
             agendaId={unwrappedParams.id} 
             trailName={trailName} 
-            onClose={() => setIsMapExpanded(false)} 
+            initialDrawerOpen={openOfflineSetup}
+            onClose={() => { setIsMapExpanded(false); setOpenOfflineSetup(false); }}
           />
         )}
       </AnimatePresence>

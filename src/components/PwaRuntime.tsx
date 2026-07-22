@@ -53,6 +53,10 @@ export default function PwaRuntime() {
           { scope: "/", updateViaCache: "none" },
         );
         await registration.update();
+        if (!previousVersion || versionChanged) {
+          const readyRegistration = await navigator.serviceWorker.ready;
+          (readyRegistration.active || registration.active)?.postMessage({ type: "WARM_APP_ROUTES" });
+        }
 
         if (!previousVersion) {
           localStorage.setItem(VERSION_STORAGE_KEY, version);

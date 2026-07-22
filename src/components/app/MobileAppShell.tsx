@@ -4,6 +4,7 @@ import { Home, ShoppingBag, Map, Trophy, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RequireAuth from "@/components/app/RequireAuth";
+import { ConnectionStatus } from "@/components/app/ConnectionStatus";
 
 export default function MobileAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,6 +21,7 @@ export default function MobileAppShell({ children }: { children: React.ReactNode
   return (
     <RequireAuth>
       <div className="mt-app-shell h-[100dvh] flex flex-col overflow-hidden">
+        <ConnectionStatus />
         <main className="mt-app-canvas app-mobile-scroll flex-1 min-h-0 w-full max-w-2xl mx-auto relative overflow-x-hidden overflow-y-auto overscroll-contain">
           {children}
         </main>

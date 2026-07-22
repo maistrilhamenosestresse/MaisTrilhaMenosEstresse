@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, useMap, Tooltip, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Marker, useMap, Tooltip, Circle, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { supabase } from "@/lib/supabase";
-import { getOfflineTrail, saveOfflineTrail } from "@/lib/app/offline-trails";
+import { getOfflineMapPack, getOfflineTrail, saveOfflineTrail } from "@/lib/app/offline-trails";
+import { useNetworkStatus } from "@/lib/app/use-network-status";
 
 // ---------------------------------------------------------
 // Ícones Customizados
@@ -67,7 +68,8 @@ export interface ImmersiveMapProps {
   agendaId?: string;
   onElevationData?: (data: { distance: number, elevation: number, lat: number, lng: number }[]) => void;
   hoverIndex?: number | null;
-  layerMode?: "street" | "satellite" | "topo";
+  layerMode?: "street" | "satellite" | "topo" | "offline";
+  offlineContextGeojson?: unknown | null;
   trackingPos?: { lat: number; lng: number; heading?: number | null } | null;
   walkedIndex?: number;
   isTracking?: boolean;
@@ -101,25 +103,58 @@ export default function ImmersiveMap({
   isTracking = false,
   centerRequest = 0,
   onOfflineAvailabilityChange,
+  offlineContextGeojson,
 }: ImmersiveMapProps) {
   const [coordinates, setCoordinates] = useState<[number, number, number?][]>([]);
   const [elevationProfile, setElevationProfile] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [routeError, setRouteError] = useState("");
+  const [storedOfflineContext, setStoredOfflineContext] = useState<unknown | null>(null);
+  const online = useNetworkStatus();
+  const contextualMap = offlineContextGeojson === undefined ? storedOfflineContext : offlineContextGeojson;
+  const effectiveLayerMode = (!online && contextualMap) ? "offline" : layerMode;
+
+  useEffect(() => {
+    if (!agendaId || offlineContextGeojson !== undefined) return;
+    const load = () => void getOfflineMapPack(agendaId).then((pack) => setStoredOfflineContext(pack?.geojson || null)).catch(() => undefined);
+    const updated = (event: Event) => {
+      const detail = (event as CustomEvent<{ agendaId?: string }>).detail;
+      if (detail?.agendaId === agendaId) load();
+    };
+    load();
+    window.addEventListener("mt:offline-map-updated", updated);
+    return () => window.removeEventListener("mt:offline-map-updated", updated);
+  }, [agendaId, offlineContextGeojson]);
 
   useEffect(() => {
     async function fetchGpxData() {
-      if (!agendaId) return;
+      if (!agendaId) {
+        setRouteError("Rota GPS não cadastrada.");
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setRouteError("");
       try {
-        const { data, error } = await supabase.from('trilha_gpx').select('geojson').eq('agenda_id', agendaId).single();
-        let geojson = data?.geojson;
+        const offline = await getOfflineTrail(agendaId).catch(() => null);
+        let geojson = offline?.geojson;
         let usingOfflineCopy = false;
-        if (error || !geojson) {
-          const offline = await getOfflineTrail(agendaId).catch(() => null);
-          geojson = offline?.geojson;
-          usingOfflineCopy = Boolean(offline);
+        if (navigator.onLine) {
+          const { data, error } = await supabase.from('trilha_gpx').select('geojson').eq('agenda_id', agendaId).single();
+          if (!error && data?.geojson) {
+            geojson = data.geojson;
+            await saveOfflineTrail(agendaId, geojson).catch(() => undefined);
+          } else {
+            usingOfflineCopy = Boolean(offline);
+          }
         } else {
-          await saveOfflineTrail(agendaId, geojson).catch(() => undefined);
+          usingOfflineCopy = Boolean(offline);
         }
-        if (!geojson) return;
+        if (!geojson) {
+          onOfflineAvailabilityChange?.(false, false);
+          setRouteError(navigator.onLine ? "Rota GPS ainda não cadastrada para esta trilha." : "Rota não salva neste aparelho. Abra o mapa uma vez com internet.");
+          return;
+        }
         onOfflineAvailabilityChange?.(true, usingOfflineCopy);
 
         let rawCoordinates: number[][] | null = null;
@@ -156,13 +191,20 @@ export default function ImmersiveMap({
         }
       } catch (err) {
         console.error(err);
+        setRouteError("Não foi possível abrir a rota GPS.");
+      } finally {
+        setLoading(false);
       }
     }
     fetchGpxData();
-  }, [agendaId, onElevationData, onOfflineAvailabilityChange]);
+  }, [agendaId, online, onElevationData, onOfflineAvailabilityChange]);
+
+  if (loading) {
+    return <div className="flex h-full w-full items-center justify-center bg-[#101923] text-sm font-bold text-slate-400">Preparando rota GPS...</div>;
+  }
 
   if (coordinates.length === 0) {
-    return <div className="w-full h-full bg-gray-900 animate-pulse flex items-center justify-center text-gray-500">Carregando mapa orbital...</div>;
+    return <div className="flex h-full w-full flex-col items-center justify-center bg-[#101923] p-6 text-center"><div className="mb-3 text-3xl">🧭</div><p className="font-black text-white">Rota indisponível</p><p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-400">{routeError}</p></div>;
   }
 
   const startPoint = coordinates[0];
@@ -177,7 +219,7 @@ export default function ImmersiveMap({
   const aheadCoords = isTracking ? (coordinates.slice(walkedIndex) as [number, number][]) : (coordinates as [number, number][]);
 
   return (
-    <div className="w-full h-full bg-gray-900 relative z-0">
+    <div className="relative z-0 h-full w-full bg-[radial-gradient(circle_at_center,#263849,#101923_70%)]">
       <MapContainer 
         center={[startPoint[0], startPoint[1]]} 
         zoom={14} 
@@ -191,25 +233,44 @@ export default function ImmersiveMap({
         )}
 
         {/* Camada de Tile controlada por layerMode */}
-        {layerMode === "satellite" ? (
+        {effectiveLayerMode === "satellite" ? (
           <TileLayer
             attribution='&copy; Esri'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             maxZoom={18}
           />
-        ) : layerMode === "topo" ? (
+        ) : effectiveLayerMode === "topo" ? (
           <TileLayer
             attribution='&copy; OpenTopoMap'
             url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
             maxZoom={17}
           />
-        ) : (
+        ) : effectiveLayerMode === "street" ? (
           <TileLayer
             attribution='&copy; OpenStreetMap &copy; CARTO'
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             maxZoom={20}
           />
-        )}
+        ) : null}
+
+        {effectiveLayerMode === "offline" && contextualMap ? (
+          <GeoJSON
+            key={`offline-context-${agendaId}`}
+            data={contextualMap as any}
+            style={(feature) => offlineFeatureStyle(feature?.properties?.kind, feature?.properties?.subtype)}
+            pointToLayer={(feature, latlng) => L.circleMarker(latlng, {
+              radius: 6,
+              color: "#ffffff",
+              weight: 2,
+              fillColor: feature?.properties?.kind === "water" ? "#38bdf8" : "#f59e0b",
+              fillOpacity: 0.95,
+            })}
+            onEachFeature={(feature, layer) => {
+              const name = feature?.properties?.name;
+              if (name) layer.bindTooltip(String(name), { sticky: true, direction: "top" });
+            }}
+          />
+        ) : null}
 
         {/* Trilha: laranja normal / verde+vermelho quando rastreando */}
         {!isTracking && (
@@ -246,6 +307,24 @@ export default function ImmersiveMap({
           <Marker position={cursorPoint} icon={cursorIcon} zIndexOffset={1000} />
         )}
       </MapContainer>
+      {!online && (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[500] max-w-[70%] rounded-xl border border-white/15 bg-[#071829]/90 px-3 py-2 text-[10px] font-bold leading-relaxed text-white shadow-lg backdrop-blur">
+          {contextualMap ? "Pacote offline ativo: mapa, rota e GPS disponíveis." : "Sem sinal: GPS e rota continuam ativos. Baixe o mapa completo antes da trilha."}
+        </div>
+      )}
+      {effectiveLayerMode === "offline" && contextualMap ? (
+        <div className="pointer-events-none absolute right-3 top-3 z-[500] rounded-lg bg-[#071829]/85 px-2 py-1 text-[8px] font-bold text-white/70">© OpenStreetMap contributors</div>
+      ) : null}
     </div>
   );
+}
+
+function offlineFeatureStyle(kind?: string, subtype?: string): L.PathOptions {
+  if (kind === "water") return { color: "#38bdf8", weight: 2.5, fillColor: "#0ea5e9", fillOpacity: 0.22 };
+  if (kind === "nature") return { color: "#4ade80", weight: 1, fillColor: "#166534", fillOpacity: 0.32 };
+  if (kind === "path") {
+    const major = ["primary", "secondary", "tertiary", "residential"].includes(subtype || "");
+    return { color: major ? "#cbd5e1" : "#f8fafc", weight: major ? 3.5 : 2, opacity: 0.82, dashArray: major ? undefined : "5 5" };
+  }
+  return { color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.8 };
 }
