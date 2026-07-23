@@ -29,6 +29,10 @@ export type TrailStampIdentity = {
   motto: string;
   motif: "peak" | "forest" | "compass" | "river" | "sun" | "footprints";
   ringStyle: "solid" | "dashed" | "double";
+  rarity: "classic" | "rare" | "epic" | "legendary";
+  rarityLabel: "CLÁSSICO" | "RARO" | "ÉPICO" | "LENDÁRIO";
+  stars: number;
+  finish: "TINTA ARTESANAL" | "PRATA DE TRILHA" | "OURO DE EXPEDIÇÃO" | "EDIÇÃO OBSIDIANA";
 };
 
 const STAMP_PALETTES = [
@@ -51,17 +55,50 @@ const MOTTOS = [
 ] as const;
 const RING_STYLES: TrailStampIdentity["ringStyle"][] = ["solid", "dashed", "double"];
 
-export function getTrailStampIdentity(trail: Pick<PassportTrailShareData, "id" | "title" | "date">): TrailStampIdentity {
+export function getTrailStampIdentity(trail: PassportTrailShareData): TrailStampIdentity {
   const hash = hashText(`${trail.id}|${trail.title}|${trail.date}`);
-  const palette = STAMP_PALETTES[hash % STAMP_PALETTES.length];
+  const rarity = resolveRarity(trail);
+  const rarityIndex = ["classic", "rare", "epic", "legendary"].indexOf(rarity);
+  const palette = rarity === "legendary"
+    ? { ink: "#192235", softInk: "#D7B45C", paper: "#F7EED3" }
+    : rarity === "epic"
+      ? { ink: "#8A4B13", softInk: "#D6A148", paper: "#FFF1D2" }
+      : STAMP_PALETTES[hash % STAMP_PALETTES.length];
   return {
     ...palette,
     rotation: (hash % 13) - 6,
     serial: `MT-${hash.toString(36).toUpperCase().padStart(7, "0").slice(-7)}`,
     motto: MOTTOS[(hash >>> 3) % MOTTOS.length],
-    motif: MOTIFS[(hash >>> 5) % MOTIFS.length],
+    motif: resolveMotif(trail.title, hash),
     ringStyle: RING_STYLES[(hash >>> 7) % RING_STYLES.length],
+    rarity,
+    rarityLabel: (["CLÁSSICO", "RARO", "ÉPICO", "LENDÁRIO"] as const)[rarityIndex],
+    stars: rarityIndex + 1,
+    finish: (["TINTA ARTESANAL", "PRATA DE TRILHA", "OURO DE EXPEDIÇÃO", "EDIÇÃO OBSIDIANA"] as const)[rarityIndex],
   };
+}
+
+function resolveMotif(title: string, hash: number): TrailStampIdentity["motif"] {
+  const normalized = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/(cachoeira|rio|lago|praia|mar|ilha|ubatuba|agua)/.test(normalized)) return "river";
+  if (/(pico|cume|serra|montanha|morro|pedra)/.test(normalized)) return "peak";
+  if (/(mata|floresta|parque|bosque|verde)/.test(normalized)) return "forest";
+  if (/(sol|amanhecer|nascer|por do sol)/.test(normalized)) return "sun";
+  if (/(travessia|caminho|rota|circuito|expedicao)/.test(normalized)) return "footprints";
+  return MOTIFS[(hash >>> 5) % MOTIFS.length];
+}
+
+function resolveRarity(trail: PassportTrailShareData): TrailStampIdentity["rarity"] {
+  const difficulty = (trail.difficulty || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const distance = Number(trail.distance_km || 0);
+  let score = distance >= 12 ? 1 : 0;
+  if (distance >= 20) score += 1;
+  if (distance >= 30) score += 1;
+  if (/(dificil|avancad|intens|extrem|expert)/.test(difficulty)) score += 1;
+  if (score >= 3) return "legendary";
+  if (score === 2) return "epic";
+  if (score === 1) return "rare";
+  return "classic";
 }
 
 export async function createPassportShareImage(data: PassportShareData) {
@@ -169,7 +206,7 @@ export async function createTrailStampShareImage(trail: PassportTrailShareData, 
   context.textAlign = "center";
   context.fillStyle = identity.ink;
   context.font = "900 22px Arial";
-  context.fillText("MAIS TRILHA · VISTO OFICIAL", 540, 110);
+  context.fillText(`SELO ${identity.rarityLabel} · ${identity.finish}`, 540, 110);
   drawTrailStamp(context, trail, 540, 480, 540);
 
   context.fillStyle = "#132B43";
@@ -238,6 +275,13 @@ function drawTrailStamp(
     context.stroke();
   }
 
+  context.fillStyle = identity.softInk;
+  for (let index = 0; index < identity.stars; index += 1) {
+    const angle = (Math.PI / 2) + (index - (identity.stars - 1) / 2) * 0.34;
+    drawStar(context, Math.cos(angle) * size * 0.455, Math.sin(angle) * size * 0.455, size * 0.026, size * 0.012);
+  }
+  context.fillStyle = identity.ink;
+
   drawMotif(context, identity.motif, 0, -size * 0.03, size * 0.2, identity.ink);
   context.textAlign = "center";
   context.font = `900 ${Math.max(10, size * 0.065)}px Arial`;
@@ -247,6 +291,20 @@ function drawTrailStamp(
   context.font = `800 ${Math.max(8, size * 0.046)}px monospace`;
   context.fillText(identity.serial, 0, size * 0.34, size * 0.65);
   context.restore();
+}
+
+function drawStar(context: CanvasRenderingContext2D, x: number, y: number, outerRadius: number, innerRadius: number) {
+  context.beginPath();
+  for (let point = 0; point < 10; point += 1) {
+    const radius = point % 2 === 0 ? outerRadius : innerRadius;
+    const angle = -Math.PI / 2 + point * Math.PI / 5;
+    const pointX = x + Math.cos(angle) * radius;
+    const pointY = y + Math.sin(angle) * radius;
+    if (point === 0) context.moveTo(pointX, pointY);
+    else context.lineTo(pointX, pointY);
+  }
+  context.closePath();
+  context.fill();
 }
 
 function drawMotif(context: CanvasRenderingContext2D, motif: TrailStampIdentity["motif"], x: number, y: number, size: number, color: string) {
