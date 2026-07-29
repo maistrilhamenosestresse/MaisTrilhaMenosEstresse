@@ -387,13 +387,16 @@ export default function CookieConsentManager({ gaId }: { gaId: string }) {
             setDraftAnalytics(consent.analytics);
             setSettingsOpen(true);
           }}
-          className={`fixed right-3 z-[180] inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-[#071829] px-3.5 py-2 text-xs font-black text-white shadow-xl transition hover:bg-[#12385E] ${
-            pathname.startsWith("/app") ? "bottom-24" : "bottom-3"
+          className={`fixed left-3 z-[180] inline-flex h-11 min-h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-[#071829] text-xs font-black text-white shadow-xl transition hover:bg-[#12385E] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#D96224]/30 sm:h-auto sm:w-auto sm:gap-2 sm:px-3.5 sm:py-2 ${
+            pathname.startsWith("/app")
+              ? "bottom-[calc(env(safe-area-inset-bottom)+5.75rem)]"
+              : "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]"
           }`}
           aria-label="Rever preferências de privacidade"
+          title="Configurações de privacidade"
         >
-          <Settings2 className="h-4 w-4" aria-hidden="true" />
-          Privacidade
+          <Settings2 className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
+          <span className="sr-only sm:not-sr-only">Privacidade</span>
         </button>
       )}
 
