@@ -60,7 +60,8 @@ export default function ContractInvitePage() {
       const signatureBlob = await fetch(signatureRef.current.toDataUrl())
         .then((response) => response.blob());
       const formData = new FormData();
-      formData.append("folder", "signatures");
+      formData.append("folder", "contract-invite-signatures");
+      formData.append("inviteToken", token);
       formData.append("file", new File([signatureBlob], "contratos-atualizados.png", {
         type: "image/png",
       }));

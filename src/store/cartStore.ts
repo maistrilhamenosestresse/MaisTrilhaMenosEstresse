@@ -12,6 +12,8 @@ export interface CartItem {
   title: string;
   price: number;
   date: string;
+  imageUrl?: string | null;
+  difficulty?: string | null;
   quantity: number;
   dependents: Dependent[];
   availableSpots: number;
@@ -54,7 +56,7 @@ export const useCartStore = create<CartState>()(
           }
           
           // Ensure new item has correct number of dependents
-          const initialDependents = item.dependents || [];
+          const initialDependents = [...(item.dependents || [])];
           while (initialDependents.length < item.quantity - 1) {
             initialDependents.push({ name: '', cpf: '', phone: '' });
           }
@@ -73,12 +75,10 @@ export const useCartStore = create<CartState>()(
             if (i.agendaId === agendaId) {
               const quantity = Math.min(requestedQuantity, i.availableSpots);
               const currentDependents = [...(i.dependents || [])];
-              // Adjust dependents array to match new quantity
-              if (quantity > i.quantity) {
-                while (currentDependents.length < quantity - 1) {
-                  currentDependents.push({ name: '', cpf: '', phone: '' });
-                }
-              } else if (quantity < i.quantity) {
+              while (currentDependents.length < quantity - 1) {
+                currentDependents.push({ name: '', cpf: '', phone: '' });
+              }
+              if (currentDependents.length > quantity - 1) {
                 currentDependents.splice(Math.max(0, quantity - 1));
               }
               return { ...i, quantity, dependents: currentDependents };
@@ -111,7 +111,6 @@ export const useCartStore = create<CartState>()(
     {
       name: 'carrinho-storage-v2',
       partialize: (state) => ({
-        ...state,
         items: state.items.map((item) => ({
           ...item,
           // Dados de dependentes não devem permanecer indefinidamente no aparelho.

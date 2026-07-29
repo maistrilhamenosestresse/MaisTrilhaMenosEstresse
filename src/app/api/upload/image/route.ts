@@ -2,6 +2,10 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { NextResponse } from 'next/server';
 import { s3Client, BUCKET_NAME } from '@/lib/aws';
 import { requireAdminUser, requireAuthenticatedUser } from '@/lib/server/auth';
+import {
+  ContractInviteError,
+  resolveContractInvite,
+} from '@/lib/server/contract-invites';
 import { assertSameOrigin } from '@/lib/server/request';
 import { enforceRateLimit } from '@/lib/server/rate-limit';
 
@@ -19,6 +23,8 @@ const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
 const FOLDER_RULES = {
   'cadastro-docs': { prefix: 'cadastro-docs', auth: 'same-origin' },
+  'registration-signatures': { prefix: 'signatures/registration', auth: 'same-origin' },
+  'contract-invite-signatures': { prefix: 'signatures/invite', auth: 'contract-invite' },
   signatures: { prefix: 'signatures', auth: 'user' },
   'app-profiles': { prefix: 'app-profiles', auth: 'user' },
   'media-images': { prefix: `media/images/${new Date().toISOString().slice(0, 10)}`, auth: 'admin' },
@@ -46,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const rule = FOLDER_RULES[folderValue];
-    const authError = await authorizeFolder(rule.auth);
+    const authError = await authorizeFolder(rule.auth, request, formData);
     if (authError) return authError;
 
     if (!IMAGE_TYPES.has(file.type) || file.size <= 0 || file.size > MAX_IMAGE_SIZE) {
@@ -85,8 +91,30 @@ export async function POST(request: Request) {
   }
 }
 
-async function authorizeFolder(auth: 'same-origin' | 'user' | 'admin') {
-  if (auth === 'same-origin') return null;
+async function authorizeFolder(
+  auth: 'same-origin' | 'contract-invite' | 'user' | 'admin',
+  request: Request,
+  formData: FormData,
+) {
+  if (auth === 'same-origin') {
+    if (!request.headers.get('origin')) {
+      return NextResponse.json({ error: 'Origem não permitida' }, { status: 403 });
+    }
+    return null;
+  }
+  if (auth === 'contract-invite') {
+    const inviteToken = String(formData.get('inviteToken') || '');
+    try {
+      await resolveContractInvite(inviteToken, { requireUnused: true });
+      return null;
+    } catch (error) {
+      if (error instanceof ContractInviteError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
+      console.error('Falha ao validar convite para upload de assinatura:', error);
+      return NextResponse.json({ error: 'Não foi possível validar este acesso' }, { status: 500 });
+    }
+  }
   if (auth === 'user') {
     const authResult = await requireAuthenticatedUser();
     return authResult.response || null;
