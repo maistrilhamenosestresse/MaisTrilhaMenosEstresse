@@ -12,6 +12,7 @@
     "security:check": "node scripts/security-check.mjs",
     "media:migrate": "node scripts/migrate-public-media-to-s3.mjs",
     "media:migrate-agendas": "node scripts/migrate-agenda-media-to-s3.mjs",
+    "media:migrate-supabase": "node scripts/migrate-supabase-media-to-aws.mjs",
     "media:repair": "node scripts/repair-media-urls.mjs",
     "media:sync-manifest": "node scripts/sync-media-manifest-to-supabase.mjs",
     "backup:setup-bucket": "node scripts/setup-backup-bucket.mjs",

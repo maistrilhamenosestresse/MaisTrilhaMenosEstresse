@@ -131,6 +131,19 @@ async function checkSupabase() {
     if (error) failures.push(`não foi possível verificar content_documents: ${safeMessage(error)}`);
     else if (!data) failures.push('manifesto de mídias ainda não foi sincronizado em content_documents');
 
+    const { data: migrationDocument, error: migrationDocumentError } = await supabase
+      .from('content_documents')
+      .select('document_key')
+      .eq('document_key', 'supabase-media-to-aws-migration')
+      .maybeSingle();
+    if (migrationDocumentError) {
+      failures.push(`falha ao verificar o registro da migração de mídias: ${safeMessage(migrationDocumentError)}`);
+    } else if (!migrationDocument) {
+      failures.push('migração de mídias do Supabase para a AWS ainda não foi registrada');
+    }
+
+    await checkActiveMediaReferences(supabase);
+
     const { data: verifiedBackup, error: backupError } = await supabase
       .from('backup_runs')
       .select('id, completed_at, integrity_verified_at')
@@ -204,6 +217,28 @@ async function checkAnonymousSupabaseBoundaries(url, anonKey) {
   if (forbiddenUpdate.ok) failures.push('alteração anônima de agendas não foi rejeitada');
 }
 
+async function checkActiveMediaReferences(supabase) {
+  const mediaSelections = [
+    ['clients', 'photo_url,signature_url'],
+    ['agendas', 'images,video_url,flyer_url'],
+    ['produtos', 'image'],
+    ['client_contracts', 'signature_url'],
+    ['fotos_trilhas', 'aws_url,aws_key'],
+  ];
+  const supabaseStoragePattern = /\.supabase\.co\/storage\/v1\/object\//i;
+
+  for (const [table, columns] of mediaSelections) {
+    const { data, error } = await supabase.from(table).select(columns);
+    if (error) {
+      failures.push(`falha ao auditar as mídias de ${table}: ${safeMessage(error)}`);
+      continue;
+    }
+    if (supabaseStoragePattern.test(JSON.stringify(data || []))) {
+      failures.push(`referência ativa ao Supabase Storage encontrada em ${table}`);
+    }
+  }
+}
+
 async function checkAws() {
   try {
     const sourceBucket = required('AWS_S3_BUCKET_NAME');
@@ -221,6 +256,10 @@ async function checkAws() {
     });
     await s3.send(new HeadBucketCommand({ Bucket: sourceBucket }));
     await s3.send(new HeadObjectCommand({ Bucket: sourceBucket, Key: 'legacy-media/manifest.json' }));
+    await s3.send(new HeadObjectCommand({
+      Bucket: sourceBucket,
+      Key: 'migration-manifests/supabase-to-aws/latest.json',
+    }));
     await s3.send(new HeadBucketCommand({ Bucket: backupBucket }));
 
     const [versioning, publicAccess, encryption] = await Promise.all([

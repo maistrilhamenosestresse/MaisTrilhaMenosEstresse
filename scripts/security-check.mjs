@@ -12,6 +12,8 @@ for (const [label, pattern] of [
   ['fallback inseguro da service role', /SUPABASE_SERVICE_ROLE_KEY\s*\|\|/],
   ['fallback inseguro de bucket AWS', /AWS_S3_BUCKET_NAME\s*\|\|/],
   ['PIN padrão 1234', /(?:pin|senha)[^\n]{0,30}1234/i],
+  ['upload para Supabase Storage no runtime', /\.storage\s*\.\s*from\s*\(/],
+  ['URL de Supabase Storage hardcoded no runtime', /supabase\.co\/storage\/v1\/object/i],
   ['NextAuth legado no runtime', /next-auth|getServerSession|authOptions/],
 ]) {
   if (pattern.test(source)) failures.push(label);
