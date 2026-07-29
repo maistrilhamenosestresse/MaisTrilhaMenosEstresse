@@ -10,7 +10,6 @@ const APP_ROUTES = [
   '/app/ranking',
   '/app/perfil',
   '/app/perfil/dados',
-  '/app/passaporte',
   '/app/beneficios',
   '/app/extratos',
   '/app/recarregar',

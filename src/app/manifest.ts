@@ -40,12 +40,6 @@ export default function manifest(): MetadataRoute.Manifest {
         url: "/app/beneficios",
         icons: [{ src: "/api/pwa/icon/192", sizes: "192x192", type: "image/png" }],
       },
-      {
-        name: "Passaporte de trilhas",
-        short_name: "Passaporte",
-        url: "/app/passaporte",
-        icons: [{ src: "/api/pwa/icon/192", sizes: "192x192", type: "image/png" }],
-      },
     ],
   };
 }

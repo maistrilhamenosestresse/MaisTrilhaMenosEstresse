@@ -177,28 +177,33 @@ export default function AppTermsPage() {
             <FileText className="w-5 h-5 text-blue-600" />
             <div>
               <h2 className="font-black text-gray-900">Termos de uso do aplicativo</h2>
-              <p className="text-xs text-gray-500">Regras gerais para uso da plataforma</p>
+              <p className="text-xs text-gray-500">Versão 2026.07.29 · regras de uso, privacidade e cancelamento</p>
             </div>
           </div>
           <div className="p-5 text-sm text-gray-600 leading-relaxed space-y-3">
             <p>
-              O aplicativo permite consultar trilhas, realizar compras, administrar benefícios,
-              acessar álbuns e manter documentos de segurança. A conta é pessoal e o usuário deve
-              proteger suas credenciais e manter os dados cadastrais corretos.
+              A conta é pessoal. O usuário deve manter cadastro e informações de saúde atualizados,
+              proteger o acesso ao e-mail e respeitar orientações de segurança, direitos autorais,
+              privacidade de terceiros e regras específicas de cada atividade.
             </p>
             <p>
-              Pix e cartão são processados pela InfinitePay; boleto é processado pelo Asaas. Saldo e pontos seguem as regras mostradas
-              na tela de pagamento; valores reservados são devolvidos quando um pagamento não é concluído ou
-              quando o fluxo de cancelamento aplicável determina a devolução.
+              Pix e cartão são processados pela InfinitePay; boleto é processado pelo Asaas.
+              Pontos servem somente para desconto e não viram dinheiro. Cashback e benefícios
+              podem ser revertidos proporcionalmente quando a venda que os originou for cancelada,
+              estornada ou corrigida.
             </p>
             <p>
-              Fotos e vídeos do álbum ficam em infraestrutura AWS. Textos, cadastros e registros
-              operacionais ficam no Supabase, com acesso conforme autenticação e autorização.
+              No cancelamento de última hora ou ausência sem aviso, somente despesas reais,
+              individualizáveis e não recuperáveis da vaga poderão ser descontadas, como
+              hospedagem, logística, entradas em parques, reservas, seguro e serviços de terceiros.
+              O saldo remanescente será devolvido. O direito de arrependimento legal permanece
+              assegurado quando aplicável.
             </p>
             <p>
-              O usuário deve respeitar direitos autorais, privacidade de terceiros, regras das
-              atividades e orientações de segurança. Uso indevido, fraude ou tentativa de acesso
-              não autorizado poderá causar bloqueio e adoção das medidas cabíveis.
+              Dados são tratados para cadastro, compra, segurança, seguro, documentos, comunicação
+              e álbuns. Fotos e vídeos ficam em infraestrutura AWS; cadastros e registros
+              operacionais ficam no Supabase. O titular pode solicitar acesso, correção e os demais
+              direitos previstos na LGPD pelos canais oficiais.
             </p>
             <a
               href="/termos-de-uso"
@@ -206,7 +211,7 @@ export default function AppTermsPage() {
               rel="noreferrer"
               className="inline-flex font-black text-blue-600"
             >
-              Ver termos gerais completos
+              Ver política completa e atualizada
             </a>
           </div>
         </section>
@@ -315,7 +320,8 @@ export default function AppTermsPage() {
                   className="mt-1 h-5 w-5 accent-[#F17B37]"
                 />
                 <span className="text-xs text-gray-700 leading-relaxed">
-                  Li e compreendi o documento, confirmo a veracidade dos meus dados e aceito assinar eletronicamente.
+                  Li integralmente e compreendi o documento, inclusive riscos, desistência,
+                  reembolso e privacidade; confirmo meus dados e aceito assinar eletronicamente.
                 </span>
               </label>
               {error && <p className="mt-3 text-sm font-bold text-red-600">{error}</p>}

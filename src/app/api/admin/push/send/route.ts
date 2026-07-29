@@ -18,7 +18,6 @@ type SendBody = {
 const ALLOWED_DESTINATIONS = new Set([
   "/app",
   "/app/trilhas",
-  "/app/passaporte",
   "/app/beneficios",
   "/app/loja",
   "/app/extratos",

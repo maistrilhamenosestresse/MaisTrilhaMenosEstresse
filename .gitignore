@@ -39,6 +39,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Protótipo do Passaporte mantido somente neste computador (não publicar)
+/src/app/app/passaporte/
+/src/app/api/app/passport/
+/src/lib/passport-share.ts
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

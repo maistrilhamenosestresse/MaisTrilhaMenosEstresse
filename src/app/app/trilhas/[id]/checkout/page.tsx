@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft, CreditCard, CheckCircle2,
@@ -17,13 +17,14 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { discountToPoints, pointsToDiscount } from "@/lib/gamification";
+import { CancellationAcceptance } from "@/components/legal/CancellationAcceptance";
 
 function TrailCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reservaId = searchParams.get("reservaId");
   const agendaId = searchParams.get("agendaId");
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [agenda, setAgenda] = useState<any>(null);
@@ -35,6 +36,7 @@ function TrailCheckoutContent() {
   const [paymentMethod, setPaymentMethod] = useState<"INFINITEPAY" | "BOLETO">("INFINITEPAY");
   const [boletoInstallments, setBoletoInstallments] = useState(1);
   const [paymentResult, setPaymentResult] = useState<AsaasPaymentResult | null>(null);
+  const [acceptedCancellation, setAcceptedCancellation] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -56,7 +58,7 @@ function TrailCheckoutContent() {
       setLoading(false);
     }
     loadData();
-  }, [reservaId, agendaId]);
+  }, [reservaId, agendaId, router, supabase]);
 
   const handleCheckout = async () => {
     if (!client || !agenda || !reservaId) return;
@@ -386,10 +388,16 @@ function TrailCheckoutContent() {
             </div>
           )}
 
+          <CancellationAcceptance
+            checked={acceptedCancellation}
+            onChange={setAcceptedCancellation}
+          />
+
           <button
             onClick={handleCheckout}
             disabled={
               processing ||
+              !acceptedCancellation ||
               (amountDue > 0 &&
                 ((paymentMethod === "INFINITEPAY" && !acceptsInfinitePay) ||
                   (paymentMethod === "BOLETO" && !acceptsBoleto)))

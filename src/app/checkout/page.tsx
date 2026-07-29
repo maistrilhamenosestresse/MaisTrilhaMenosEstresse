@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { calculateGrossPrice } from "@/lib/fees";
 import { useRouter } from "next/navigation";
-import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, MapPin, QrCode, FileText, CreditCard } from "lucide-react";
+import { Mail, KeyRound, CheckCircle2, Loader2, ArrowRight, User as UserIcon, ArrowLeft, Save, QrCode, FileText, CreditCard } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import Image from "next/image";
 import {
@@ -13,13 +13,15 @@ import {
   type AsaasPaymentResult,
 } from "@/components/payments/AsaasPaymentStatus";
 import { BoletoInstallmentSelector } from "@/components/payments/BoletoInstallmentSelector";
+import { CancellationAcceptance } from "@/components/legal/CancellationAcceptance";
 
 function CheckoutAuthContent() {
   const router = useRouter();
-  const { items, clearCart, getTotalPrice } = useCartStore();
+  const { items, clearCart } = useCartStore();
 
   const cartNetTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const [boletoInstallments, setBoletoInstallments] = useState(1);
+  const [acceptedCancellation, setAcceptedCancellation] = useState(false);
 
   const calculateTotalWithMethod = (method: 'INFINITEPAY' | 'BOLETO') =>
     method === 'BOLETO'
@@ -98,7 +100,7 @@ function CheckoutAuthContent() {
       setIsInitializing(false);
     };
     checkSession();
-  }, [items.length, router]);
+  }, [items.length, router, step]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,14 +154,6 @@ function CheckoutAuthContent() {
     setStep('edit');
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setClientData(null);
-    setEmail('');
-    setOtp('');
-    setStep('email');
-  };
-
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -173,7 +167,7 @@ function CheckoutAuthContent() {
       if (!response.ok) throw new Error(result.error || 'Falha ao atualizar cadastro');
       setClientData(result.client);
       setStep('cart');
-    } catch (err) {
+    } catch {
       alert("Erro ao salvar os dados.");
     }
     setIsLoading(false);
@@ -317,7 +311,14 @@ function CheckoutAuthContent() {
               <div className="bg-[#0F1722]/50 border border-white/10 p-4 rounded-2xl mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {clientData?.photo_url ? (
-                    <img src={clientData.photo_url} alt="Cliente" className="w-12 h-12 rounded-full object-cover border border-white/20" />
+                    <Image
+                      src={clientData.photo_url}
+                      alt="Cliente"
+                      width={48}
+                      height={48}
+                      unoptimized
+                      className="h-12 w-12 rounded-full border border-white/20 object-cover"
+                    />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-[#F17B37]/20 flex items-center justify-center text-[#F17B37]"><UserIcon /></div>
                   )}
@@ -414,7 +415,15 @@ function CheckoutAuthContent() {
                 </p>
               </motion.div>
 
-              <button onClick={processPayment} disabled={isLoading} className="w-full bg-[#F17B37] text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition shadow-[0_0_20px_rgba(241,123,55,0.3)] disabled:opacity-50">
+              <div className="mb-4">
+                <CancellationAcceptance
+                  checked={acceptedCancellation}
+                  onChange={setAcceptedCancellation}
+                  dark
+                />
+              </div>
+
+              <button onClick={processPayment} disabled={isLoading || !acceptedCancellation} className="w-full bg-[#F17B37] text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition shadow-[0_0_20px_rgba(241,123,55,0.3)] disabled:opacity-50">
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="h-5 w-5" /> Finalizar Pedido</>}
               </button>
             </motion.div>

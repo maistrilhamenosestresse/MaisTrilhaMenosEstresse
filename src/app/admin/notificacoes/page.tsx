@@ -11,7 +11,6 @@ import {
   Settings,
   Send,
   ShoppingBag,
-  Stamp,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -26,7 +25,6 @@ const categories = [
 const destinations = [
   { value: "/app", label: "Início do app", description: "Saldo, pontos e atalhos", icon: Home },
   { value: "/app/trilhas", label: "Comprar trilhas", description: "Próximas aventuras", icon: Map },
-  { value: "/app/passaporte", label: "Passaporte de trilhas", description: "Selos e progresso", icon: Stamp },
   { value: "/app/beneficios", label: "Pontos e benefícios", description: "Vantagens do cliente", icon: Gift },
   { value: "/app/loja", label: "Loja", description: "Produtos e equipamentos", icon: ShoppingBag },
   { value: "/app/extratos", label: "Extrato", description: "Compras e movimentações", icon: WalletCards },
