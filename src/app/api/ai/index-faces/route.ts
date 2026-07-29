@@ -68,6 +68,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Erro no index-faces:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível indexar as fotos agora' }, { status: 500 });
   }
 }

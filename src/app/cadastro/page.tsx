@@ -67,6 +67,7 @@ function CadastroContent() {
   
   const searchParams = useSearchParams();
   const agendaId = searchParams.get('agenda_id');
+  const contractOnboarding = searchParams.get('origem') === 'contratos';
   const { items } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
@@ -394,13 +395,17 @@ function CadastroContent() {
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Cadastro Concluído!</h2>
           <p className="text-gray-400 mb-8">
-            Sua vaga foi pré-reservada. Se você não foi redirecionado para o pagamento, aguarde o contato da equipe.
+            {contractOnboarding
+              ? "Seu cadastro e suas assinaturas foram registrados. As cópias dos contratos serão enviadas ao seu e-mail."
+              : "Sua vaga foi pré-reservada. Se você não foi redirecionado para o pagamento, aguarde o contato da equipe."}
           </p>
           <button 
-            onClick={() => window.location.href = `/agenda/${agendaId || ''}`}
+            onClick={() => {
+              window.location.href = contractOnboarding ? "/contratos" : `/agenda/${agendaId || ""}`;
+            }}
             className="w-full bg-[#F17B37] text-white py-3 rounded-xl font-bold hover:bg-[#d9682b] transition"
           >
-            Voltar para a Trilha
+            {contractOnboarding ? "Consultar meus contratos" : "Voltar para a Trilha"}
           </button>
         </motion.div>
       </div>
@@ -417,11 +422,21 @@ function CadastroContent() {
         <ShieldCheck className="h-12 w-12 text-[#F17B37] mx-auto mb-4" />
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">Ficha de Aventura</h1>
         <p className="text-gray-400 text-sm md:text-base">
-          {agenda ? `Garantindo vaga para: ${agenda.title}` : 'Preencha seus dados para ativarmos o seu Seguro de Trilha.'}
+          {agenda
+            ? `Garantindo vaga para: ${agenda.title}`
+            : contractOnboarding
+              ? "Complete o cadastro para ler e assinar seus contratos."
+              : "Preencha seus dados para ativarmos o seu Seguro de Trilha."}
         </p>
       </header>
 
       <div className="w-full max-w-2xl px-6 relative z-10">
+        {contractOnboarding ? (
+          <div className="mb-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 p-4 text-sm leading-relaxed text-orange-100">
+            Seu e-mail já foi preenchido. Complete as quatro etapas e, no final, revise e assine
+            o contrato de responsabilidade e o contrato do seguro.
+          </div>
+        ) : null}
         <form onSubmit={onSubmit} className="bg-[#1a2332] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
           
           <div className="flex mb-8">

@@ -112,6 +112,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Erro ao enviar e-mail de compra:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Não foi possível enviar o comprovante da compra' }, { status: 500 });
   }
 }

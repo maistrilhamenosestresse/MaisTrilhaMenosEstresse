@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, QrCode, CheckCircle2, Loader2, Wallet, CreditCard, FileText } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
@@ -17,7 +17,7 @@ export default function LojaCheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const produtoId = searchParams.get("produtoId");
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<any>(null);
@@ -56,7 +56,7 @@ export default function LojaCheckoutPage() {
       setLoading(false);
     }
     loadData();
-  }, [produtoId]);
+  }, [produtoId, router, supabase]);
 
   const handleCheckout = async () => {
     if (!product || !client) return;

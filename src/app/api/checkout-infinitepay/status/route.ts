@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Erro ao consultar checkout InfinitePay:", error);
     return NextResponse.json(
-      { error: error.message || "Não foi possível confirmar o pagamento" },
+      { error: "Não foi possível confirmar o pagamento" },
       { status: 502 },
     );
   }

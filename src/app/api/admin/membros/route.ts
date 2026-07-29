@@ -23,9 +23,13 @@ export async function POST(request: Request) {
       .update({ membro_vip: Boolean(membro_vip) })
       .eq('id', clientId);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('Falha ao atualizar membro:', error);
+      return NextResponse.json({ error: 'Não foi possível atualizar o membro' }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    console.error('Falha ao atualizar membro:', error);
+    return NextResponse.json({ error: 'Não foi possível atualizar o membro' }, { status: 500 });
   }
 }

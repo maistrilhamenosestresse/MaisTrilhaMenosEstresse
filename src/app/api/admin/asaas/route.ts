@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Erro na proxy Asaas (GET):', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Falha ao consultar o Asaas' }, { status: 500 });
   }
 }
 
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Erro na proxy Asaas (POST):', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Falha ao processar a operação no Asaas' }, { status: 500 });
   }
 }
 

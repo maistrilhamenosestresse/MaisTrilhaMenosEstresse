@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Falha ao enviar campanha push:", error);
     return NextResponse.json(
-      { error: error.message || "Falha ao enviar notificações" },
+      { error: "Falha ao enviar notificações" },
       { status: 500 },
     );
   }

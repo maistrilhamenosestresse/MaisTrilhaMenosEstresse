@@ -400,6 +400,7 @@ export default function ImmersiveMapModal({ agendaId, trailName, onClose, initia
                   {agendaId ? (
                     <OfflineMapDownloadCard
                       agendaId={agendaId}
+                      title={trailName}
                       compact
                       onPackChange={(pack) => {
                         setOfflineMapPack(pack);

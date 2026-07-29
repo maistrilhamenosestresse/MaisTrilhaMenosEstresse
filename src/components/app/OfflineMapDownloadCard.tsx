@@ -19,10 +19,12 @@ type DownloadPayload = {
 
 export function OfflineMapDownloadCard({
   agendaId,
+  title,
   compact = false,
   onPackChange,
 }: {
   agendaId: string;
+  title?: string;
   compact?: boolean;
   onPackChange?: (pack: OfflineMapPack | null) => void;
 }) {
@@ -59,6 +61,7 @@ export function OfflineMapDownloadCard({
       setProgress(94);
       const stored = await saveOfflineMapPack({
         agendaId,
+        title,
         version: result.version,
         geojson: result.geojson,
         bounds: result.bounds,

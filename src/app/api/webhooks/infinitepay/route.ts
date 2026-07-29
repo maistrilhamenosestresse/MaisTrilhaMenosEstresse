@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Erro no webhook InfinitePay:", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Falha ao confirmar pagamento" },
+      { success: false, message: "Falha ao confirmar pagamento" },
       { status: 400 },
     );
   }

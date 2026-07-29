@@ -70,6 +70,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("Erro na API Gemini:", error);
-    return NextResponse.json({ error: 'Erro ao gerar mensagem', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao gerar mensagem' }, { status: 500 });
   }
 }

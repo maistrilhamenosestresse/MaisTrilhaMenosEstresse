@@ -176,7 +176,7 @@ export async function POST(request: Request) {
     }
     console.error("Erro no checkout híbrido da loja:", error);
     return NextResponse.json(
-      { error: error.message || "Falha no checkout" },
+      { error: "Falha ao processar o checkout da loja" },
       { status: 502 },
     );
   }

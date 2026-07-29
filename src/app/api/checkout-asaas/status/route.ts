@@ -84,7 +84,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("Erro ao consultar pagamento Asaas:", error);
     return NextResponse.json({
-      error: error.message || "Não foi possível consultar o pagamento",
+      error: "Não foi possível consultar o pagamento",
     }, { status: 502 });
   }
 }

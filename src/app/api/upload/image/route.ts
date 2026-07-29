@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Erro no upload de imagem para AWS:', error);
-    return NextResponse.json({ error: error.message || 'Falha ao enviar imagem para AWS' }, { status: 500 });
+    return NextResponse.json({ error: 'Falha ao enviar imagem para AWS' }, { status: 500 });
   }
 }
 

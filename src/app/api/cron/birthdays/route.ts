@@ -131,6 +131,6 @@ export async function GET(request: Request) {
     
   } catch (error: any) {
     console.error('Erro no Cron Job de Aniversários:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Falha ao processar os aniversários' }, { status: 500 });
   }
 }

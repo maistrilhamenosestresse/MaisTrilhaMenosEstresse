@@ -77,8 +77,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ contract: contracts[0] });
   } catch (error: any) {
+    console.error("Falha ao registrar assinatura no aplicativo:", error);
     return NextResponse.json({
-      error: error.message || "Não foi possível registrar a assinatura",
+      error: "Não foi possível registrar a assinatura",
     }, { status: 400 });
   }
 }

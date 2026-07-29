@@ -102,6 +102,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ matches: [] });
     }
     console.error("Erro no find-faces:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível localizar as fotos agora' }, { status: 500 });
   }
 }

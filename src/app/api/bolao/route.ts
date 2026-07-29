@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseAdmin } from '@/lib/server/supabase-admin';
 import { assertSameOrigin, readJsonBody } from '@/lib/server/request';
+import { enforceRateLimit } from '@/lib/server/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,8 @@ export async function POST(request: Request) {
   try {
     const originError = assertSameOrigin(request);
     if (originError) return originError;
+    const rateLimit = await enforceRateLimit(request, 'bolao', 10, 3600);
+    if (rateLimit) return rateLimit;
     const lockTime = new Date('2026-07-05T16:55:00-03:00').getTime();
     if (new Date().getTime() >= lockTime) {
       return NextResponse.json({ error: 'O Bolão já está encerrado! Boa sorte aos participantes.' }, { status: 400 });
@@ -81,7 +84,7 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("Erro na API do bolão:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Falha ao registrar o palpite' }, { status: 500 });
   }
 }
 
@@ -96,6 +99,7 @@ export async function GET(request: Request) {
     
     return NextResponse.json({ apostas: data || [] }, { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Erro ao listar apostas:", error);
+    return NextResponse.json({ error: 'Falha ao listar apostas' }, { status: 500 });
   }
 }
