@@ -258,7 +258,7 @@ function CadastroContent() {
         const signatureName = `signature_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
 
         const signatureFormData = new FormData();
-        signatureFormData.append('folder', 'signatures');
+        signatureFormData.append('folder', 'registration-signatures');
         signatureFormData.append('file', new File([blob], signatureName, { type: 'image/png' }));
 
         const res = await fetch('/api/upload/image', {
