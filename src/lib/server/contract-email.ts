@@ -47,6 +47,64 @@ export async function sendContractAccessEmail(input: {
   });
 }
 
+export async function sendContractRegistrationInviteEmail(input: {
+  email: string;
+  registrationUrl: string;
+}) {
+  const safeEmail = escapeHtml(input.email);
+  const safeUrl = escapeHtml(input.registrationUrl);
+
+  await createTransporter().sendMail({
+    from: `Mais Trilha Menos Estresse <${requireServerEnv("GMAIL_USER")}>`,
+    to: input.email,
+    subject: "Faça seu cadastro para assinar os contratos da Mais Trilha",
+    text: [
+      "Olá!",
+      "",
+      "Não encontramos um cadastro concluído para este e-mail.",
+      "Para consultar e assinar seus contratos da Mais Trilha Menos Estresse:",
+      "1. Abra o link de cadastro.",
+      "2. Confira seu e-mail e preencha seus dados.",
+      "3. Leia os termos, o contrato de responsabilidade e o contrato do seguro.",
+      "4. Assine e finalize o cadastro. Depois, você receberá as cópias por e-mail.",
+      "",
+      input.registrationUrl,
+      "",
+      "Se você não solicitou esta mensagem, pode ignorá-la.",
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#172033">
+        <div style="background:linear-gradient(135deg,#071829,#12385E);color:#fff;padding:30px;border-radius:20px 20px 0 0">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:#F9C784">Mais Trilha Menos Estresse</div>
+          <h1 style="margin:10px 0 0;font-size:24px;line-height:1.25">Primeiro, conclua seu cadastro</h1>
+        </div>
+        <div style="border:1px solid #dfe7ef;border-top:0;padding:28px;border-radius:0 0 20px 20px;background:#fff">
+          <p>Olá!</p>
+          <p>Não encontramos um cadastro concluído para <strong>${safeEmail}</strong>. Para acessar e assinar seus contratos, siga este passo a passo:</p>
+
+          <div style="margin:24px 0">
+            ${tutorialStep("1", "Abra o cadastro", "Use o botão abaixo; seu e-mail já estará preenchido.")}
+            ${tutorialStep("2", "Preencha seus dados", "Informe os dados pessoais, contato de emergência e informações necessárias à atividade.")}
+            ${tutorialStep("3", "Leia e assine", "Revise os termos, o contrato de responsabilidade e o contrato do seguro antes de assinar.")}
+            ${tutorialStep("4", "Finalize", "Ao concluir, seu cadastro e as assinaturas serão registrados e você receberá as cópias por e-mail.")}
+          </div>
+
+          <p style="margin:28px 0;text-align:center">
+            <a href="${safeUrl}" style="display:inline-block;background:#D96224;color:#fff;text-decoration:none;font-weight:700;padding:15px 24px;border-radius:12px">
+              Fazer meu cadastro
+            </a>
+          </p>
+
+          <div style="background:#f4f7fa;border-radius:12px;padding:14px;font-size:12px;line-height:1.5;color:#657084">
+            Por segurança, não encaminhe este e-mail. Se você já fez o cadastro com outro endereço, volte à página de contratos e informe aquele e-mail.
+          </div>
+          <p style="margin-top:18px;font-size:12px;color:#8a94a3">Se você não solicitou esta mensagem, ignore-a.</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendSignedContractsEmail(
   client: ContractEmailClient,
   contractIds: string[],
@@ -115,4 +173,16 @@ function escapeHtml(value: string) {
 
 function safeFileName(value: string) {
   return String(value || "atual").replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
+function tutorialStep(number: string, title: string, text: string) {
+  return `
+    <div style="display:flex;gap:12px;margin:0 0 14px;padding:14px;border:1px solid #e6ebf0;border-radius:14px">
+      <div style="width:30px;height:30px;line-height:30px;flex:0 0 30px;text-align:center;border-radius:50%;background:#0B2540;color:#fff;font-size:13px;font-weight:700">${escapeHtml(number)}</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#172033">${escapeHtml(title)}</div>
+        <div style="margin-top:3px;font-size:12px;line-height:1.5;color:#657084">${escapeHtml(text)}</div>
+      </div>
+    </div>
+  `;
 }

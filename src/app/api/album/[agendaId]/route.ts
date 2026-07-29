@@ -53,6 +53,6 @@ export async function GET(
     return NextResponse.json({ photos: photosWithSignedUrls });
   } catch (error: any) {
     console.error("Erro ao buscar fotos:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível carregar o álbum agora' }, { status: 500 });
   }
 }

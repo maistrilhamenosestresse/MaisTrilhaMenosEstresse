@@ -13,6 +13,7 @@ type OfflineTrail = {
 
 export type OfflineMapPack = {
   agendaId: string;
+  title?: string;
   version?: number;
   geojson: unknown;
   bounds: { south: number; west: number; north: number; east: number };
@@ -105,6 +106,23 @@ export async function getOfflineMapPack(agendaId: string) {
       const request = transaction.objectStore(MAP_PACK_STORE_NAME).get(agendaId);
       request.onsuccess = () => resolve((request.result as OfflineMapPack | undefined) || null);
       request.onerror = () => reject(request.error || new Error("Falha ao ler mapa offline"));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+export async function listOfflineMapPacks() {
+  const database = await openDatabase();
+  try {
+    return await new Promise<OfflineMapPack[]>((resolve, reject) => {
+      const transaction = database.transaction(MAP_PACK_STORE_NAME, "readonly");
+      const request = transaction.objectStore(MAP_PACK_STORE_NAME).getAll();
+      request.onsuccess = () => {
+        const packs = (request.result as OfflineMapPack[] | undefined) || [];
+        resolve(packs.sort((first, second) => second.savedAt.localeCompare(first.savedAt)));
+      };
+      request.onerror = () => reject(request.error || new Error("Falha ao listar mapas offline"));
     });
   } finally {
     database.close();

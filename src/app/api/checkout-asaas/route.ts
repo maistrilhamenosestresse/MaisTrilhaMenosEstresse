@@ -161,7 +161,11 @@ export async function POST(request: Request) {
         p_use_points: parsed.data.use_points === true,
       });
       if (prepared.error) {
-        return NextResponse.json({ error: prepared.error.message }, { status: 409 });
+        console.error("Falha ao preparar benefícios do checkout:", prepared.error);
+        return NextResponse.json(
+          { error: "Não foi possível preparar seus benefícios para esta compra" },
+          { status: 409 },
+        );
       }
       benefitSummary = prepared.data as Record<string, unknown>;
       benefitId = String(benefitSummary.benefit_id);
@@ -177,7 +181,11 @@ export async function POST(request: Request) {
       if (benefitId) {
         await supabase.rpc("release_app_trail_checkout", { p_benefit_id: benefitId });
       }
-      return NextResponse.json({ error: claim.error.message }, { status: 409 });
+      console.error("Falha ao reservar checkout:", claim.error);
+      return NextResponse.json(
+        { error: "Estas reservas não estão mais disponíveis para pagamento" },
+        { status: 409 },
+      );
     }
     claimed = true;
 
@@ -315,7 +323,7 @@ export async function POST(request: Request) {
     await failInfinitePayCheckout(infinitePayOrderNsu);
     console.error("Erro no checkout híbrido:", error);
     return NextResponse.json(
-      { error: error.message || "Falha ao processar pagamento" },
+      { error: "Falha ao processar pagamento" },
       { status: 502 },
     );
   }

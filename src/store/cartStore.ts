@@ -109,7 +109,15 @@ export const useCartStore = create<CartState>()(
       getTotalPrice: () => get().items.reduce((total, item) => total + item.price * item.quantity, 0),
     }),
     {
-      name: 'carrinho-storage',
+      name: 'carrinho-storage-v2',
+      partialize: (state) => ({
+        ...state,
+        items: state.items.map((item) => ({
+          ...item,
+          // Dados de dependentes não devem permanecer indefinidamente no aparelho.
+          dependents: [],
+        })),
+      }),
     }
   )
 );

@@ -41,20 +41,28 @@ export async function POST(request: Request) {
 
     let mailOptions = {};
 
-    // SECURITY: O painel admin agora usa validação de PIN no frontend em vez de NextAuth.
-    // Sessão removida temporariamente para permitir o envio de e-mails do painel admin.
-
     if (data.type === 'new_registration') {
       const { client } = data;
-      const host = request.headers.get('host') || 'www.maistrilhasmenosestresse.com';
-      const protocol = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
-      const origin = `${protocol}://${host}`;
+      const origin = configuredSiteOrigin(request);
+      const safeClient = {
+        full_name: escapeHtml(client.full_name),
+        cpf: escapeHtml(client.cpf),
+        rg: escapeHtml(client.rg),
+        birth_date: escapeHtml(client.birth_date),
+        phone: escapeHtml(client.phone),
+        email: escapeHtml(client.email || 'Não informado'),
+        emergency_contact_name: escapeHtml(client.emergency_contact_name),
+        emergency_contact_phone: escapeHtml(client.emergency_contact_phone),
+        health_notes: escapeHtml(client.health_notes),
+        photo_url: safeHttpsUrl(client.photo_url),
+      };
+      const contractsUrl = `${origin}/termo/${encodeURIComponent(client.id)}`;
       
       // Email para Admin
       const adminMailOptions = {
         from: `Mais Trilha Menos Estresse <${process.env.GMAIL_USER}>`,
         to: getAdminEmails().join(', '),
-        subject: `Novo Cadastro Realizado: ${client.full_name}`,
+        subject: `Novo Cadastro Realizado: ${safeMailHeader(client.full_name)}`,
         html: `
           <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
             <div style="background-color: #F17B37; color: white; padding: 20px; text-align: center;">
@@ -62,18 +70,18 @@ export async function POST(request: Request) {
               <p style="margin: 5px 0 0 0;">Um aventureiro acabou de preencher os dados.</p>
             </div>
             <div style="padding: 20px;">
-              ${client.photo_url ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${client.photo_url}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;" alt="Foto" /></div>` : ''}
+              ${safeClient.photo_url ? `<div style="text-align: center; margin-bottom: 20px;"><img src="${escapeHtml(safeClient.photo_url)}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;" alt="Foto" /></div>` : ''}
               <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Nome:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.full_name}</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>CPF:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.cpf}</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>RG:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.rg}</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Nascimento:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.birth_date}</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Telefone:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.phone}</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>E-mail:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.email || 'Não informado'}</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contato Emergência:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.emergency_contact_name} (${client.emergency_contact_phone})</td></tr>
-                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Notas de Saúde:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; color: #d93025; font-weight: bold;">${client.health_notes}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Nome:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.full_name}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>CPF:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.cpf}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>RG:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.rg}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Nascimento:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.birth_date}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Telefone:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.phone}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>E-mail:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.email}</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contato Emergência:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${safeClient.emergency_contact_name} (${safeClient.emergency_contact_phone})</td></tr>
+                <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Notas de Saúde:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee; color: #d93025; font-weight: bold;">${safeClient.health_notes}</td></tr>
                 <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Uso de Imagem:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;">${client.image_authorization ? 'AUTORIZADO' : 'NÃO AUTORIZADO'}</td></tr>
-                ${client.id ? `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contratos atuais:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="${origin}/termo/${client.id}" style="color: #113a5d; font-weight: bold;">Acessar os dois documentos</a></td></tr>` : ''}
+                ${client.id ? `<tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Contratos atuais:</strong></td><td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="${escapeHtml(contractsUrl)}" style="color: #113a5d; font-weight: bold;">Acessar os dois documentos</a></td></tr>` : ''}
               </table>
             </div>
           </div>
@@ -88,8 +96,8 @@ export async function POST(request: Request) {
 
       // Email para Cliente (cópia do contrato)
       if (client.email) {
-        const firstName = client.full_name.split(' ')[0];
-        const termoUrl = `${origin}/termo/${client.id}`;
+        const firstName = escapeHtml(client.full_name.split(' ')[0]);
+        const termoUrl = escapeHtml(contractsUrl);
 
         const clientMailOptions = {
           from: `Mais Trilha Menos Estresse <${process.env.GMAIL_USER}>`,
@@ -154,16 +162,18 @@ export async function POST(request: Request) {
       const { clients } = data;
       
       const clientsHtml = clients.map((c: any) => {
+        const safeName = escapeHtml(c.full_name);
+        const safePhone = escapeHtml(c.phone);
         const whatsappMsg = encodeURIComponent(`Oii ${c.full_name.split(' ')[0]}!! Passando aqui pra te desejar um Feliz Aniversário! 🎉🥳 Que você tenha um dia incrível, cheio de alegrias e que a gente possa comemorar em muitas trilhas juntos! Um abraço da equipe Mais Trilha Menos Estresse! 🥾⛰️`);
         const whatsappLink = `https://wa.me/55${c.phone.replace(/\D/g, '')}?text=${whatsappMsg}`;
         
         return `
           <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
             <div>
-              <h3 style="margin: 0 0 5px 0; color: #333;">🎈 ${c.full_name}</h3>
-              <p style="margin: 0; color: #666; font-size: 14px;">Aniversário: ${new Date(c.birth_date).toLocaleDateString('pt-BR')} (Telefone: ${c.phone})</p>
+              <h3 style="margin: 0 0 5px 0; color: #333;">🎈 ${safeName}</h3>
+              <p style="margin: 0; color: #666; font-size: 14px;">Aniversário: ${escapeHtml(new Date(c.birth_date).toLocaleDateString('pt-BR'))} (Telefone: ${safePhone})</p>
             </div>
-            <a href="${whatsappLink}" style="background-color: #25D366; color: white; text-decoration: none; padding: 10px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block;">
+            <a href="${escapeHtml(whatsappLink)}" style="background-color: #25D366; color: white; text-decoration: none; padding: 10px 15px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block;">
               Mandar WhatsApp
             </a>
           </div>
@@ -218,6 +228,50 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Erro ao enviar e-mail:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível enviar o e-mail' }, { status: 500 });
   }
+}
+
+function configuredSiteOrigin(request: Request) {
+  const configured = String(
+    process.env.NEXT_PUBLIC_BASE_URL
+      || process.env.NEXT_PUBLIC_SITE_URL
+      || process.env.NEXTAUTH_URL
+      || '',
+  ).trim();
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (url.protocol === 'https:' || url.hostname === 'localhost') return url.origin;
+    } catch {
+      // O fallback abaixo usa apenas a origem já validada pelo runtime.
+    }
+  }
+  const requestUrl = new URL(request.url);
+  return requestUrl.hostname === 'localhost'
+    ? requestUrl.origin
+    : 'https://www.maistrilhasmenosestresse.com';
+}
+
+function safeHttpsUrl(value: unknown) {
+  if (!value) return '';
+  try {
+    const url = new URL(String(value));
+    return url.protocol === 'https:' ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
+function safeMailHeader(value: unknown) {
+  return String(value || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 150);
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

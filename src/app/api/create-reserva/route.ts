@@ -101,7 +101,8 @@ export async function POST(request: Request) {
       invitations: [...pendingInvites.values()],
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Falha ao reservar vagas' }, { status: 400 });
+    console.error('Falha ao criar lote de reservas:', error);
+    return NextResponse.json({ error: safeReservationError(error) }, { status: 400 });
   }
 }
 
@@ -134,4 +135,23 @@ function hashToken(value: string) {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function safeReservationError(error: unknown) {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error && 'message' in error
+      ? String(error.message)
+      : '';
+  const allowedMessages = [
+    'Limite de acompanhantes excedido',
+    'Dados de acompanhante inválidos',
+    'Reservas não foram criadas',
+    'Lote de reservas inválido',
+    'Participantes inválidos',
+    'Trilha não encontrada ou encerrada',
+    'Participante já possui reserva paga nesta trilha',
+    'Trilha lotada',
+  ];
+  return allowedMessages.find((allowed) => message.includes(allowed)) || 'Falha ao reservar vagas';
 }

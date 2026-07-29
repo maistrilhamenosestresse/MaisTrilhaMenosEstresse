@@ -2,14 +2,14 @@
 
 import { ChevronLeft, CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { fetchCurrentClient } from "@/lib/app/current-client";
 
 export default function PwaRecarregar() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [amount, setAmount] = useState("50,00");
   const [processing, setProcessing] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export default function PwaRecarregar() {
       }
     }
     getUser();
-  }, []);
+  }, [supabase]);
 
   const handleCheckout = async () => {
     if (!clientId) {

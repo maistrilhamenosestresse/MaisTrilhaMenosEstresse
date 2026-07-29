@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("Erro ao gerar carnê Asaas:", error);
     return NextResponse.json(
-      { error: error.message || "Não foi possível gerar o carnê" },
+      { error: "Não foi possível gerar o carnê" },
       { status: 502 },
     );
   }

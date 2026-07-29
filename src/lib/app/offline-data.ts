@@ -1,6 +1,18 @@
 "use client";
 
-const STORAGE_PREFIX = "mt-offline:v2";
+const STORAGE_PREFIX = "mt-offline:v3";
+export const LEGACY_OFFLINE_PREFIXES = ["mt-offline:v2:", "mt-offline:v1:"];
+
+const OFFLINE_CLIENT_FIELDS = [
+  "id",
+  "full_name",
+  "email",
+  "photo_url",
+  "pontos",
+  "cashback_saldo",
+  "experiencia",
+  "membro_vip",
+] as const;
 
 export type OfflineEnvelope<T> = {
   savedAt: string;
@@ -11,13 +23,38 @@ function storageKey(userId: string, resource: string) {
   return `${STORAGE_PREFIX}:${userId}:${resource}`;
 }
 
+function minimalOfflineClient(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+
+  const source = value as Record<string, unknown>;
+  return Object.fromEntries(
+    OFFLINE_CLIENT_FIELDS
+      .filter((field) => source[field] !== undefined)
+      .map((field) => [field, source[field]]),
+  );
+}
+
+function sanitizeOfflineData(resource: string, data: unknown) {
+  if (resource === "profile") return minimalOfflineClient(data);
+
+  if (resource === "dashboard" && data && typeof data === "object" && !Array.isArray(data)) {
+    const dashboard = data as Record<string, unknown>;
+    return {
+      ...dashboard,
+      client: minimalOfflineClient(dashboard.client),
+    };
+  }
+
+  return data;
+}
+
 export function saveOfflineData<T>(userId: string, resource: string, data: T) {
   if (typeof window === "undefined" || !userId) return;
 
   try {
     const payload: OfflineEnvelope<T> = {
       savedAt: new Date().toISOString(),
-      data,
+      data: sanitizeOfflineData(resource, data) as T,
     };
     window.localStorage.setItem(storageKey(userId, resource), JSON.stringify(payload));
   } catch (error) {
@@ -51,6 +88,22 @@ export function clearOfflineUserData(userId?: string) {
   }
 
   navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_PRIVATE_CACHE" });
+}
+
+export function clearLegacyOfflineData() {
+  if (typeof window === "undefined") return;
+
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index);
+    if (
+      key && (
+        key === "carrinho-storage"
+        || LEGACY_OFFLINE_PREFIXES.some((prefix) => key.startsWith(prefix))
+      )
+    ) {
+      window.localStorage.removeItem(key);
+    }
+  }
 }
 
 export async function cacheAppRouteForOffline(path = window.location.pathname) {

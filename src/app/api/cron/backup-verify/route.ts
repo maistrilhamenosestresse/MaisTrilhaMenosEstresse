@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error("Falha no teste automático de restauração:", error);
     return NextResponse.json(
-      { error: error.message || "Falha no teste automático de restauração" },
+      { error: "Falha no teste automático de restauração" },
       { status: 500 },
     );
   }

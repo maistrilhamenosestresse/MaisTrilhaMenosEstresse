@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Falha no teste de notificação:", error);
     return NextResponse.json(
-      { error: error.message || "Não foi possível enviar o teste" },
+      { error: "Não foi possível enviar o teste" },
       { status: 500 },
     );
   }

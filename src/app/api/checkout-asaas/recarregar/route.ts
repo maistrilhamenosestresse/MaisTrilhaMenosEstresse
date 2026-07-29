@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Erro ao criar recarga InfinitePay:", error);
     return NextResponse.json(
-      { error: error.message || "Falha ao criar recarga" },
+      { error: "Falha ao criar recarga" },
       { status: 502 },
     );
   }

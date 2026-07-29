@@ -99,8 +99,9 @@ export async function POST(
 
     return NextResponse.json({ success: true, contracts });
   } catch (error: any) {
+    console.error("Falha ao registrar contratos pelo convite:", error);
     return NextResponse.json({
-      error: error.message || "Não foi possível registrar os contratos",
+      error: "Não foi possível registrar os contratos",
     }, { status: 400 });
   }
 }

@@ -59,6 +59,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("Erro ao gerar presigned urls:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível preparar o envio das fotos' }, { status: 500 });
   }
 }

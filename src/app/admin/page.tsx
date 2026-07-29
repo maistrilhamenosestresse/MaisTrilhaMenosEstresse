@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Calendar, DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2, 
+import {
+  DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2,
   CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation, 
-  Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, UploadCloud, Award, LockKeyhole
+  AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, Award, LockKeyhole
 } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
 import CobrancasDashboard from "@/components/admin/CobrancasDashboard";
@@ -17,8 +17,7 @@ import { MediaUploadSection } from "@/components/admin/MediaUploadSection";
 import { PhotosUploadModal } from "@/components/admin/PhotosUploadModal";
 import { ReservationPaymentEditor } from "@/components/admin/ReservationPaymentEditor";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { calculateNetProfit } from "@/lib/fees";
 import imageCompression from 'browser-image-compression';
 import { uploadMediaToAws } from '@/lib/upload-media-client';
@@ -195,8 +194,6 @@ export default function AdminPage() {
   const [notificationReceipt, setNotificationReceipt] = useState<any>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  const selectedFlyer = watch("flyer");
-  const selectedImages = watch("images");
   const selectedVideo = watch("video");
 
   // --- Funções de Exportação (Excel/CSV) ---
@@ -556,7 +553,7 @@ export default function AdminPage() {
     if (agendas.length > 0 && !selectedAgendaId) {
       setSelectedAgendaId(agendas[0].id);
     }
-  }, [agendas]);
+  }, [agendas, selectedAgendaId]);
 
   useEffect(() => {
     if (!selectedAgendaId) return;
@@ -684,8 +681,6 @@ export default function AdminPage() {
   const paidReservations = reservas.filter(r => r.status_pagamento === 'pago');
   const paidReservationsWithoutValue = paidReservations.filter(r => Number(r.valor_pago || 0) <= 0);
   const totalCosts = custos.reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
-  const netProfit = totalRevenue - totalCosts;
-  const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0.0";
 
   // --- Funções de Trilhas e IA (Mantidas intactos) ---
   const deleteAgenda = async (id: string) => {
@@ -1497,7 +1492,7 @@ export default function AdminPage() {
                                 className="w-5 h-5 rounded border-gray-300 text-[#F17B37] focus:ring-[#F17B37] cursor-pointer"
                               />
                               {client.photo_url ? (
-                                <img src={client.photo_url} className="h-12 w-12 rounded-full object-cover shrink-0 border-2 border-gray-100" />
+                                <img src={client.photo_url} alt={`Foto de ${client.full_name || "cliente"}`} className="h-12 w-12 rounded-full object-cover shrink-0 border-2 border-gray-100" />
                               ) : (
                                 <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                                   <User className="h-6 w-6 text-gray-400" />
@@ -1729,7 +1724,7 @@ export default function AdminPage() {
                               </button>
                             </div>
                           </div>
-                          <p className="text-gray-700 italic mt-3 bg-white/50 p-3 rounded-lg text-sm">"{av.comment}"</p>
+                          <p className="text-gray-700 italic mt-3 bg-white/50 p-3 rounded-lg text-sm">&ldquo;{av.comment}&rdquo;</p>
                         </div>
                       ))
                     )}
@@ -2458,7 +2453,7 @@ export default function AdminPage() {
             >
               {mainTab === 'trilhas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#F17B37] rounded-b-full" />}
               <CalendarDays className="h-5 w-5 mb-1" />
-              <span className="text-[9px] font-bold tracking-wide">Trilhas</span>
+              <span className="text-[11px] font-bold tracking-wide">Trilhas</span>
             </button>
   
             <button 
@@ -2467,7 +2462,7 @@ export default function AdminPage() {
             >
               {mainTab === 'financas' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-[#25D366] rounded-b-full" />}
               <DollarSign className="h-5 w-5 mb-1" />
-              <span className="text-[9px] font-bold tracking-wide">Finanças</span>
+              <span className="text-[11px] font-bold tracking-wide">Finanças</span>
             </button>
             
             {/* BOTÃO ASSISTENTE IA CENTRALIZADO */}
@@ -2488,7 +2483,7 @@ export default function AdminPage() {
             >
               {mainTab === 'loja' && <motion.div layoutId="nav-pill" className="absolute top-0 w-10 h-1 bg-blue-500 rounded-b-full" />}
               <Gift className="h-5 w-5 mb-1" />
-              <span className="text-[9px] font-bold tracking-wide">Loja</span>
+              <span className="text-[11px] font-bold tracking-wide">Loja</span>
             </button>
   
             <button 
@@ -2496,7 +2491,7 @@ export default function AdminPage() {
               className="flex flex-col items-center justify-center w-full py-3 transition-colors relative text-gray-400 hover:text-gray-600"
             >
               <Navigation className="h-5 w-5 mb-1" />
-              <span className="text-[9px] font-bold tracking-wide">Mais</span>
+              <span className="text-[11px] font-bold tracking-wide">Mais</span>
             </button>
   
           </div>

@@ -86,6 +86,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("Erro na API do Agente IA:", error);
-    return NextResponse.json({ error: 'Erro ao processar', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao processar a solicitação' }, { status: 500 });
   }
 }

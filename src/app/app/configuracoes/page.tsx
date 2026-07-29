@@ -3,6 +3,7 @@
 import { ChevronLeft, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PwaEngagementCard } from "@/components/app/PwaEngagementCard";
+import { OfflineStorageManager } from "@/components/app/OfflineStorageManager";
 
 export default function AppSettingsPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function AppSettingsPage() {
 
       <main className="space-y-5 p-4 sm:p-6">
         <PwaEngagementCard />
+        <OfflineStorageManager />
         <div className="flex gap-3 rounded-3xl border border-emerald-100 bg-emerald-50 p-4 text-emerald-900">
           <ShieldCheck className="h-5 w-5 shrink-0" />
           <p className="text-xs leading-relaxed">

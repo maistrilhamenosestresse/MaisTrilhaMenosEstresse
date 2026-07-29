@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { clearLegacyOfflineData } from "@/lib/app/offline-data";
 
 const VERSION_STORAGE_KEY = "mt-pwa-version";
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -10,6 +11,10 @@ type VersionResponse = {
 };
 
 export default function PwaRuntime() {
+  useEffect(() => {
+    clearLegacyOfflineData();
+  }, []);
+
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 

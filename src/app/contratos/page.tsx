@@ -39,7 +39,7 @@ export default function ContractAccessPage() {
           </span>
           <h1 className="mt-4 text-2xl font-black">Termos e contratos</h1>
           <p className="mt-2 text-sm leading-relaxed text-blue-100/75">
-            Consulte seus documentos ou assine a versão atualizada com segurança.
+            Consulte seus documentos ou faça o cadastro para assinar com segurança.
           </p>
         </div>
 
@@ -62,7 +62,8 @@ export default function ContractAccessPage() {
               <div className="flex gap-3 rounded-2xl bg-[#E7EEF6] p-4 text-[#0B2540]">
                 <ShieldCheck className="h-5 w-5 shrink-0" />
                 <p className="text-xs leading-relaxed">
-                  Para proteger seus dados, enviaremos um link pessoal ao e-mail cadastrado.
+                  Se você já tiver cadastro, receberá o acesso pessoal aos contratos. Se ainda não
+                  tiver, enviaremos o link de cadastro com um tutorial rápido.
                 </p>
               </div>
               <label className="mt-5 block">
@@ -93,7 +94,7 @@ export default function ContractAccessPage() {
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D96224] py-4 text-sm font-black text-white disabled:opacity-50"
               >
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail className="h-5 w-5" />}
-                Enviar acesso seguro
+                Enviar instruções
               </button>
             </form>
           )}

@@ -11,7 +11,10 @@ export async function GET() {
   if (auth.response) return auth.response;
 
   const { data, error } = await createSupabaseAdmin().from('produtos').select('*').order('created_at', { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error('Falha ao listar produtos:', error);
+    return NextResponse.json({ error: 'Não foi possível listar os produtos' }, { status: 500 });
+  }
   return NextResponse.json(data);
 }
 
@@ -34,10 +37,14 @@ export async function POST(request: Request) {
       name, category: category || 'Equipamentos', price: Number(price), stock: Number(stock) || 0, image: image || ''
     }]).select().single();
     
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('Falha ao criar produto:', error);
+      return NextResponse.json({ error: 'Não foi possível criar o produto' }, { status: 500 });
+    }
     return NextResponse.json(data);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    console.error('Falha ao criar produto:', error);
+    return NextResponse.json({ error: 'Não foi possível criar o produto' }, { status: 500 });
   }
 }
 
@@ -60,10 +67,14 @@ export async function PUT(request: Request) {
       name, category, price: Number(price), stock: Number(stock), image
     }).eq('id', id).select().single();
     
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('Falha ao atualizar produto:', error);
+      return NextResponse.json({ error: 'Não foi possível atualizar o produto' }, { status: 500 });
+    }
     return NextResponse.json(data);
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    console.error('Falha ao atualizar produto:', error);
+    return NextResponse.json({ error: 'Não foi possível atualizar o produto' }, { status: 500 });
   }
 }
 
@@ -81,9 +92,21 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 });
     
     const { error } = await createSupabaseAdmin().from('produtos').delete().eq('id', id);
-    if (error) return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
+    if (error) {
+      console.error('Falha ao excluir produto:', error);
+      return NextResponse.json(
+        {
+          error: error.code === '23503'
+            ? 'Este produto possui vendas registradas e não pode ser excluído'
+            : 'Não foi possível excluir o produto',
+          code: error.code,
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ success: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (error) {
+    console.error('Falha ao excluir produto:', error);
+    return NextResponse.json({ error: 'Não foi possível excluir o produto' }, { status: 500 });
   }
 }

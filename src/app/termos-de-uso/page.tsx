@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const DOCUMENT_VERSION = "2026.07.29";
 const CONTACT_EMAIL = "maistrilhamenosestresse@gmail.com";
@@ -109,6 +110,13 @@ const TERMS_SECTIONS = [
     paragraphs: [
       `Dúvidas, cancelamentos e solicitações de privacidade podem ser encaminhados para ${CONTACT_EMAIL} ou pelos canais oficiais informados na oferta. O consumidor também poderá utilizar os órgãos de defesa do consumidor e a plataforma Consumidor.gov.br quando aplicável.`,
       "Aplica-se a legislação brasileira. Eventual eleição de foro não afasta o direito do consumidor de utilizar o foro legalmente competente de seu domicílio.",
+    ],
+  },
+  {
+    title: "14. Cookies, preferências e funcionamento offline",
+    paragraphs: [
+      "Cookies e tecnologias equivalentes estritamente necessários podem ser usados para autenticação, segurança, carrinho, preferências, atualização do aplicativo web e recursos offline. O armazenamento local é limitado às informações necessárias para essas finalidades e não substitui os registros oficiais do servidor.",
+      "Medição de audiência e desempenho é opcional e somente será ativada após consentimento. O usuário pode recusar sem perder acesso ao serviço e pode rever ou retirar a escolha a qualquer momento pelo botão Cookies. Categorias, fornecedores, prazos e controles estão detalhados na Política de Cookies.",
     ],
   },
 ] as const;
@@ -276,6 +284,12 @@ export default function TermosDeUso() {
             <a href="https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm" target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-2 text-blue-100 hover:bg-white/10">Decreto do Comércio Eletrônico</a>
             <a href="https://planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" target="_blank" rel="noreferrer" className="rounded-full border border-white/10 px-3 py-2 text-blue-100 hover:bg-white/10">Lei Geral de Proteção de Dados</a>
           </div>
+          <Link
+            href="/politica-de-cookies"
+            className="mt-4 inline-flex min-h-11 items-center rounded-full border border-orange-300/30 px-4 py-2 text-xs font-black text-orange-200 transition hover:bg-orange-300/10"
+          >
+            Consultar a Política de Cookies
+          </Link>
         </section>
 
         <footer className="py-10 text-center text-xs text-slate-500">
