@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  CreditCard,
   Images,
   Loader2,
   MapPin,
@@ -24,6 +23,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/utils/supabase/client";
+import { useCartStore } from "@/store/cartStore";
 
 type TrailForCart = {
   id: string;
@@ -38,6 +38,8 @@ type TrailForCart = {
   flyer_url: string | null;
   images: string[] | null;
   video_url: string | null;
+  accepted_payment_methods: string[] | null;
+  taxa_gratis: boolean | null;
 };
 
 type ClientBenefits = {
@@ -75,13 +77,16 @@ function difficultyLabel(value: string | null) {
 export default function TrailCartPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const addItem = useCartStore((state) => state.addItem);
+  const cartItems = useCartStore((state) => state.items);
+  const cartQuantity = useCartStore((state) =>
+    state.items.reduce((total, item) => total + item.quantity, 0),
+  );
   const [trail, setTrail] = useState<TrailForCart | null>(null);
   const [client, setClient] = useState<ClientBenefits | null>(null);
-  const [pendingReservationId, setPendingReservationId] = useState<string | null>(null);
   const [reservedSpots, setReservedSpots] = useState(0);
   const [currentImage, setCurrentImage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,7 +104,7 @@ export default function TrailCartPage({ params }: { params: Promise<{ id: string
         supabase
           .from("agendas")
           .select(
-            "id, title, date, price, description, difficulty, duration_hours, distance_km, max_capacity, flyer_url, images, video_url",
+            "id, title, date, price, description, difficulty, duration_hours, distance_km, max_capacity, flyer_url, images, video_url, accepted_payment_methods, taxa_gratis",
           )
           .eq("id", id)
           .single(),
@@ -146,10 +151,6 @@ export default function TrailCartPage({ params }: { params: Promise<{ id: string
         return;
       }
 
-      if (reservation?.status_pagamento === "pendente") {
-        setPendingReservationId(reservation.id);
-      }
-
       setLoading(false);
     }
 
@@ -170,38 +171,26 @@ export default function TrailCartPage({ params }: { params: Promise<{ id: string
     ? Math.max(0, Number(trail.max_capacity || 15) - reservedSpots)
     : 0;
 
-  async function continueToPayment() {
-    if (!client || !trail) return;
-    setProcessing(true);
+  function addToCart() {
+    if (!client || !trail || remainingSpots <= 0) return;
     setError(null);
-
-    try {
-      let reservationId = pendingReservationId;
-
-      if (!reservationId) {
-        const response = await fetch("/api/create-reserva", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            client_id: client.id,
-            agenda_id: trail.id,
-            checkout_source: "app",
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.reservas?.[0]?.id) {
-          throw new Error(result.error || "Não foi possível reservar a vaga.");
-        }
-        reservationId = result.reservas[0].id;
-      }
-
-      router.push(
-        `/app/trilhas/${trail.id}/checkout?reservaId=${reservationId}&agendaId=${trail.id}`,
-      );
-    } catch (checkoutError: any) {
-      setError(checkoutError.message || "Não foi possível continuar para o pagamento.");
-      setProcessing(false);
-    }
+    addItem({
+      agendaId: trail.id,
+      title: trail.title,
+      price: Number(trail.price),
+      date: trail.date,
+      imageUrl: media[0] || null,
+      difficulty: difficultyLabel(trail.difficulty),
+      quantity: 1,
+      dependents: [],
+      availableSpots: remainingSpots,
+      acceptedPaymentMethods:
+        Array.isArray(trail.accepted_payment_methods) && trail.accepted_payment_methods.length
+          ? trail.accepted_payment_methods
+          : ["PIX"],
+      taxa_gratis: trail.taxa_gratis === true,
+    });
+    router.push("/app/carrinho");
   }
 
   if (loading) {
@@ -243,9 +232,21 @@ export default function TrailCartPage({ params }: { params: Promise<{ id: string
         </button>
         <div className="min-w-0 flex-1">
           <p className="mt-eyebrow">Compra pelo aplicativo</p>
-          <h1 className="truncate font-black text-[#071829]">Seu carrinho</h1>
+          <h1 className="truncate font-black text-[#071829]">Detalhes da compra</h1>
         </div>
-        <ShoppingCart className="h-5 w-5 text-[#D96224]" />
+        <button
+          type="button"
+          onClick={() => router.push("/app/carrinho")}
+          className="relative grid h-10 w-10 place-items-center rounded-full bg-[#FFF0E6] text-[#D96224]"
+          aria-label="Abrir carrinho"
+        >
+          <ShoppingCart className="h-5 w-5" />
+          {cartQuantity > 0 && (
+            <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#0B2540] px-1 text-[10px] font-black text-white">
+              {cartQuantity}
+            </span>
+          )}
+        </button>
       </header>
 
       <main className="mx-auto max-w-xl space-y-5 p-4 sm:p-6">
@@ -406,7 +407,11 @@ export default function TrailCartPage({ params }: { params: Promise<{ id: string
               <ShoppingCart className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-black text-[#071829]">1 vaga</p>
+              <p className="font-black text-[#071829]">
+                {cartItems.some((item) => item.agendaId === trail.id)
+                  ? "Esta trilha já está no carrinho"
+                  : "Adicione sua primeira vaga"}
+              </p>
               <p className="truncate text-xs text-slate-500">{trail.title}</p>
             </div>
             <p className="font-black text-[#D96224]">{formatCurrency(trail.price)}</p>
@@ -460,17 +465,13 @@ export default function TrailCartPage({ params }: { params: Promise<{ id: string
           </div>
           <button
             type="button"
-            onClick={continueToPayment}
-            disabled={processing || (remainingSpots <= 0 && !pendingReservationId)}
+            onClick={addToCart}
+            disabled={remainingSpots <= 0}
             className="flex min-h-12 flex-[1.7] items-center justify-center gap-2 rounded-2xl bg-[#0B2540] px-4 py-3.5 font-black text-white shadow-lg shadow-slate-950/15 transition-colors hover:bg-[#061B30] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
-            {remainingSpots <= 0 && !pendingReservationId
-              ? "Trilha esgotada"
-              : pendingReservationId
-                ? "Continuar pagamento"
-                : "Ir para pagamento"}
-            {!processing && (remainingSpots > 0 || pendingReservationId) ? <ArrowRight className="h-4 w-4" /> : null}
+            <ShoppingCart className="h-5 w-5" />
+            {remainingSpots <= 0 ? "Trilha esgotada" : "Adicionar ao carrinho"}
+            {remainingSpots > 0 ? <ArrowRight className="h-4 w-4" /> : null}
           </button>
         </div>
       </footer>

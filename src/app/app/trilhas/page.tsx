@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2, WifiOff } from "lucide-react";
+import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2, WifiOff, ShoppingCart } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import { ptBR } from "date-fns/locale";
 import { fetchCurrentClient } from "@/lib/app/current-client";
 import { formatOfflineUpdate, getOfflineData, navigateAppOfflineFirst, saveOfflineData } from "@/lib/app/offline-data";
 import { useNetworkStatus } from "@/lib/app/use-network-status";
+import { useCartStore } from "@/store/cartStore";
 
 type CachedTrails = { euVou: any[]; explorar: any[] };
 
@@ -27,6 +28,9 @@ export default function PwaTrilhas() {
   
   const router = useRouter();
   const online = useNetworkStatus();
+  const cartQuantity = useCartStore((state) =>
+    state.items.reduce((total, item) => total + item.quantity, 0),
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -146,9 +150,24 @@ export default function PwaTrilhas() {
     <div className="mt-app-page flex min-h-full flex-col">
       {/* Header and Tabs */}
       <div className="mt-app-header relative z-10 border-b px-4 pb-4 pt-[max(2rem,env(safe-area-inset-top))] sm:px-6">
-        <h1 className="text-2xl font-black text-gray-800 mb-6 flex items-center gap-2">
-          <MapPin className="w-6 h-6 text-[#D96224]" /> Suas Aventuras
-        </h1>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <h1 className="flex items-center gap-2 text-2xl font-black text-gray-800">
+            <MapPin className="h-6 w-6 text-[#D96224]" /> Suas Aventuras
+          </h1>
+          <button
+            type="button"
+            onClick={() => router.push("/app/carrinho")}
+            className="relative grid h-11 w-11 place-items-center rounded-2xl bg-[#FFF0E6] text-[#D96224]"
+            aria-label="Abrir carrinho de trilhas"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {cartQuantity > 0 && (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#0B2540] px-1 text-[10px] font-black text-white">
+                {cartQuantity}
+              </span>
+            )}
+          </button>
+        </div>
         
         <div className="flex bg-gray-100 p-1 rounded-2xl mb-4 relative">
           <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm transition-transform duration-300 ease-in-out ${activeTab === 'explorar' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'}`} />

@@ -18,6 +18,7 @@ import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { discountToPoints, pointsToDiscount } from "@/lib/gamification";
 import { CancellationAcceptance } from "@/components/legal/CancellationAcceptance";
+import { useCartStore } from "@/store/cartStore";
 
 type LoyaltyQuote = {
   max_points: number;
@@ -27,12 +28,31 @@ type LoyaltyQuote = {
   points_per_brl_discount: number;
 };
 
+type CheckoutItem = {
+  agendaId: string;
+  title: string;
+  date: string;
+  price: number;
+  quantity: number;
+  acceptedPaymentMethods: string[];
+  taxaGratis: boolean;
+};
+
+type CheckoutContext = {
+  reservationIds: string[];
+  invitations?: Array<{ name: string; token: string }>;
+  items: CheckoutItem[];
+};
+
 function TrailCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reservaId = searchParams.get("reservaId");
+  const reservaIdsParam = searchParams.get("reservaIds");
   const agendaId = searchParams.get("agendaId");
+  const isBatchCheckout = searchParams.get("lote") === "1";
   const supabase = useMemo(() => createClient(), []);
+  const clearCart = useCartStore((state) => state.clearCart);
 
   const [loading, setLoading] = useState(true);
   const [agenda, setAgenda] = useState<any>(null);
@@ -47,6 +67,8 @@ function TrailCheckoutContent() {
   const [acceptedCancellation, setAcceptedCancellation] = useState(false);
   const [pointsQuote, setPointsQuote] = useState<LoyaltyQuote | null>(null);
   const [pointsQuoteLoading, setPointsQuoteLoading] = useState(true);
+  const [reservationIds, setReservationIds] = useState<string[]>([]);
+  const [checkoutItems, setCheckoutItems] = useState<CheckoutItem[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -66,13 +88,65 @@ function TrailCheckoutContent() {
       if (agendaRes.data) setAgenda(agendaRes.data);
       if (clientRes.data) setClient(clientRes.data);
       if (agendaRes.data && clientRes.data) {
+        let context: CheckoutContext | null = null;
+        if (isBatchCheckout) {
+          try {
+            context = JSON.parse(
+              window.sessionStorage.getItem("mt-app-trail-checkout") || "null",
+            ) as CheckoutContext | null;
+          } catch {
+            context = null;
+          }
+        }
+        const urlReservationIds = (reservaIdsParam || "")
+          .split(",")
+          .filter((value) => /^[0-9a-f-]{36}$/i.test(value));
+        const selectedReservationIds =
+          context?.reservationIds?.length
+            ? context.reservationIds
+            : urlReservationIds.length
+              ? urlReservationIds
+              : [reservaId];
+        const persistedCartItems = useCartStore.getState().items.map((item) => ({
+          agendaId: item.agendaId,
+          title: item.title,
+          date: item.date,
+          price: item.price,
+          quantity: item.quantity,
+          acceptedPaymentMethods: item.acceptedPaymentMethods || ["PIX"],
+          taxaGratis: item.taxa_gratis === true,
+        }));
+        const selectedItems =
+          context?.items?.length
+            ? context.items
+            : isBatchCheckout && persistedCartItems.length
+              ? persistedCartItems
+            : [{
+                agendaId: agendaRes.data.id,
+                title: agendaRes.data.title,
+                date: agendaRes.data.date,
+                price: Number(agendaRes.data.price || 0),
+                quantity: 1,
+                acceptedPaymentMethods:
+                  Array.isArray(agendaRes.data.accepted_payment_methods) &&
+                  agendaRes.data.accepted_payment_methods.length
+                    ? agendaRes.data.accepted_payment_methods
+                    : ["PIX"],
+                taxaGratis: agendaRes.data.taxa_gratis === true,
+              }];
+        const grossAmount = selectedItems.reduce(
+          (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
+          0,
+        );
+        setReservationIds(selectedReservationIds);
+        setCheckoutItems(selectedItems);
         try {
           const quoteResponse = await fetch("/api/app/loyalty-quote", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              reservationIds: [reservaId],
-              grossAmount: Number(agendaRes.data.price || 0),
+              reservationIds: selectedReservationIds,
+              grossAmount,
             }),
           });
           const quoteResult = await quoteResponse.json();
@@ -90,15 +164,15 @@ function TrailCheckoutContent() {
       setLoading(false);
     }
     loadData();
-  }, [reservaId, agendaId, router, supabase]);
+  }, [reservaId, reservaIdsParam, agendaId, isBatchCheckout, router, supabase]);
 
   const handleCheckout = async () => {
-    if (!client || !agenda || !reservaId) return;
+    if (!client || !agenda || !reservationIds.length) return;
 
     setProcessing(true);
     try {
       const payload: any = {
-        reserva_ids: [reservaId],
+        reserva_ids: reservationIds,
         payment_method: paymentMethod,
         installments: paymentMethod === "BOLETO" ? boletoInstallments : 1,
         checkout_source: "app",
@@ -124,14 +198,20 @@ function TrailCheckoutContent() {
       if (!res.ok) throw new Error(data.error || "Erro no pagamento");
 
       if (data.type === "INTERNAL") {
+        clearCart();
+        window.sessionStorage.removeItem("mt-app-trail-checkout");
         setSuccess(true);
       } else if (data.provider === "INFINITEPAY" && data.redirectUrl) {
         window.sessionStorage.setItem(
           `infinitepay:${data.orderNsu}:returnTo`,
-          `/app/trilhas/${agendaId}`,
+          "/app/trilhas",
         );
+        clearCart();
+        window.sessionStorage.removeItem("mt-app-trail-checkout");
         window.location.assign(data.redirectUrl);
       } else if (data.provider === "ASAAS" && data.paymentId) {
+        clearCart();
+        window.sessionStorage.removeItem("mt-app-trail-checkout");
         setPaymentResult(data as AsaasPaymentResult);
       }
     } catch (err: any) {
@@ -141,14 +221,20 @@ function TrailCheckoutContent() {
     }
   };
 
-  const acceptedPaymentMethods = Array.isArray(agenda?.accepted_payment_methods) &&
-    agenda.accepted_payment_methods.length > 0
-    ? agenda.accepted_payment_methods
-    : ["PIX"];
-  const acceptsPix = acceptedPaymentMethods.includes("PIX");
-  const acceptsCard = acceptedPaymentMethods.includes("CREDIT_CARD");
-  const acceptsBoleto = acceptedPaymentMethods.includes("BOLETO");
-  const acceptsInfinitePay = acceptsPix || acceptsCard;
+  const paymentMethodsByItem = checkoutItems.length
+    ? checkoutItems.map((item) =>
+        item.acceptedPaymentMethods?.length ? item.acceptedPaymentMethods : ["PIX"],
+      )
+    : [[
+        ...(Array.isArray(agenda?.accepted_payment_methods) &&
+        agenda.accepted_payment_methods.length
+          ? agenda.accepted_payment_methods
+          : ["PIX"]),
+      ]];
+  const acceptsInfinitePay = paymentMethodsByItem.every((methods) =>
+    methods.some((method) => method === "PIX" || method === "CREDIT_CARD"),
+  );
+  const acceptsBoleto = paymentMethodsByItem.every((methods) => methods.includes("BOLETO"));
 
   useEffect(() => {
     if (paymentMethod === "INFINITEPAY" && acceptsInfinitePay) return;
@@ -188,12 +274,16 @@ function TrailCheckoutContent() {
         >
           <CheckCircle2 className="w-14 h-14 text-white" />
         </motion.div>
-        <h2 className="text-3xl font-black text-gray-800 mb-3">Vaga Garantida!</h2>
+        <h2 className="text-3xl font-black text-gray-800 mb-3">
+          {reservationIds.length > 1 ? "Compra confirmada!" : "Vaga Garantida!"}
+        </h2>
         <p className="text-gray-500 mb-2 font-medium">
           Seu pagamento foi aprovado com sucesso.
         </p>
         <p className="text-sm text-gray-400 mb-10">
-          {agenda?.title} • {agenda?.date ? formatDate(agenda.date) : ""}
+          {checkoutItems.length > 1
+            ? `${checkoutItems.length} trilhas e ${reservationIds.length} vagas confirmadas`
+            : `${agenda?.title || ""} • ${agenda?.date ? formatDate(agenda.date) : ""}`}
         </p>
         <div className="w-full max-w-xs space-y-3">
           <button
@@ -213,8 +303,15 @@ function TrailCheckoutContent() {
     );
   }
 
-  const price = Number(agenda?.price || 0);
-  const grossPrice = price;
+  const grossPrice = checkoutItems.length
+    ? checkoutItems.reduce(
+        (total, item) => total + Number(item.price || 0) * Number(item.quantity || 0),
+        0,
+      )
+    : Number(agenda?.price || 0);
+  const organizationAbsorbsFee = checkoutItems.length
+    ? checkoutItems.every((item) => item.taxaGratis)
+    : agenda?.taxa_gratis === true;
   const cashbackAvailable = Math.max(0, Number(client?.cashback_saldo || 0));
   const pointsAvailable = Math.max(0, Number(client?.pontos || 0));
   const quotedPointsAvailable = Math.max(
@@ -231,7 +328,7 @@ function TrailCheckoutContent() {
   const pointsDiscount = pointsToDiscount(pointsApplied);
   const netAmountDue = Math.max(0, grossPrice - cashbackApplied - pointsDiscount);
   const amountDue = netAmountDue;
-  const chargedAmount = amountDue <= 0 || agenda?.taxa_gratis
+  const chargedAmount = amountDue <= 0 || organizationAbsorbsFee
     ? amountDue
     : paymentMethod === "BOLETO"
       ? calculateGrossPrice(amountDue, "BOLETO", boletoInstallments)
@@ -277,12 +374,35 @@ function TrailCheckoutContent() {
         {/* Resumo da Trilha */}
         <div className="relative overflow-hidden rounded-3xl bg-[linear-gradient(145deg,#061526,#0B2540)] p-5 text-white shadow-lg">
           <div className="absolute top-0 right-0 -mr-6 -mt-6 w-28 h-28 bg-white/5 rounded-full" />
-          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-orange-200">Sua vaga em</p>
-          <h2 className="font-black text-xl leading-tight mb-3">{agenda?.title}</h2>
-          <div className="flex items-center gap-2 text-sm font-medium text-blue-100/75">
-            <Calendar className="w-4 h-4" />
-            <span>{agenda?.date ? formatDate(agenda.date) : "Data a confirmar"}</span>
-          </div>
+          <p className="mb-1 text-xs font-bold uppercase tracking-wider text-orange-200">
+            {checkoutItems.length > 1 ? "Seu roteiro de aventuras" : "Sua vaga em"}
+          </p>
+          {checkoutItems.length > 1 ? (
+            <div className="mt-3 space-y-2">
+              {checkoutItems.map((item) => (
+                <div key={item.agendaId} className="flex items-start justify-between gap-3 rounded-xl bg-white/5 p-3">
+                  <div className="min-w-0">
+                    <h2 className="truncate text-sm font-black">{item.title}</h2>
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-blue-100/70">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(item.date)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs font-black">
+                    {item.quantity} {item.quantity === 1 ? "vaga" : "vagas"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <h2 className="mb-3 text-xl font-black leading-tight">{agenda?.title}</h2>
+              <div className="flex items-center gap-2 text-sm font-medium text-blue-100/75">
+                <Calendar className="h-4 w-4" />
+                <span>{agenda?.date ? formatDate(agenda.date) : "Data a confirmar"}</span>
+              </div>
+            </>
+          )}
           <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
             <span className="text-sm font-medium text-blue-100/75">Total do pagamento</span>
             <span className="text-2xl font-black">{formatCurrency(grossPrice)}</span>
@@ -408,7 +528,7 @@ function TrailCheckoutContent() {
               netAmount={amountDue}
               installments={boletoInstallments}
               onChange={setBoletoInstallments}
-              absorbFee={agenda?.taxa_gratis === true}
+              absorbFee={organizationAbsorbsFee}
             />
           )}
 

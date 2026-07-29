@@ -1,191 +1,327 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, MapPin, DollarSign, ChevronRight, Image as ImageIcon } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  ChevronRight,
+  Image as ImageIcon,
+  MapPin,
+  ShoppingCart,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
+import { useCartStore } from "@/store/cartStore";
 
-export default function AgendaList() {
-  const [agendas, setAgendas] = useState<any[]>([]);
+type Agenda = {
+  id: string;
+  title: string;
+  date: string;
+  price: number;
+  images?: string[] | null;
+  flyer_url?: string | null;
+  meeting_point?: string | null;
+  max_capacity?: number | null;
+  reserved_count?: number;
+  accepted_payment_methods?: string[] | null;
+  taxa_gratis?: boolean;
+  difficulty?: string | null;
+};
+
+function eventDate(value: string) {
+  return new Date(`${value.slice(0, 10)}T12:00:00`);
+}
+
+function formatCurrency(value: number) {
+  return Number(value).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function monthKey(value: string) {
+  const date = eventDate(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(value: string) {
+  return eventDate(value)
+    .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+export default function AgendaCalendar() {
+  const [agendas, setAgendas] = useState<Agenda[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [addedAgendaId, setAddedAgendaId] = useState<string | null>(null);
+  const addItem = useCartStore((state) => state.addItem);
 
   useEffect(() => {
     async function fetchAgendas() {
-      const today = new Date().toISOString().split('T')[0];
-
+      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
-        .from('agendas')
-        .select('*')
-        .gte('date', today)
-        .order('date', { ascending: true });
+        .from("agendas")
+        .select("*")
+        .gte("date", today)
+        .order("date", { ascending: true });
 
       if (error) {
-        console.error('Erro ao buscar agendas:', error);
-        setLoadError('Não foi possível carregar as trilhas. Tente novamente.');
+        console.error("Erro ao buscar agendas:", error);
+        setLoadError("Não foi possível carregar as trilhas. Tente novamente.");
         setIsLoading(false);
         return;
       }
 
-      const availabilityResponse = await fetch('/api/agendas/availability', { cache: 'no-store' });
+      const availabilityResponse = await fetch("/api/agendas/availability", {
+        cache: "no-store",
+      });
       const availability = availabilityResponse.ok
         ? await availabilityResponse.json()
         : { reservedByAgenda: {} };
 
-      if (data) {
-        setAgendas(data.map((agenda) => ({
+      setAgendas(
+        (data || []).map((agenda) => ({
           ...agenda,
           reserved_count: availability.reservedByAgenda?.[agenda.id] || 0,
-        })));
-      }
+        })) as Agenda[],
+      );
       setIsLoading(false);
     }
+
     fetchAgendas();
   }, []);
 
-  return (
-    <div className="min-h-screen bg-[#0F1722] text-white font-sans selection:bg-[#F17B37] selection:text-white pb-20 overflow-hidden relative">
-      {/* Background Decorativo */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F17B37] rounded-full blur-[150px] opacity-10 pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#25D366] rounded-full blur-[150px] opacity-10 pointer-events-none" />
+  const months = useMemo(() => {
+    const grouped = new Map<string, Agenda[]>();
+    for (const agenda of agendas) {
+      const key = monthKey(agenda.date);
+      grouped.set(key, [...(grouped.get(key) || []), agenda]);
+    }
+    return [...grouped.entries()];
+  }, [agendas]);
 
-      <header className="relative z-10 mx-auto max-w-7xl px-4 pb-9 pt-12 text-center sm:px-6 md:pb-12 md:pt-16">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1.5 mb-6 backdrop-blur-md"
-        >
-          <span className="text-[#F17B37] text-sm font-bold tracking-widest uppercase">Mais Trilha Menos Estresse</span>
+  function addAgendaToCart(agenda: Agenda, remaining: number) {
+    if (remaining <= 0) return;
+    const imageUrl =
+      agenda.flyer_url ||
+      (Array.isArray(agenda.images) ? agenda.images[0] : null) ||
+      null;
+    addItem({
+      agendaId: agenda.id,
+      title: agenda.title,
+      price: Number(agenda.price),
+      date: agenda.date,
+      imageUrl,
+      difficulty: agenda.difficulty || null,
+      quantity: 1,
+      dependents: [],
+      availableSpots: remaining,
+      acceptedPaymentMethods:
+        Array.isArray(agenda.accepted_payment_methods) &&
+        agenda.accepted_payment_methods.length
+          ? agenda.accepted_payment_methods
+          : ["PIX"],
+      taxa_gratis: agenda.taxa_gratis === true,
+    });
+    setAddedAgendaId(agenda.id);
+    window.setTimeout(() => setAddedAgendaId(null), 1800);
+  }
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-[#0F1722] pb-24 font-sans text-white selection:bg-[#F17B37]">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-[#F17B37]/10 blur-[140px]" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-[#173D63]/30 blur-[140px]" />
+
+      <header className="relative z-10 mx-auto max-w-7xl px-4 pb-8 pt-28 sm:px-6 md:pb-10 md:pt-36">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <span className="inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-[#F17B37]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-orange-200">
+            <CalendarDays className="h-3.5 w-3.5" /> Calendário oficial
+          </span>
+          <div className="mt-5 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <h1 className="text-4xl font-black tracking-tight md:text-6xl">
+                Próximas <span className="text-[#F17B37]">aventuras</span>
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 md:text-lg">
+                Compare datas lado a lado, monte seu roteiro e coloque várias trilhas no mesmo carrinho.
+              </p>
+            </div>
+            <Link
+              href="/carrinho"
+              className="inline-flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black transition hover:bg-white/10"
+            >
+              <ShoppingCart className="h-5 w-5 text-[#F17B37]" /> Ver carrinho
+            </Link>
+          </div>
         </motion.div>
-        
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3 leading-tight"
-        >
-          Calendário <br className="md:hidden" />de <span className="text-[#F17B37]">Aventuras</span>
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mx-auto max-w-2xl text-base leading-relaxed text-gray-300 md:text-lg"
-        >
-          Escolha o seu próximo destino, convide a galera e recarregue as energias.
-        </motion.p>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
+      <main className="relative z-10 mx-auto max-w-7xl px-3 sm:px-6">
         {isLoading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-64 bg-white/5 border border-white/10 rounded-3xl w-full animate-pulse"></div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => (
+              <div
+                key={index}
+                className="aspect-[3/4] animate-pulse rounded-3xl border border-white/10 bg-white/5"
+              />
             ))}
           </div>
         ) : loadError ? (
-          <div className="text-center py-20 bg-red-500/10 rounded-3xl border border-red-400/20 max-w-2xl mx-auto">
-            <p className="text-red-200 font-bold">{loadError}</p>
+          <div className="mx-auto max-w-2xl rounded-3xl border border-red-400/20 bg-red-500/10 py-16 text-center">
+            <p className="font-bold text-red-200">{loadError}</p>
           </div>
-        ) : agendas.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md max-w-2xl mx-auto"
-          >
-            <Calendar className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 font-medium">Nenhuma trilha encontrada neste momento.</p>
-            <p className="text-sm text-gray-500 mt-2">Novas aventuras serão adicionadas em breve.</p>
-          </motion.div>
+        ) : months.length === 0 ? (
+          <div className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-white/5 py-16 text-center">
+            <CalendarDays className="mx-auto mb-4 h-12 w-12 text-slate-600" />
+            <p className="font-bold text-slate-300">Nenhuma nova trilha publicada.</p>
+            <p className="mt-2 text-sm text-slate-500">O calendário será atualizado em breve.</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-8 lg:grid-cols-3">
-            {agendas.map((agenda, index) => {
-              // Corrigir fuso horário para não diminuir 1 dia (-03:00)
-              const eventDate = new Date(agenda.date + 'T12:00:00Z');
-              const day = eventDate.toLocaleDateString('pt-BR', { day: '2-digit' });
-              const month = eventDate.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase();
-              
-              const occupied = Number(agenda.reserved_count || 0);
-              const maxCap = agenda.max_capacity || 15;
-              const remaining = Math.max(0, maxCap - occupied);
-              const isFull = remaining === 0;
-              
-              return (
-                <div key={agenda.id} className="block group">
-                  <motion.div 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`bg-white/5 border border-white/10 rounded-2xl md:rounded-[2rem] overflow-hidden transition-all duration-300 relative h-full flex flex-col ${isFull ? 'opacity-70 grayscale' : 'hover:bg-white/10 md:hover:-translate-y-2 md:hover:shadow-2xl hover:shadow-[#F17B37]/10'}`}
-                  >
-                    
-                    {/* Imagem de Capa do Card */}
-                    <div className="relative h-48 shrink-0 overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#1a2332] to-transparent z-10" />
-                      {agenda.images && agenda.images.length > 0 ? (
-                        <Image
-                          src={agenda.images[0]}
-                          alt={`Trilha ${agenda.title}`}
-                          fill
-                          sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
-                          className={`object-cover transition duration-700 ${!isFull ? "group-hover:scale-105" : ""}`}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-800 flex items-center justify-center"><ImageIcon className="text-gray-600 h-8 w-8 md:h-10 md:w-10" /></div>
-                      )}
-                      
-                      {/* Badge da Data */}
-                      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl md:rounded-2xl p-1.5 md:p-2 px-2 md:px-4 text-center shadow-xl">
-                        <p className={`${isFull ? 'text-gray-400' : 'text-[#F17B37]'} mb-0.5 text-xs font-bold uppercase tracking-widest`}>{month}</p>
-                        <p className="text-lg md:text-2xl font-black leading-none">{day}</p>
-                      </div>
-                      
-                      {isFull && (
-                        <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/40 backdrop-blur-sm">
-                          <span className="bg-red-500 text-white font-black px-4 py-2 rounded-xl tracking-widest uppercase transform -rotate-12 border-2 border-white/20 shadow-2xl text-sm md:text-base">
-                            ESGOTADO
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Conteúdo */}
-                    <div className="relative z-20 flex flex-1 flex-col bg-[#1a2332] p-5 md:p-6">
-                      <h3 className={`mb-4 line-clamp-2 text-lg font-bold leading-snug transition md:text-xl ${isFull ? 'text-gray-300' : 'group-hover:text-[#F17B37]'}`}>{agenda.title}</h3>
-                      
-                      <div className="space-y-2 md:space-y-3 mb-4 md:mb-6 mt-auto">
-                        <div className="flex items-start gap-3 text-sm text-gray-300">
-                          <MapPin className={`mt-0.5 h-4 w-4 shrink-0 ${isFull ? 'text-gray-500' : 'text-[#F17B37]'}`} />
-                          <span className="line-clamp-1 md:line-clamp-2">{agenda.meeting_point}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-300">
-                          <DollarSign className={`h-4 w-4 ${isFull ? 'text-gray-500' : 'text-[#25D366]'}`} />
-                          <span className="font-black text-white">R$ {Number(agenda.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      </div>
-
-                      <div className={`mb-4 md:mb-6 mt-2 text-xs md:text-sm font-medium ${isFull ? 'text-red-400' : 'text-[#F17B37]'}`}>
-                        {maxCap} vagas totais &bull; {remaining > 0 ? `${remaining} vagas restantes` : 'Esgotado'}
-                      </div>
-
-                      {isFull ? (
-                        <button disabled className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold uppercase tracking-wide text-gray-400">
-                          Sem Vagas
-                        </button>
-                      ) : (
-                        <Link href={`/agenda/${agenda.id}`} className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#F17B37]/10 px-4 py-3 text-sm font-bold uppercase tracking-wide text-[#F17B37] transition hover:bg-[#F17B37] hover:text-white">
-                          Ver detalhes <ChevronRight className="ml-1 h-4 w-4" />
-                        </Link>
-                      )}
-                    </div>
-                  </motion.div>
+          <div className="space-y-10 md:space-y-14">
+            {months.map(([key, monthAgendas]) => (
+              <section key={key}>
+                <div className="mb-4 flex items-center gap-3 px-1">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#F17B37] text-[10px] font-black uppercase shadow-lg shadow-orange-950/30">
+                    {eventDate(monthAgendas[0].date)
+                      .toLocaleDateString("pt-BR", { month: "short" })
+                      .replace(".", "")}
+                  </span>
+                  <div>
+                    <h2 className="text-xl font-black capitalize md:text-2xl">
+                      {monthLabel(monthAgendas[0].date)}
+                    </h2>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {monthAgendas.length} {monthAgendas.length === 1 ? "experiência" : "experiências"}
+                    </p>
+                  </div>
+                  <div className="ml-2 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
                 </div>
-              );
-            })}
+
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  {monthAgendas.map((agenda, index) => {
+                    const date = eventDate(agenda.date);
+                    const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
+                    const weekDay = date
+                      .toLocaleDateString("pt-BR", { weekday: "short" })
+                      .replace(".", "")
+                      .toUpperCase();
+                    const occupied = Number(agenda.reserved_count || 0);
+                    const capacity = Number(agenda.max_capacity || 15);
+                    const remaining = Math.max(0, capacity - occupied);
+                    const full = remaining === 0;
+                    const imageUrl =
+                      agenda.flyer_url ||
+                      (Array.isArray(agenda.images) ? agenda.images[0] : null);
+                    const justAdded = addedAgendaId === agenda.id;
+
+                    return (
+                      <motion.article
+                        key={agenda.id}
+                        initial={{ opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: Math.min(index * 0.05, 0.25) }}
+                        className={`group overflow-hidden rounded-[1.35rem] border bg-[#182333] shadow-xl transition md:rounded-[1.75rem] ${
+                          full
+                            ? "border-white/5 opacity-60 grayscale"
+                            : "border-white/10 hover:-translate-y-1 hover:border-orange-300/30"
+                        }`}
+                      >
+                        <Link
+                          href={`/agenda/${agenda.id}`}
+                          className="relative block aspect-[4/3] overflow-hidden bg-slate-800"
+                        >
+                          {imageUrl ? (
+                            <Image
+                              src={imageUrl}
+                              alt={`Trilha ${agenda.title}`}
+                              fill
+                              sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
+                              className="object-cover transition duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <span className="grid h-full place-items-center">
+                              <ImageIcon className="h-8 w-8 text-slate-600" />
+                            </span>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#182333] via-transparent to-black/15" />
+                          <div className="absolute left-2 top-2 overflow-hidden rounded-xl bg-white text-center text-[#0F1722] shadow-xl md:left-3 md:top-3">
+                            <span className="block bg-[#F17B37] px-2 py-0.5 text-[9px] font-black text-white">
+                              {weekDay}
+                            </span>
+                            <span className="block px-2 py-1 text-lg font-black leading-none md:text-xl">
+                              {day}
+                            </span>
+                          </div>
+                          {full && (
+                            <span className="absolute inset-x-2 bottom-2 rounded-lg bg-red-600 px-2 py-1 text-center text-[9px] font-black uppercase tracking-wider">
+                              Esgotada
+                            </span>
+                          )}
+                        </Link>
+
+                        <div className="flex min-h-44 flex-col p-3 sm:p-4">
+                          <p className="line-clamp-2 min-h-10 text-xs font-black leading-snug text-white sm:text-sm">
+                            {agenda.title}
+                          </p>
+                          <div className="mt-2 space-y-1.5">
+                            <p className="flex items-start gap-1 text-[10px] leading-tight text-slate-400">
+                              <MapPin className="mt-px h-3 w-3 shrink-0 text-[#F17B37]" />
+                              <span className="line-clamp-1">{agenda.meeting_point || "Local a confirmar"}</span>
+                            </p>
+                            <p className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                              <Users className="h-3 w-3 text-emerald-400" />
+                              {full ? "Sem vagas" : `${remaining} vagas`}
+                            </p>
+                          </div>
+
+                          <div className="mt-auto pt-3">
+                            <p className="text-sm font-black text-white sm:text-base">
+                              {formatCurrency(agenda.price)}
+                            </p>
+                            <div className="mt-2 flex gap-1.5">
+                              <Link
+                                href={`/agenda/${agenda.id}`}
+                                aria-label={`Ver detalhes de ${agenda.title}`}
+                                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
+                              >
+                                <ChevronRight className="h-4 w-4" />
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => addAgendaToCart(agenda, remaining)}
+                                disabled={full}
+                                className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl px-2 text-[10px] font-black transition disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 sm:text-xs ${
+                                  justAdded
+                                    ? "bg-emerald-500 text-white"
+                                    : "bg-[#F17B37] text-white hover:bg-[#DD6828]"
+                                }`}
+                              >
+                                {justAdded ? (
+                                  <>
+                                    <Check className="h-3.5 w-3.5" /> Adicionada
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingCart className="h-3.5 w-3.5" /> Adicionar
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

@@ -6,6 +6,7 @@ const MAP_CACHE = `${CACHE_VERSION}-maps`;
 const APP_ROUTES = [
   '/app',
   '/app/trilhas',
+  '/app/carrinho',
   '/app/loja',
   '/app/ranking',
   '/app/perfil',
