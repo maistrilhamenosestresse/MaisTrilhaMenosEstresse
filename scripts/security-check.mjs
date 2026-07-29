@@ -41,6 +41,7 @@ for (const requiredPath of [
   'supabase/migrations/202607180002_asaas_only_and_backup_hardening.sql',
   'supabase/migrations/202607180003_hybrid_infinitepay_asaas.sql',
   'supabase/migrations/202607180004_web_push_notifications.sql',
+  'supabase/migrations/202607290002_loyalty_balance_and_contract_backup.sql',
 ]) {
   try { await readFile(path.join(root, requiredPath)); } catch { failures.push(`arquivo obrigatório ausente: ${requiredPath}`); }
 }

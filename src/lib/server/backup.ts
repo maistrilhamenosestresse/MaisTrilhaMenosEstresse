@@ -12,9 +12,12 @@ const BACKUP_TABLES = [
   'notificacoes', 'coupon_redemptions', 'bolao_apostas', 'settings', 'trilha_gpx',
   'fotos_trilhas', 'produtos', 'pedidos_loja', 'wallet_transactions',
   'points_transactions', 'experience_transactions', 'trail_checkout_benefits',
-  'content_documents', 'profiles', 'asaas_webhook_events',
+  'content_documents', 'client_contracts', 'contract_signing_invites',
+  'loyalty_program_config', 'loyalty_award_decisions',
+  'loyalty_balance_snapshots', 'profiles', 'asaas_webhook_events',
   'asaas_payments', 'infinitepay_checkouts', 'audit_logs', 'backup_runs',
   'backup_restore_tests', 'dependent_registration_invites',
+  'api_rate_limits',
 ] as const;
 
 const OPTIONAL_TABLES = new Set([
@@ -44,6 +47,13 @@ export async function runServerBackup(triggeredBy: string) {
     const tables: Record<string, unknown[]> = {};
     const warnings: string[] = [];
 
+    const balanceSnapshot = await supabase.rpc('record_loyalty_balance_snapshot', {
+      p_triggered_by: `backup:${triggeredBy}`,
+    });
+    if (balanceSnapshot.error) {
+      warnings.push(`snapshot financeiro: ${balanceSnapshot.error.message}`);
+    }
+
     for (const table of BACKUP_TABLES) {
       try {
         tables[table] = await exportTable(supabase, table);
@@ -54,6 +64,7 @@ export async function runServerBackup(triggeredBy: string) {
     }
 
     const authUsers = await exportAuthUsers(supabase);
+    const contractEvidence = buildContractEvidence(tables.client_contracts || []);
 
     const databasePayload = {
       format: 'maistrilha-supabase-backup-v1',
@@ -63,6 +74,7 @@ export async function runServerBackup(triggeredBy: string) {
       warnings,
       tables,
       authUsers,
+      criticalEvidence: { contracts: contractEvidence },
     };
     const compressed = gzipSync(Buffer.from(JSON.stringify(databasePayload)));
     const checksum = createHash('sha256').update(compressed).digest('hex');
@@ -84,6 +96,7 @@ export async function runServerBackup(triggeredBy: string) {
       backupId,
       createdAt: new Date().toISOString(),
       database: { bucket: backupBucket, key: databaseKey, size: compressed.length, checksumSha256: checksum },
+      criticalEvidence: { contracts: contractEvidence },
       media: {
         sourceBucket: BUCKET_NAME,
         mirrorBucket: backupBucket,
@@ -148,6 +161,29 @@ export async function runServerBackup(triggeredBy: string) {
     }).eq('id', backupId);
     throw error;
   }
+}
+
+function buildContractEvidence(rows: unknown[]) {
+  const normalized = rows
+    .map((value) => {
+      const row = value as Record<string, unknown>;
+      return [
+        row.id,
+        row.client_id,
+        row.contract_type,
+        row.version,
+        row.document_hash,
+        row.signature_url,
+        row.signed_at,
+      ].map((item) => String(item || '')).join('|');
+    })
+    .sort();
+  return {
+    count: normalized.length,
+    digestSha256: createHash('sha256')
+      .update(normalized.join('\n'))
+      .digest('hex'),
+  };
 }
 
 async function exportTable(supabase: ReturnType<typeof createSupabaseAdmin>, table: string) {

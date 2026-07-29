@@ -19,6 +19,14 @@ import { motion } from "framer-motion";
 import { discountToPoints, pointsToDiscount } from "@/lib/gamification";
 import { CancellationAcceptance } from "@/components/legal/CancellationAcceptance";
 
+type LoyaltyQuote = {
+  max_points: number;
+  max_discount: number;
+  reason: string;
+  costs_confirmed: boolean;
+  points_per_brl_discount: number;
+};
+
 function TrailCheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -37,6 +45,8 @@ function TrailCheckoutContent() {
   const [boletoInstallments, setBoletoInstallments] = useState(1);
   const [paymentResult, setPaymentResult] = useState<AsaasPaymentResult | null>(null);
   const [acceptedCancellation, setAcceptedCancellation] = useState(false);
+  const [pointsQuote, setPointsQuote] = useState<LoyaltyQuote | null>(null);
+  const [pointsQuoteLoading, setPointsQuoteLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -55,6 +65,28 @@ function TrailCheckoutContent() {
 
       if (agendaRes.data) setAgenda(agendaRes.data);
       if (clientRes.data) setClient(clientRes.data);
+      if (agendaRes.data && clientRes.data) {
+        try {
+          const quoteResponse = await fetch("/api/app/loyalty-quote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              reservationIds: [reservaId],
+              grossAmount: Number(agendaRes.data.price || 0),
+            }),
+          });
+          const quoteResult = await quoteResponse.json();
+          if (quoteResponse.ok && quoteResult.quote) {
+            setPointsQuote(quoteResult.quote as LoyaltyQuote);
+          }
+        } catch {
+          setPointsQuote(null);
+        } finally {
+          setPointsQuoteLoading(false);
+        }
+      } else {
+        setPointsQuoteLoading(false);
+      }
       setLoading(false);
     }
     loadData();
@@ -185,10 +217,14 @@ function TrailCheckoutContent() {
   const grossPrice = price;
   const cashbackAvailable = Math.max(0, Number(client?.cashback_saldo || 0));
   const pointsAvailable = Math.max(0, Number(client?.pontos || 0));
+  const quotedPointsAvailable = Math.max(
+    0,
+    Math.min(pointsAvailable, Number(pointsQuote?.max_points || 0)),
+  );
   const cashbackApplied = useCashback ? Math.min(cashbackAvailable, grossPrice) : 0;
   const pointsApplied = usePoints
     ? Math.min(
-        discountToPoints(pointsToDiscount(pointsAvailable)),
+        quotedPointsAvailable,
         discountToPoints(Math.max(0, grossPrice - cashbackApplied)),
       )
     : 0;
@@ -286,7 +322,11 @@ function TrailCheckoutContent() {
 
           <button
             type="button"
-            disabled={pointsAvailable <= 0}
+            disabled={
+              pointsAvailable <= 0 ||
+              pointsQuoteLoading ||
+              quotedPointsAvailable <= 0
+            }
             onClick={() => setUsePoints((value) => !value)}
             className={`w-full rounded-2xl border p-4 text-left flex items-center gap-3 transition ${
               usePoints ? "border-amber-300 bg-amber-50" : "border-gray-200 bg-gray-50"
@@ -298,7 +338,11 @@ function TrailCheckoutContent() {
             <span className="flex-1">
               <span className="block text-sm font-black text-gray-800">Pontos</span>
               <span className="block text-xs text-gray-500">
-                {pointsAvailable} pontos = até {formatCurrency(pointsToDiscount(pointsAvailable))} de desconto
+                {pointsQuoteLoading
+                  ? "Calculando o desconto seguro desta trilha..."
+                  : quotedPointsAvailable > 0
+                    ? `${pointsAvailable} pontos disponíveis · use até ${quotedPointsAvailable} (${formatCurrency(pointsToDiscount(quotedPointsAvailable))})`
+                    : loyaltyQuoteMessage(pointsQuote?.reason, pointsAvailable)}
               </span>
             </span>
             <span className={`w-11 h-6 rounded-full p-1 transition ${usePoints ? "bg-amber-500" : "bg-gray-300"}`}>
@@ -325,7 +369,9 @@ function TrailCheckoutContent() {
             </div>
           </div>
           <p className="text-[11px] text-gray-500">
-            200 pontos valem R$ 1,00 de desconto. Pontos não viram saldo, saque ou dinheiro na carteira.
+            200 pontos valem R$ 1,00 de desconto. O limite desta compra é calculado
+            pela margem e pelos custos confirmados da trilha. Pontos não viram saldo,
+            saque ou dinheiro na carteira.
           </p>
         </div>
 
@@ -416,6 +462,23 @@ function TrailCheckoutContent() {
       </div>
     </div>
   );
+}
+
+function loyaltyQuoteMessage(reason: string | undefined, points: number) {
+  if (points <= 0) return "Você ainda não possui pontos disponíveis.";
+  if (reason === "costs_not_confirmed") {
+    return "Aguardando a confirmação dos custos desta trilha.";
+  }
+  if (reason === "reserve_not_covered") {
+    return "O fundo de pontos está temporariamente em recomposição.";
+  }
+  if (reason === "margin_not_available") {
+    return "Esta trilha não possui margem disponível para desconto agora.";
+  }
+  if (reason === "program_disabled") {
+    return "O uso de pontos está temporariamente pausado.";
+  }
+  return "Nenhum desconto por pontos está disponível nesta compra.";
 }
 
 function PaymentMethodButton({

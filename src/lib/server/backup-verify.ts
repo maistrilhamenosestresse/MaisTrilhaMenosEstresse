@@ -18,6 +18,11 @@ const REQUIRED_TABLES = [
   "experience_transactions",
   "trail_checkout_benefits",
   "content_documents",
+  "client_contracts",
+  "contract_signing_invites",
+  "loyalty_program_config",
+  "loyalty_award_decisions",
+  "loyalty_balance_snapshots",
   "profiles",
   "asaas_webhook_events",
   "asaas_payments",
@@ -74,11 +79,17 @@ export async function verifyLatestServerBackup(triggeredBy: string) {
       backupId?: string;
       tables?: Record<string, unknown[]>;
       authUsers?: unknown[];
+      criticalEvidence?: {
+        contracts?: { count?: number; digestSha256?: string };
+      };
     };
     const manifest = JSON.parse(Buffer.from(manifestBytes).toString("utf8")) as {
       format?: string;
       backupId?: string;
       media?: { objects?: Array<{ key?: string }> };
+      criticalEvidence?: {
+        contracts?: { count?: number; digestSha256?: string };
+      };
     };
     if (
       payload.format !== "maistrilha-supabase-backup-v1" ||
@@ -98,14 +109,51 @@ export async function verifyLatestServerBackup(triggeredBy: string) {
       throw new Error("Usuários do Supabase Auth ausentes no backup");
     }
 
+    const contracts = payload.tables?.client_contracts || [];
+    const calculatedContractEvidence = buildContractEvidence(contracts);
+    const payloadContractEvidence = payload.criticalEvidence?.contracts;
+    const manifestContractEvidence = manifest.criticalEvidence?.contracts;
+    if (
+      contracts.some((value) => {
+        const contract = value as Record<string, unknown>;
+        return !String(contract.document_hash || "").trim()
+          || !String(contract.signature_url || "").trim()
+          || !contract.document_snapshot;
+      })
+      || payloadContractEvidence?.count !== calculatedContractEvidence.count
+      || payloadContractEvidence?.digestSha256 !== calculatedContractEvidence.digestSha256
+      || manifestContractEvidence?.count !== calculatedContractEvidence.count
+      || manifestContractEvidence?.digestSha256 !== calculatedContractEvidence.digestSha256
+    ) {
+      throw new Error("Evidência dos contratos ausente ou divergente no backup");
+    }
+
     const mediaObjects = Array.isArray(manifest.media?.objects)
       ? manifest.media.objects.filter((item) => item?.key)
       : [];
+    const mediaKeys = new Set(mediaObjects.map((item) => item.key));
+    const contractSignatureKeys = contracts
+      .map((value) =>
+        signatureKey((value as Record<string, unknown>).signature_url),
+      )
+      .filter((key): key is string => Boolean(key));
+    if (contractSignatureKeys.some((key) => !mediaKeys.has(key))) {
+      throw new Error("Assinatura de contrato ausente no manifesto de mídia");
+    }
+
     const sample = selectMediaSample(mediaObjects, 25);
-    await Promise.all(sample.map((item) =>
+    const signatureSample = selectMediaSample(
+      [...new Set(contractSignatureKeys)].map((key) => ({ key })),
+      100,
+    );
+    const verificationKeys = [...new Set([
+      ...sample.map((item) => item.key),
+      ...signatureSample.map((item) => item.key),
+    ].filter((key): key is string => Boolean(key)))];
+    await Promise.all(verificationKeys.map((key) =>
       s3Client.send(new HeadObjectCommand({
         Bucket: backupBucket,
-        Key: `media-mirror/${item.key}`,
+        Key: `media-mirror/${key}`,
       })),
     ));
 
@@ -117,7 +165,7 @@ export async function verifyLatestServerBackup(triggeredBy: string) {
         manifest_checksum_valid: true,
         tables_verified: REQUIRED_TABLES.length,
         auth_users_verified: payload.authUsers.length,
-        media_objects_verified: sample.length,
+        media_objects_verified: verificationKeys.length,
         completed_at: completedAt,
       }).eq("id", test.id),
       supabase.from("backup_runs").update({
@@ -131,7 +179,8 @@ export async function verifyLatestServerBackup(triggeredBy: string) {
           triggeredBy,
           tablesVerified: REQUIRED_TABLES.length,
           authUsersVerified: payload.authUsers.length,
-          mediaObjectsSampled: sample.length,
+          mediaObjectsSampled: verificationKeys.length,
+          contractsVerified: calculatedContractEvidence.count,
         },
       }),
     ]);
@@ -142,7 +191,8 @@ export async function verifyLatestServerBackup(triggeredBy: string) {
       manifestChecksumValid: true,
       tablesVerified: REQUIRED_TABLES.length,
       authUsersVerified: payload.authUsers.length,
-      mediaObjectsVerified: sample.length,
+      mediaObjectsVerified: verificationKeys.length,
+      contractsVerified: calculatedContractEvidence.count,
     };
   } catch (error: any) {
     await supabase.from("backup_restore_tests").update({
@@ -156,6 +206,39 @@ export async function verifyLatestServerBackup(triggeredBy: string) {
 
 function sha256(bytes: Uint8Array) {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function buildContractEvidence(rows: unknown[]) {
+  const normalized = rows
+    .map((value) => {
+      const row = value as Record<string, unknown>;
+      return [
+        row.id,
+        row.client_id,
+        row.contract_type,
+        row.version,
+        row.document_hash,
+        row.signature_url,
+        row.signed_at,
+      ].map((item) => String(item || "")).join("|");
+    })
+    .sort();
+  return {
+    count: normalized.length,
+    digestSha256: createHash("sha256")
+      .update(normalized.join("\n"))
+      .digest("hex"),
+  };
+}
+
+function signatureKey(value: unknown) {
+  try {
+    const url = new URL(String(value || ""));
+    const key = decodeURIComponent(url.pathname.replace(/^\/+/, ""));
+    return key.startsWith("signatures/") ? key : null;
+  } catch {
+    return null;
+  }
 }
 
 function selectMediaSample(objects: Array<{ key?: string }>, limit: number) {

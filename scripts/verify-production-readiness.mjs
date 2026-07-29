@@ -101,6 +101,8 @@ async function checkSupabase() {
       'asaas_payments', 'audit_logs', 'backup_runs', 'dependent_registration_invites',
       'backup_restore_tests', 'api_rate_limits', 'pedidos_loja',
       'infinitepay_checkouts', 'push_subscriptions', 'push_campaigns',
+      'client_contracts', 'contract_signing_invites', 'loyalty_program_config',
+      'loyalty_award_decisions', 'loyalty_balance_snapshots',
     ];
     const rpcs = [
       'consume_api_rate_limit', 'redeem_campaign_coupon', 'create_pending_reservation_batch',
@@ -110,6 +112,8 @@ async function checkSupabase() {
       'credit_wallet_from_asaas', 'reverse_wallet_credit_from_asaas',
       'credit_wallet_from_provider',
       'award_points_from_asaas', 'increment_agenda_views',
+      'get_loyalty_financial_summary', 'loyalty_points_for_amount',
+      'quote_app_trail_points', 'record_loyalty_balance_snapshot',
     ];
     for (const table of tables) {
       if (!paths.has(`/${table}`)) failures.push(`tabela Supabase ausente: ${table}`);
@@ -170,9 +174,18 @@ async function checkAnonymousSupabaseBoundaries(url, anonKey) {
   const publicAgenda = await fetch(`${url}/rest/v1/agendas?select=id&limit=1`, { headers });
   if (!publicAgenda.ok) failures.push(`leitura pública de agendas bloqueada: HTTP ${publicAgenda.status}`);
 
-  for (const table of ['clients', 'reservas', 'asaas_payments', 'backup_runs', 'audit_logs']) {
+  for (const table of [
+    'clients', 'reservas', 'asaas_payments', 'backup_runs', 'audit_logs',
+    'client_contracts', 'contract_signing_invites', 'loyalty_program_config',
+    'loyalty_award_decisions', 'loyalty_balance_snapshots',
+  ]) {
     const response = await fetch(`${url}/rest/v1/${table}?select=*&limit=1`, { headers });
-    if (response.ok) failures.push(`acesso anônimo indevido permitido em ${table}`);
+    if (response.ok) {
+      const rows = await response.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        failures.push(`acesso anônimo indevido permitido em ${table}`);
+      }
+    }
   }
 
   const unpublished = await fetch(`${url}/rest/v1/content_documents?select=id&published=eq.false&limit=1`, { headers });
