@@ -433,8 +433,9 @@ function CadastroContent() {
       <div className="w-full max-w-2xl px-6 relative z-10">
         {contractOnboarding ? (
           <div className="mb-4 rounded-2xl border border-orange-300/20 bg-orange-300/10 p-4 text-sm leading-relaxed text-orange-100">
-            Seu e-mail já foi preenchido. Complete as quatro etapas e, no final, revise e assine
-            o contrato de responsabilidade e o contrato do seguro.
+            O e-mail usado para solicitar o link já foi preenchido. Confira o endereço e corrija-o
+            se necessário antes de continuar. No final, revise e assine o contrato de
+            responsabilidade e o contrato do seguro.
           </div>
         ) : null}
         <form onSubmit={onSubmit} className="bg-[#1a2332] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
