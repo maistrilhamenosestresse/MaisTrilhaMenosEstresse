@@ -116,7 +116,7 @@ const TERMS_SECTIONS = [
     title: "14. Cookies, preferências e funcionamento offline",
     paragraphs: [
       "Cookies e tecnologias equivalentes estritamente necessários podem ser usados para autenticação, segurança, carrinho, preferências, atualização do aplicativo web e recursos offline. O armazenamento local é limitado às informações necessárias para essas finalidades e não substitui os registros oficiais do servidor.",
-      "Medição de audiência e desempenho é opcional e somente será ativada após consentimento. O usuário pode recusar sem perder acesso ao serviço e pode rever ou retirar a escolha a qualquer momento pelo botão Cookies. Categorias, fornecedores, prazos e controles estão detalhados na Política de Cookies.",
+      "Medição de audiência e desempenho é opcional e somente será ativada após consentimento positivo. A implementação utiliza Google Consent Mode v2 no modo básico, mantém recursos de publicidade negados e respeita sinais Global Privacy Control. O usuário pode recusar sem perder acesso ao serviço e rever ou retirar a escolha a qualquer momento pelo botão Privacidade. Categorias, fornecedores, prazos e controles estão detalhados na Política de Cookies.",
     ],
   },
 ] as const;
