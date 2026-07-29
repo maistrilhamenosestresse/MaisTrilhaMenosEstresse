@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Calendar, DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2, 
   CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation, 
-  Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, UploadCloud, Award
+  Camera, AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, Clock, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, UploadCloud, Award, LockKeyhole
 } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
 import CobrancasDashboard from "@/components/admin/CobrancasDashboard";
@@ -22,6 +22,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveCont
 import { calculateNetProfit } from "@/lib/fees";
 import imageCompression from 'browser-image-compression';
 import { uploadMediaToAws } from '@/lib/upload-media-client';
+import { isArchivedTrailDate } from "@/lib/trails";
 
 type AgendaForm = {
   title: string; location: string; date: string; price: string;
@@ -35,6 +36,25 @@ type ChatMessage = { sender: 'user' | 'bot'; text: string; };
 
 const formatCurrency = (val: number | string) => Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const csvCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+const agendaMutationPayload = (agenda: any) => ({
+  title: agenda.title,
+  date: agenda.date,
+  price: agenda.price,
+  description: agenda.description,
+  meeting_point: agenda.meeting_point,
+  requirements: agenda.requirements,
+  max_capacity: agenda.max_capacity,
+  duration_hours: agenda.duration_hours,
+  distance_km: agenda.distance_km,
+  difficulty: agenda.difficulty || "easy",
+  images: Array.isArray(agenda.images) ? agenda.images : [],
+  video_url: agenda.video_url || null,
+  flyer_url: agenda.flyer_url || null,
+  accepted_payment_methods: Array.isArray(agenda.accepted_payment_methods)
+    ? agenda.accepted_payment_methods
+    : ["PIX"],
+  taxa_gratis: Boolean(agenda.taxa_gratis),
+});
 
 const formatPaymentMethod = (method?: string) => {
   if (method === 'CREDIT_CARD') return 'Cartão (Asaas)';
@@ -277,7 +297,15 @@ export default function AdminPage() {
       try {
         const { data, error } = await supabase.from('agendas').select('*, reservas(status_pagamento)').order('date', { ascending: true });
         if (error) throw error;
-        setAgendas(data || []);
+        const orderedAgendas = [...(data || [])].sort((left, right) => {
+          const leftArchived = isArchivedTrailDate(left.date);
+          const rightArchived = isArchivedTrailDate(right.date);
+          if (leftArchived !== rightArchived) return leftArchived ? 1 : -1;
+          return leftArchived
+            ? String(right.date).localeCompare(String(left.date))
+            : String(left.date).localeCompare(String(right.date));
+        });
+        setAgendas(orderedAgendas);
       
       const { data: resSettings } = await supabase.from('settings').select('*').single();
       if (resSettings) setIsMaintenance(resSettings.maintenance_mode);
@@ -664,12 +692,22 @@ export default function AdminPage() {
     if (!(await requirePin('Excluir Trilha'))) return;
     if (!window.confirm("Excluir esta trilha?")) return;
     try {
-      await supabase.from('agendas').delete().eq('id', id);
-      fetchAgendasAndCleanup();
-    } catch (error: any) { alert("Erro ao excluir."); }
+      const response = await fetch(`/api/admin/agendas/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Erro ao excluir a trilha");
+      await fetchAgendasAndCleanup();
+    } catch (error: any) {
+      alert(error.message || "Erro ao excluir.");
+    }
   };
 
-  const handleEdit = (agenda: any) => {
+  const handleEdit = async (agenda: any) => {
+    if (
+      isArchivedTrailDate(agenda.date) &&
+      !(await requirePin(`Editar trilha encerrada: ${agenda.title}`))
+    ) return;
     setEditingAgenda(agenda);
     
     setValue("title", agenda.title);
@@ -716,15 +754,18 @@ export default function AdminPage() {
         updatedPayload = { images: newImages };
       }
 
-      const { error } = await supabase.from('agendas').update(updatedPayload).eq('id', editingAgenda.id);
-      if (error) throw error;
+      const nextAgenda = { ...editingAgenda, ...updatedPayload };
+      const response = await fetch(`/api/admin/agendas/${encodeURIComponent(editingAgenda.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(agendaMutationPayload(nextAgenda)),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Não foi possível remover a foto");
 
       // Atualiza o estado local para a UI refletir a exclusão na hora
-      setEditingAgenda({
-        ...editingAgenda,
-        ...updatedPayload
-      });
-      fetchAgendasAndCleanup();
+      setEditingAgenda(result.agenda || nextAgenda);
+      await fetchAgendasAndCleanup();
 
       alert("Foto excluída com sucesso!");
     } catch (e: any) {
@@ -915,17 +956,31 @@ export default function AdminPage() {
         taxa_gratis: false
       };
 
-      if (editingAgenda) {
-        const { error } = await supabase.from('agendas').update(payload).eq('id', editingAgenda.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('agendas').insert([payload]);
-        if (error) throw error;
+      const endpoint = editingAgenda
+        ? `/api/admin/agendas/${encodeURIComponent(editingAgenda.id)}`
+        : "/api/admin/agendas";
+      const sendAgenda = () => fetch(endpoint, {
+        method: editingAgenda ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      let response = await sendAgenda();
+      if (
+        response.status === 423 &&
+        editingAgenda &&
+        await requirePin(`Salvar alterações em trilha encerrada: ${editingAgenda.title}`)
+      ) {
+        response = await sendAgenda();
+      }
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível salvar a trilha");
       }
       
       setIsFormModalOpen(false);
       reset();
-      fetchAgendasAndCleanup();
+      setEditingAgenda(null);
+      await fetchAgendasAndCleanup();
     } catch (error: any) {
       alert(`Erro: ${error.message}`);
     } finally {
@@ -1243,10 +1298,21 @@ export default function AdminPage() {
                 {/* Lista de Trilhas */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                      Trilhas Ativas
-                      <span className="bg-[#F17B37]/10 text-[#F17B37] text-xs py-1 px-3 rounded-full font-black">{agendas.length}</span>
-                    </h3>
+                    <div>
+                      <h3 className="flex items-center gap-2 font-bold text-gray-800">
+                        Trilhas cadastradas
+                        <span className="rounded-full bg-[#F17B37]/10 px-3 py-1 text-xs font-black text-[#F17B37]">{agendas.length}</span>
+                      </h3>
+                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-wider">
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                          {agendas.filter((agenda) => !isArchivedTrailDate(agenda.date)).length} próximas
+                        </span>
+                        <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-500">
+                          <LockKeyhole className="h-3 w-3" />
+                          {agendas.filter((agenda) => isArchivedTrailDate(agenda.date)).length} encerradas
+                        </span>
+                      </div>
+                    </div>
                     {globalViews > 0 && (
                       <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-xl border border-green-200 shadow-sm">
                         <Eye className="h-4 w-4" />
@@ -1268,21 +1334,25 @@ export default function AdminPage() {
                         const occupied = agenda.reservas ? agenda.reservas.filter((r: any) => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length : 0;
                         const maxCap = agenda.max_capacity || 15;
                         const isFull = occupied >= maxCap;
+                        const isArchived = isArchivedTrailDate(agenda.date);
 
                         return (
-                          <div key={agenda.id} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${expandedAgendaId === agenda.id ? 'border-[#F17B37] ring-1 ring-[#F17B37]/20' : 'border-gray-100 hover:shadow-md'} ${isFull ? 'opacity-70 grayscale' : ''}`}>
+                          <div key={agenda.id} className={`rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${isArchived ? 'bg-gray-100/80 opacity-55 saturate-0' : 'bg-white'} ${expandedAgendaId === agenda.id ? 'border-[#F17B37] ring-1 ring-[#F17B37]/20' : 'border-gray-100 hover:shadow-md'} ${isFull && !isArchived ? 'opacity-70 grayscale' : ''}`}>
                             <div 
                               onClick={() => setExpandedAgendaId(expandedAgendaId === agenda.id ? null : agenda.id)}
                               className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 gap-4"
                             >
                               <div className="flex items-center gap-4 min-w-0 flex-1">
-                                <div className={`h-14 w-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${isFull ? 'bg-gray-100 border-gray-200' : 'bg-[#F17B37]/10 border-[#F17B37]/20'}`}>
-                                  <span className={`text-xs font-bold ${isFull ? 'text-gray-500' : 'text-[#F17B37]'}`}>{formatDateDisplay(agenda.date).substring(0, 5)}</span>
+                                <div className={`h-14 w-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${isArchived || isFull ? 'bg-gray-100 border-gray-200' : 'bg-[#F17B37]/10 border-[#F17B37]/20'}`}>
+                                  {isArchived && <LockKeyhole className="mb-0.5 h-3.5 w-3.5 text-gray-500" />}
+                                  <span className={`text-xs font-bold ${isArchived || isFull ? 'text-gray-500' : 'text-[#F17B37]'}`}>{formatDateDisplay(agenda.date).substring(0, 5)}</span>
                                 </div>
                                 <div className="flex-1 min-w-0 pr-2">
                                   <div className="flex items-center gap-2">
                                     <h4 className="font-bold text-gray-900 truncate">{agenda.title}</h4>
-                                    {isFull && <span className="bg-red-100 text-red-600 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-red-200">Esgotado</span>}
+                                    {isArchived
+                                      ? <span className="flex items-center gap-1 rounded border border-gray-300 bg-gray-200 px-2 py-0.5 text-[9px] font-black uppercase text-gray-600"><LockKeyhole className="h-2.5 w-2.5" /> Encerrada</span>
+                                      : isFull && <span className="bg-red-100 text-red-600 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-red-200">Esgotado</span>}
                                   </div>
                                   <div className="flex items-center gap-3 mt-0.5">
                                     <p className="text-sm font-medium text-green-600">R$ {agenda.price}</p>
@@ -1307,7 +1377,10 @@ export default function AdminPage() {
                                 >
                                   <div className="p-4 flex flex-col sm:flex-row items-center justify-end gap-3 flex-wrap">
                                     <button onClick={() => setSelectedPhotosAgendaId(agenda.id)} className="w-full sm:w-auto py-2.5 px-6 bg-purple-50 text-purple-600 font-bold rounded-xl hover:bg-purple-100 transition flex items-center justify-center gap-2"><ImageIcon className="h-4 w-4" /> Fotos da Trilha</button>
-                                    <button onClick={() => handleEdit(agenda)} className="w-full sm:w-auto py-2.5 px-6 bg-blue-50 text-blue-600 font-bold rounded-xl hover:bg-blue-100 transition flex items-center justify-center gap-2"><Edit2 className="h-4 w-4" /> Editar Trilha</button>
+                                    <button onClick={() => handleEdit(agenda)} className={`w-full sm:w-auto py-2.5 px-6 font-bold rounded-xl transition flex items-center justify-center gap-2 ${isArchived ? 'border border-gray-300 bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                                      {isArchived ? <LockKeyhole className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
+                                      {isArchived ? "Desbloquear edição" : "Editar Trilha"}
+                                    </button>
                                     <button onClick={() => deleteAgenda(agenda.id)} className="w-full sm:w-auto py-2.5 px-6 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2"><Trash2 className="h-4 w-4" /> Excluir</button>
                                   </div>
                                 </motion.div>
