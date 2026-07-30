@@ -293,6 +293,7 @@ export default function AgendaCalendar() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cartReady, setCartReady] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const cartItems = useCartStore((state) => state.items);
   const addItem = useCartStore((state) => state.addItem);
 
@@ -362,6 +363,14 @@ export default function AgendaCalendar() {
       )
     : 0;
 
+  const selectedMonthGroup = useMemo(
+    () =>
+      months.find(([key]) => key === selectedMonth) ||
+      months[0] ||
+      null,
+    [months, selectedMonth],
+  );
+
   function addAgendaToCart(agenda: Agenda, remaining: number) {
     if (remaining <= 0) return;
     const imageUrl =
@@ -387,12 +396,6 @@ export default function AgendaCalendar() {
     });
   }
 
-  function scrollToMonth(key: string) {
-    document
-      .getElementById(`mes-${key}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0F1722] pb-32 font-sans text-white selection:bg-[#F17B37]">
       <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-[#F17B37]/10 blur-[140px]" />
@@ -414,17 +417,20 @@ export default function AgendaCalendar() {
 
       {!isLoading && months.length > 0 && (
         <nav
-          aria-label="Ir para o mês"
-          className="sticky top-0 z-30 mx-auto mb-5 max-w-7xl border-y border-white/5 bg-[#0F1722]/95 px-3 py-2.5 backdrop-blur-xl md:top-[112px] md:mb-7 md:px-6"
+          aria-label="Selecionar o mês da agenda"
+          className="relative z-20 mx-auto mb-5 max-w-7xl border-y border-white/5 bg-[#0F1722]/80 px-3 py-2.5 backdrop-blur-xl md:mb-7 md:px-6"
         >
           <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {months.map(([key, monthAgendas], index) => (
+            {months.map(([key, monthAgendas]) => {
+              const isSelected = selectedMonthGroup?.[0] === key;
+              return (
               <button
                 key={key}
                 type="button"
-                onClick={() => scrollToMonth(key)}
+                onClick={() => setSelectedMonth(key)}
+                aria-pressed={isSelected}
                 className={`shrink-0 rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-wide transition ${
-                  index === 0
+                  isSelected
                     ? "border-[#F17B37] bg-[#F17B37] text-white shadow-lg shadow-orange-950/30"
                     : "border-white/10 bg-white/5 text-slate-300 hover:border-orange-300/40 hover:text-white"
                 }`}
@@ -434,7 +440,8 @@ export default function AgendaCalendar() {
                   .replace(".", "")}
                 <span className="ml-1.5 text-white/55">{monthAgendas.length}</span>
               </button>
-            ))}
+              );
+            })}
           </div>
         </nav>
       )}
@@ -459,40 +466,41 @@ export default function AgendaCalendar() {
             <p className="font-bold text-slate-300">Nenhuma nova trilha publicada.</p>
             <p className="mt-2 text-sm text-slate-500">O calendário será atualizado em breve.</p>
           </div>
-        ) : (
-          <div className="space-y-7 md:space-y-10">
-            {months.map(([key, monthAgendas]) => (
-              <section
-                key={key}
-                id={`mes-${key}`}
-                className="scroll-mt-16 md:scroll-mt-40"
-              >
+        ) : selectedMonthGroup ? (
+          <motion.section
+            key={selectedMonthGroup[0]}
+            initial={{ opacity: 0, x: 14 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
                 <div className="mb-2.5 flex items-center gap-2 px-1">
                   <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#F17B37] text-[8px] font-black uppercase shadow-lg shadow-orange-950/30">
-                    {eventDate(monthAgendas[0].date)
+                    {eventDate(selectedMonthGroup[1][0].date)
                       .toLocaleDateString("pt-BR", { month: "short" })
                       .replace(".", "")}
                   </span>
                   <div>
                     <h2 className="text-base font-black capitalize md:text-xl">
-                      {monthLabel(monthAgendas[0].date)}
+                      {monthLabel(selectedMonthGroup[1][0].date)}
                     </h2>
                     <p className="text-[9px] font-semibold text-slate-500">
-                      {monthAgendas.length} {monthAgendas.length === 1 ? "experiência" : "experiências"}
+                      {selectedMonthGroup[1].length}{" "}
+                      {selectedMonthGroup[1].length === 1
+                        ? "experiência"
+                        : "experiências"}
                     </p>
                   </div>
                   <div className="ml-2 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
                 </div>
 
                 <MonthRail
-                  monthAgendas={monthAgendas}
+                  key={selectedMonthGroup[0]}
+                  monthAgendas={selectedMonthGroup[1]}
                   cartAgendaIds={cartAgendaIds}
                   onAdd={addAgendaToCart}
                 />
-              </section>
-            ))}
-          </div>
-        )}
+          </motion.section>
+        ) : null}
       </main>
 
       {cartQuantity > 0 && (
