@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import { hasAdminSensitiveUnlock } from "@/lib/server/admin-sensitive-session";
+import { requireServerEnv } from "@/lib/server/env";
 import { isArchivedTrailDate } from "@/lib/trails";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -38,11 +39,16 @@ function finiteNumber(value: unknown, min: number, max: number) {
     : null;
 }
 
-function optionalHttpsUrl(value: unknown) {
+function optionalAwsMediaUrl(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
   const normalized = String(value).trim();
   if (normalized.length > 2_048) throw new Error("URL de mídia inválida");
   const url = new URL(normalized);
+  const bucket = requireServerEnv("AWS_S3_BUCKET_NAME");
+  const region = process.env.AWS_REGION || "us-east-1";
+  if (url.hostname !== `${bucket}.s3.${region}.amazonaws.com`) {
+    throw new Error("A mídia deve estar armazenada no AWS S3 oficial");
+  }
   if (url.protocol !== "https:") throw new Error("URL de mídia inválida");
   return url.toString();
 }
@@ -80,7 +86,7 @@ export function parseAgendaMutation(input: AgendaMutationInput) {
   if (!methods.length) throw new Error("Selecione uma forma de pagamento válida");
 
   const images = Array.isArray(input.images)
-    ? input.images.slice(0, 100).map(optionalHttpsUrl).filter(Boolean)
+    ? input.images.slice(0, 100).map(optionalAwsMediaUrl).filter(Boolean)
     : [];
 
   return {
@@ -95,8 +101,8 @@ export function parseAgendaMutation(input: AgendaMutationInput) {
     distance_km: distanceKm,
     difficulty,
     images,
-    video_url: optionalHttpsUrl(input.video_url),
-    flyer_url: optionalHttpsUrl(input.flyer_url),
+    video_url: optionalAwsMediaUrl(input.video_url),
+    flyer_url: optionalAwsMediaUrl(input.flyer_url),
     accepted_payment_methods: methods,
     taxa_gratis: Boolean(input.taxa_gratis),
   };

@@ -26,7 +26,17 @@ const OPTIONAL_TABLES = new Set([
   'infinitepay_checkouts',
 ]);
 
-const MEDIA_PREFIXES = ['legacy-media/', 'media/', 'trilhas/', 'produtos/', 'cadastro-docs/', 'signatures/', 'app-profiles/'];
+const MEDIA_PREFIXES = [
+  'legacy-media/',
+  'media/',
+  'trilhas/',
+  'produtos/',
+  'cadastro-docs/',
+  'signatures/',
+  'app-profiles/',
+  'supabase-migrated/',
+  'migration-manifests/',
+];
 
 export async function runServerBackup(triggeredBy: string) {
   const supabase = createSupabaseAdmin();
