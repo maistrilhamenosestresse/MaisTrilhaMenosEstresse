@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  ArrowLeft,
+  ArrowRight,
   CalendarDays,
   Check,
   ChevronRight,
@@ -51,6 +53,246 @@ function monthLabel(value: string) {
   return eventDate(value)
     .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
     .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+type AgendaCardProps = {
+  agenda: Agenda;
+  index: number;
+  justAdded: boolean;
+  onAdd: (agenda: Agenda, remaining: number) => void;
+};
+
+function AgendaCard({ agenda, index, justAdded, onAdd }: AgendaCardProps) {
+  const date = eventDate(agenda.date);
+  const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
+  const weekDay = date
+    .toLocaleDateString("pt-BR", { weekday: "short" })
+    .replace(".", "")
+    .toUpperCase();
+  const occupied = Number(agenda.reserved_count || 0);
+  const capacity = Number(agenda.max_capacity || 15);
+  const remaining = Math.max(0, capacity - occupied);
+  const full = remaining === 0;
+  const imageUrl =
+    agenda.flyer_url ||
+    (Array.isArray(agenda.images) ? agenda.images[0] : null);
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, x: 18 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.2) }}
+      className={`group w-[78vw] max-w-[19rem] shrink-0 snap-start overflow-hidden rounded-[1.35rem] border bg-[#182333] shadow-xl transition sm:w-[46%] md:w-[31%] md:rounded-[1.75rem] lg:w-[23%] xl:w-[22%] ${
+        full
+          ? "border-white/5 opacity-60 grayscale"
+          : "border-white/10 hover:-translate-y-1 hover:border-orange-300/30"
+      }`}
+    >
+      <Link
+        href={`/agenda/${agenda.id}`}
+        className="relative block aspect-[4/3] overflow-hidden bg-slate-800"
+      >
+        {imageUrl ? (
+          <Image
+            src={imageUrl}
+            alt={`Trilha ${agenda.title}`}
+            fill
+            sizes="(max-width: 639px) 78vw, (max-width: 767px) 46vw, (max-width: 1023px) 31vw, 23vw"
+            className="object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <span className="grid h-full place-items-center">
+            <ImageIcon className="h-8 w-8 text-slate-600" />
+          </span>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#182333] via-transparent to-black/15" />
+        <div className="absolute left-2 top-2 overflow-hidden rounded-xl bg-white text-center text-[#0F1722] shadow-xl md:left-3 md:top-3">
+          <span className="block bg-[#F17B37] px-2 py-0.5 text-[9px] font-black text-white">
+            {weekDay}
+          </span>
+          <span className="block px-2 py-1 text-lg font-black leading-none md:text-xl">
+            {day}
+          </span>
+        </div>
+        {full && (
+          <span className="absolute inset-x-2 bottom-2 rounded-lg bg-red-600 px-2 py-1 text-center text-[9px] font-black uppercase tracking-wider">
+            Esgotada
+          </span>
+        )}
+      </Link>
+
+      <div className="flex min-h-44 flex-col p-3 sm:p-4">
+        <p className="line-clamp-2 min-h-10 text-xs font-black leading-snug text-white sm:text-sm">
+          {agenda.title}
+        </p>
+        <div className="mt-2 space-y-1.5">
+          <p className="flex items-start gap-1 text-[10px] leading-tight text-slate-400">
+            <MapPin className="mt-px h-3 w-3 shrink-0 text-[#F17B37]" />
+            <span className="line-clamp-1">
+              {agenda.meeting_point || "Local a confirmar"}
+            </span>
+          </p>
+          <p className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+            <Users className="h-3 w-3 text-emerald-400" />
+            {full ? "Sem vagas" : `${remaining} vagas`}
+          </p>
+        </div>
+
+        <div className="mt-auto pt-3">
+          <p className="text-sm font-black text-white sm:text-base">
+            {formatCurrency(agenda.price)}
+          </p>
+          <div className="mt-2 flex gap-1.5">
+            <Link
+              href={`/agenda/${agenda.id}`}
+              aria-label={`Ver detalhes de ${agenda.title}`}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+            <button
+              type="button"
+              onClick={() => onAdd(agenda, remaining)}
+              disabled={full}
+              className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl px-2 text-[10px] font-black transition disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 sm:text-xs ${
+                justAdded
+                  ? "bg-emerald-500 text-white"
+                  : "bg-[#F17B37] text-white hover:bg-[#DD6828]"
+              }`}
+            >
+              {justAdded ? (
+                <>
+                  <Check className="h-3.5 w-3.5" /> Adicionada
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5" /> Adicionar
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+type MonthRailProps = {
+  monthAgendas: Agenda[];
+  addedAgendaId: string | null;
+  onAdd: (agenda: Agenda, remaining: number) => void;
+};
+
+function MonthRail({ monthAgendas, addedAgendaId, onAdd }: MonthRailProps) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+
+    const updateScrollState = () => {
+      const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
+      setCanScrollLeft(rail.scrollLeft > 8);
+      setCanScrollRight(rail.scrollLeft < maxScroll - 8);
+      setProgress(maxScroll > 0 ? rail.scrollLeft / maxScroll : 1);
+    };
+
+    updateScrollState();
+    rail.addEventListener("scroll", updateScrollState, { passive: true });
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(rail);
+
+    return () => {
+      rail.removeEventListener("scroll", updateScrollState);
+      resizeObserver.disconnect();
+    };
+  }, [monthAgendas.length]);
+
+  function scrollRail(direction: "left" | "right") {
+    const rail = railRef.current;
+    if (!rail) return;
+    rail.scrollBy({
+      left: (direction === "right" ? 1 : -1) * rail.clientWidth * 0.86,
+      behavior: "smooth",
+    });
+  }
+
+  const hasOverflow = canScrollLeft || canScrollRight;
+
+  return (
+    <div className="relative">
+      <div
+        ref={railRef}
+        role="region"
+        aria-label={`Trilhas de ${monthLabel(monthAgendas[0].date)}`}
+        tabIndex={0}
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-1 pb-5 pt-1 scroll-smooth [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden"
+      >
+        {monthAgendas.map((agenda, index) => (
+          <AgendaCard
+            key={agenda.id}
+            agenda={agenda}
+            index={index}
+            justAdded={addedAgendaId === agenda.id}
+            onAdd={onAdd}
+          />
+        ))}
+        {hasOverflow && <div aria-hidden="true" className="w-3 shrink-0 sm:w-8" />}
+      </div>
+
+      {canScrollLeft && (
+        <>
+          <div className="pointer-events-none absolute inset-y-1 left-0 hidden w-20 bg-gradient-to-r from-[#0F1722] to-transparent md:block" />
+          <button
+            type="button"
+            onClick={() => scrollRail("left")}
+            aria-label="Ver trilhas anteriores"
+            className="absolute left-2 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-[#071829]/90 text-white shadow-2xl backdrop-blur transition hover:scale-105 hover:bg-[#F17B37] md:grid"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        </>
+      )}
+
+      {canScrollRight && (
+        <>
+          <div className="pointer-events-none absolute inset-y-1 right-0 w-16 bg-gradient-to-l from-[#0F1722] to-transparent sm:w-24" />
+          <button
+            type="button"
+            onClick={() => scrollRail("right")}
+            aria-label="Ver mais trilhas deste mês"
+            className="absolute right-2 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-[#071829]/90 text-white shadow-2xl backdrop-blur transition hover:scale-105 hover:bg-[#F17B37] md:grid"
+          >
+            <ArrowRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
+
+      {hasOverflow && (
+        <div className="mt-1 flex items-center justify-between gap-4 px-1">
+          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 md:hidden">
+            Deslize para ver mais <ArrowRight className="h-3.5 w-3.5 text-[#F17B37]" />
+          </span>
+          <div
+            className="ml-auto h-1 w-20 overflow-hidden rounded-full bg-white/10 sm:w-28"
+            aria-label={`${Math.round(progress * 100)}% da faixa visualizada`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress * 100)}
+          >
+            <div
+              className="h-full rounded-full bg-[#F17B37] transition-[width] duration-150"
+              style={{ width: `${Math.max(18, progress * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AgendaCalendar() {
@@ -201,122 +443,11 @@ export default function AgendaCalendar() {
                   <div className="ml-2 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-                  {monthAgendas.map((agenda, index) => {
-                    const date = eventDate(agenda.date);
-                    const day = date.toLocaleDateString("pt-BR", { day: "2-digit" });
-                    const weekDay = date
-                      .toLocaleDateString("pt-BR", { weekday: "short" })
-                      .replace(".", "")
-                      .toUpperCase();
-                    const occupied = Number(agenda.reserved_count || 0);
-                    const capacity = Number(agenda.max_capacity || 15);
-                    const remaining = Math.max(0, capacity - occupied);
-                    const full = remaining === 0;
-                    const imageUrl =
-                      agenda.flyer_url ||
-                      (Array.isArray(agenda.images) ? agenda.images[0] : null);
-                    const justAdded = addedAgendaId === agenda.id;
-
-                    return (
-                      <motion.article
-                        key={agenda.id}
-                        initial={{ opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(index * 0.05, 0.25) }}
-                        className={`group overflow-hidden rounded-[1.35rem] border bg-[#182333] shadow-xl transition md:rounded-[1.75rem] ${
-                          full
-                            ? "border-white/5 opacity-60 grayscale"
-                            : "border-white/10 hover:-translate-y-1 hover:border-orange-300/30"
-                        }`}
-                      >
-                        <Link
-                          href={`/agenda/${agenda.id}`}
-                          className="relative block aspect-[4/3] overflow-hidden bg-slate-800"
-                        >
-                          {imageUrl ? (
-                            <Image
-                              src={imageUrl}
-                              alt={`Trilha ${agenda.title}`}
-                              fill
-                              sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
-                              className="object-cover transition duration-500 group-hover:scale-105"
-                            />
-                          ) : (
-                            <span className="grid h-full place-items-center">
-                              <ImageIcon className="h-8 w-8 text-slate-600" />
-                            </span>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#182333] via-transparent to-black/15" />
-                          <div className="absolute left-2 top-2 overflow-hidden rounded-xl bg-white text-center text-[#0F1722] shadow-xl md:left-3 md:top-3">
-                            <span className="block bg-[#F17B37] px-2 py-0.5 text-[9px] font-black text-white">
-                              {weekDay}
-                            </span>
-                            <span className="block px-2 py-1 text-lg font-black leading-none md:text-xl">
-                              {day}
-                            </span>
-                          </div>
-                          {full && (
-                            <span className="absolute inset-x-2 bottom-2 rounded-lg bg-red-600 px-2 py-1 text-center text-[9px] font-black uppercase tracking-wider">
-                              Esgotada
-                            </span>
-                          )}
-                        </Link>
-
-                        <div className="flex min-h-44 flex-col p-3 sm:p-4">
-                          <p className="line-clamp-2 min-h-10 text-xs font-black leading-snug text-white sm:text-sm">
-                            {agenda.title}
-                          </p>
-                          <div className="mt-2 space-y-1.5">
-                            <p className="flex items-start gap-1 text-[10px] leading-tight text-slate-400">
-                              <MapPin className="mt-px h-3 w-3 shrink-0 text-[#F17B37]" />
-                              <span className="line-clamp-1">{agenda.meeting_point || "Local a confirmar"}</span>
-                            </p>
-                            <p className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                              <Users className="h-3 w-3 text-emerald-400" />
-                              {full ? "Sem vagas" : `${remaining} vagas`}
-                            </p>
-                          </div>
-
-                          <div className="mt-auto pt-3">
-                            <p className="text-sm font-black text-white sm:text-base">
-                              {formatCurrency(agenda.price)}
-                            </p>
-                            <div className="mt-2 flex gap-1.5">
-                              <Link
-                                href={`/agenda/${agenda.id}`}
-                                aria-label={`Ver detalhes de ${agenda.title}`}
-                                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => addAgendaToCart(agenda, remaining)}
-                                disabled={full}
-                                className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl px-2 text-[10px] font-black transition disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 sm:text-xs ${
-                                  justAdded
-                                    ? "bg-emerald-500 text-white"
-                                    : "bg-[#F17B37] text-white hover:bg-[#DD6828]"
-                                }`}
-                              >
-                                {justAdded ? (
-                                  <>
-                                    <Check className="h-3.5 w-3.5" /> Adicionada
-                                  </>
-                                ) : (
-                                  <>
-                                    <ShoppingCart className="h-3.5 w-3.5" /> Adicionar
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.article>
-                    );
-                  })}
-                </div>
+                <MonthRail
+                  monthAgendas={monthAgendas}
+                  addedAgendaId={addedAgendaId}
+                  onAdd={addAgendaToCart}
+                />
               </section>
             ))}
           </div>
