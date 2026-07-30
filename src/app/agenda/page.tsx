@@ -82,7 +82,7 @@ function AgendaCard({ agenda, index, justAdded, onAdd }: AgendaCardProps) {
       initial={{ opacity: 0, x: 18 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.2) }}
-      className={`group w-[78vw] max-w-[19rem] shrink-0 snap-start overflow-hidden rounded-[1.35rem] border bg-[#182333] shadow-xl transition sm:w-[46%] md:w-[31%] md:rounded-[1.75rem] lg:w-[23%] xl:w-[22%] ${
+      className={`group min-w-[82%] basis-[82%] shrink-0 snap-start overflow-hidden rounded-[1.35rem] border bg-[#182333] shadow-xl transition sm:min-w-[46%] sm:basis-[46%] md:min-w-[31%] md:basis-[31%] md:rounded-[1.75rem] lg:min-w-[23%] lg:basis-[23%] xl:min-w-[22%] xl:basis-[22%] ${
         full
           ? "border-white/5 opacity-60 grayscale"
           : "border-white/10 hover:-translate-y-1 hover:border-orange-300/30"
@@ -97,7 +97,7 @@ function AgendaCard({ agenda, index, justAdded, onAdd }: AgendaCardProps) {
             src={imageUrl}
             alt={`Trilha ${agenda.title}`}
             fill
-            sizes="(max-width: 639px) 78vw, (max-width: 767px) 46vw, (max-width: 1023px) 31vw, 23vw"
+            sizes="(max-width: 639px) 82vw, (max-width: 767px) 46vw, (max-width: 1023px) 31vw, 23vw"
             className="object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
@@ -383,7 +383,7 @@ export default function AgendaCalendar() {
           <span className="inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-[#F17B37]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-orange-200">
             <CalendarDays className="h-3.5 w-3.5" /> Calendário oficial
           </span>
-          <div className="mt-5 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div className="mt-5">
             <div>
               <h1 className="text-4xl font-black tracking-tight md:text-6xl">
                 Próximas <span className="text-[#F17B37]">aventuras</span>
@@ -392,12 +392,6 @@ export default function AgendaCalendar() {
                 Compare datas lado a lado, monte seu roteiro e coloque várias trilhas no mesmo carrinho.
               </p>
             </div>
-            <Link
-              href="/carrinho"
-              className="inline-flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black transition hover:bg-white/10"
-            >
-              <ShoppingCart className="h-5 w-5 text-[#F17B37]" /> Ver carrinho
-            </Link>
           </div>
         </motion.div>
       </header>
