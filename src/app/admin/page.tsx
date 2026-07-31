@@ -170,6 +170,7 @@ export default function AdminPage() {
   const [novoCustoValor, setNovoCustoValor] = useState('');
   const [novaReservaClientId, setNovaReservaClientId] = useState('');
   const [novaReservaClientSearch, setNovaReservaClientSearch] = useState('');
+  const [isNovaReservaSearchFocused, setIsNovaReservaSearchFocused] = useState(false);
   const [novaReservaStatus, setNovaReservaStatus] = useState('pago');
   const [novaReservaValorPago, setNovaReservaValorPago] = useState('');
   const [editingReservationPayment, setEditingReservationPayment] = useState<any | null>(null);
@@ -1917,35 +1918,68 @@ export default function AdminPage() {
                         <h4 className={`font-bold flex items-center gap-2 text-sm ${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'text-gray-500' : 'text-blue-900'}`}>
                           <Plus className="h-4 w-4"/> {(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'Trilha Esgotada - Inserção Bloqueada' : 'Inserir Passageiro Manualmente'}
                         </h4>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2 relative">
                           <div className="relative">
                             <Search className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
                             <input 
                               type="text"
                               placeholder="Pesquisar cliente por nome ou CPF..."
                               value={novaReservaClientSearch}
-                              onChange={(e) => setNovaReservaClientSearch(e.target.value)}
+                              onFocus={() => setIsNovaReservaSearchFocused(true)}
+                              onBlur={() => setTimeout(() => setIsNovaReservaSearchFocused(false), 200)}
+                              onChange={(e) => {
+                                setNovaReservaClientSearch(e.target.value);
+                                setNovaReservaClientId('');
+                              }}
                               disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                              className="w-full pl-9 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                              className={`w-full pl-9 p-3 bg-white border ${novaReservaClientId ? 'border-green-500' : 'border-gray-200'} rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F17B37] disabled:bg-gray-50 disabled:cursor-not-allowed transition-colors`}
                             />
+                            {novaReservaClientId && (
+                              <CheckCircle2 className="absolute right-3 top-3.5 h-4 w-4 text-green-500" />
+                            )}
                           </div>
-                          <select 
-                            value={novaReservaClientId} 
-                            onChange={(e) => setNovaReservaClientId(e.target.value)}
-                            disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                            className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Selecione um cliente...</option>
-                            {clients
-                              .filter(c => 
-                                !novaReservaClientSearch || 
-                                c.full_name.toLowerCase().includes(novaReservaClientSearch.toLowerCase()) || 
-                                (c.cpf && c.cpf.includes(novaReservaClientSearch))
-                              )
-                              .map(c => (
-                              <option key={c.id} value={c.id}>{c.full_name} ({c.cpf || 'Sem CPF'})</option>
-                            ))}
-                          </select>
+                          
+                          <AnimatePresence>
+                            {isNovaReservaSearchFocused && !novaReservaClientId && (
+                              <motion.ul 
+                                initial={{ opacity: 0, y: -5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -5 }}
+                                className="absolute z-50 w-full top-[100%] mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl"
+                              >
+                                {clients
+                                  .filter(c => 
+                                    !novaReservaClientSearch || 
+                                    c.full_name.toLowerCase().includes(novaReservaClientSearch.toLowerCase()) || 
+                                    (c.cpf && c.cpf.includes(novaReservaClientSearch))
+                                  )
+                                  .slice(0, 15)
+                                  .map(c => (
+                                  <li 
+                                    key={c.id} 
+                                    onClick={() => {
+                                      setNovaReservaClientId(c.id);
+                                      setNovaReservaClientSearch(`${c.full_name} (${c.cpf || 'Sem CPF'})`);
+                                      setIsNovaReservaSearchFocused(false);
+                                    }}
+                                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors"
+                                  >
+                                    <div className="font-bold text-gray-800 text-sm">{c.full_name}</div>
+                                    <div className="text-gray-500 text-xs mt-0.5">CPF: {c.cpf || 'Não informado'}</div>
+                                  </li>
+                                ))}
+                                {clients.filter(c => 
+                                    !novaReservaClientSearch || 
+                                    c.full_name.toLowerCase().includes(novaReservaClientSearch.toLowerCase()) || 
+                                    (c.cpf && c.cpf.includes(novaReservaClientSearch))
+                                  ).length === 0 && (
+                                  <li className="p-4 text-center text-gray-500 text-sm">
+                                    Nenhum cliente encontrado.
+                                  </li>
+                                )}
+                              </motion.ul>
+                            )}
+                          </AnimatePresence>
                         </div>
                         <div className="flex gap-3">
                           <select 
