@@ -150,8 +150,8 @@ export default function SobrePage() {
                       src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/equipe/Nivea.jpeg"
                       alt="Nívea Maria"
                       width={600}
-                      height={600}
-                      className="relative z-10 w-full h-[600px] object-cover object-top rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
+                      height={800}
+                      className="relative z-10 w-full h-auto md:max-h-[700px] object-contain bg-black/20 rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
                     />
                   </div>
                 </div>
@@ -164,8 +164,8 @@ export default function SobrePage() {
                       src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/FotosEvideos/equipe/Palestino.jpeg"
                       alt="Palestino"
                       width={600}
-                      height={600}
-                      className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#25D366]/50 transition-colors duration-500"
+                      height={800}
+                      className="relative z-10 w-full h-auto md:max-h-[700px] object-contain bg-black/20 rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#25D366]/50 transition-colors duration-500"
                     />
                   </div>
                   <div className="space-y-6 text-lg text-gray-300 leading-relaxed">
@@ -203,8 +203,8 @@ export default function SobrePage() {
                       src="/images/wellington_guia.jpg"
                       alt="Wellington Ferreira"
                       width={600}
-                      height={600}
-                      className="relative z-10 w-full h-[600px] object-cover object-top rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
+                      height={800}
+                      className="relative z-10 w-full h-auto md:max-h-[700px] object-contain bg-black/20 rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
                     />
                   </div>
                 </div>
