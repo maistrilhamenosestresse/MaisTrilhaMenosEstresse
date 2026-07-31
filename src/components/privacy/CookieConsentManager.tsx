@@ -388,8 +388,8 @@ export default function CookieConsentManager({ gaId }: { gaId: string }) {
             setSettingsOpen(true);
           }}
           className={`fixed left-3 z-[180] inline-flex h-11 min-h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-[#071829] text-xs font-black text-white shadow-xl transition hover:bg-[#12385E] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#D96224]/30 sm:h-auto sm:w-auto sm:gap-2 sm:px-3.5 sm:py-2 ${
-            pathname.startsWith("/app")
-              ? "bottom-[calc(env(safe-area-inset-bottom)+5.75rem)]"
+            pathname.startsWith("/app") || pathname.startsWith("/admin") || pathname.startsWith("/agenda")
+              ? "bottom-[calc(env(safe-area-inset-bottom)+7.5rem)]"
               : "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]"
           }`}
           aria-label="Rever preferências de privacidade"

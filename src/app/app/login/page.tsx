@@ -118,7 +118,10 @@ export default function AppLoginPage() {
       setLoading(false);
     } else if (data?.session) {
       setMessage({ type: "success", text: "Tudo pronto! Entrando nas suas aventuras..." });
-      if (!administrativeAccess) {
+      
+      if (administrativeAccess) {
+        router.push("/admin");
+      } else {
         const profileResponse = await fetch('/api/clients/me', { cache: 'no-store' });
         if (!profileResponse.ok) {
           await supabase.auth.signOut();
@@ -126,8 +129,8 @@ export default function AppLoginPage() {
           setLoading(false);
           return;
         }
+        router.push("/app");
       }
-      router.push("/app");
     }
   };
 
