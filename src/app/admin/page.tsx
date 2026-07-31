@@ -169,6 +169,7 @@ export default function AdminPage() {
   const [novoCustoNome, setNovoCustoNome] = useState('');
   const [novoCustoValor, setNovoCustoValor] = useState('');
   const [novaReservaClientId, setNovaReservaClientId] = useState('');
+  const [novaReservaClientSearch, setNovaReservaClientSearch] = useState('');
   const [novaReservaStatus, setNovaReservaStatus] = useState('pago');
   const [novaReservaValorPago, setNovaReservaValorPago] = useState('');
   const [editingReservationPayment, setEditingReservationPayment] = useState<any | null>(null);
@@ -1916,17 +1917,36 @@ export default function AdminPage() {
                         <h4 className={`font-bold flex items-center gap-2 text-sm ${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'text-gray-500' : 'text-blue-900'}`}>
                           <Plus className="h-4 w-4"/> {(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'Trilha Esgotada - Inserção Bloqueada' : 'Inserir Passageiro Manualmente'}
                         </h4>
-                        <select 
-                          value={novaReservaClientId} 
-                          onChange={(e) => setNovaReservaClientId(e.target.value)}
-                          disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                          className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                        >
-                          <option value="">Selecione um cliente cadastrado...</option>
-                          {clients.map(c => (
-                            <option key={c.id} value={c.id}>{c.full_name} ({c.cpf})</option>
-                          ))}
-                        </select>
+                        <div className="flex flex-col gap-2">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
+                            <input 
+                              type="text"
+                              placeholder="Pesquisar cliente por nome ou CPF..."
+                              value={novaReservaClientSearch}
+                              onChange={(e) => setNovaReservaClientSearch(e.target.value)}
+                              disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
+                              className="w-full pl-9 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                            />
+                          </div>
+                          <select 
+                            value={novaReservaClientId} 
+                            onChange={(e) => setNovaReservaClientId(e.target.value)}
+                            disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
+                            className="w-full p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Selecione um cliente...</option>
+                            {clients
+                              .filter(c => 
+                                !novaReservaClientSearch || 
+                                c.full_name.toLowerCase().includes(novaReservaClientSearch.toLowerCase()) || 
+                                (c.cpf && c.cpf.includes(novaReservaClientSearch))
+                              )
+                              .map(c => (
+                              <option key={c.id} value={c.id}>{c.full_name} ({c.cpf || 'Sem CPF'})</option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="flex gap-3">
                           <select 
                             value={novaReservaStatus} 
