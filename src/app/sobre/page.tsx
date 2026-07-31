@@ -181,6 +181,34 @@ export default function SobrePage() {
                   </div>
                 </div>
 
+                {/* Membro 3: Wellington */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                  <div className="order-2 md:order-1 space-y-6 text-lg text-gray-300 leading-relaxed">
+                    <h2 className="text-4xl md:text-5xl font-black text-white mb-2">Wellington Ferreira</h2>
+                    <h3 className="text-[#F17B37] font-bold tracking-[0.2em] uppercase text-sm mb-8">Guia</h3>
+
+                    <p>
+                      Minha história no Mais Trilha Menos Estresse começou de um jeito bem inusitado: caí de gaiato por indicação de uma amiga. Aquele foi o meu primeiro trekking em grupo e, para ser sincero, eu não esperava a proporção que isso tomaria na minha vida.
+                    </p>
+                    <p>
+                      Por ser bastante tímido, no começo eu ficava bem na minha, caladinho. Mas o que eu encontrei aqui não foi apenas um grupo de trilhas, foi uma verdadeira família. A forma como fui acolhido e abraçado me permitiu conquistar o meu espaço e, a cada dia, fui me envolvendo mais.
+                    </p>
+                    <p>
+                      Como a minha jornada começou do outro lado, sendo cliente, eu sei exatamente qual é a sensação de ser recebido por essa equipe. Hoje, não me vejo fazendo outra coisa e amo profundamente o meu trabalho. Acredito que não exista outro grupo igual ao nosso: a nossa ideia é proporcionar algo que todos possam fazer. Não entregamos apenas passeios, mas sim a experiência de uma família se divertindo no meio das cachoeiras e das pedras. Sou muito feliz por fazer parte dessa equipe e mal posso esperar para guiar você na sua próxima aventura!
+                    </p>
+                  </div>
+                  <div className="order-1 md:order-2 relative">
+                    <div className="absolute inset-0 bg-[#F17B37] blur-[100px] opacity-20 rounded-full" />
+                    <Image
+                      src="/images/wellington_guia.jpg"
+                      alt="Wellington Ferreira"
+                      width={600}
+                      height={600}
+                      className="relative z-10 w-full h-[600px] object-cover object-top rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
+                    />
+                  </div>
+                </div>
+
               </motion.div>
             )}
 
