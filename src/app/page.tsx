@@ -509,7 +509,18 @@ export default function LandingPage() {
             {/* AVISO DE COPYRIGHT */}
             <div className="mt-8 text-center text-sm text-gray-500 opacity-80 flex flex-col items-center gap-2">
               <p>&copy; {new Date().getFullYear()} Mais Trilha Menos Estresse. Todos os direitos reservados.</p>
-              <p><a href="/termos-de-uso" className="text-[#F17B37] hover:underline font-bold transition-colors">Clique aqui</a> para ler os Termos de Uso e Direitos Autorais.</p>
+              <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4">
+                <a href="/termos-de-uso" className="text-[#F17B37] hover:underline font-bold transition-colors">
+                  Termos de Uso e Direitos
+                </a>
+                <span className="hidden md:inline">•</span>
+                <button 
+                  onClick={() => window.dispatchEvent(new CustomEvent('mt:open-cookie-settings'))} 
+                  className="text-gray-400 hover:text-white transition-colors underline decoration-white/20 underline-offset-4"
+                >
+                  Preferências de Privacidade
+                </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

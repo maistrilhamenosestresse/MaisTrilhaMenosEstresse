@@ -215,6 +215,13 @@ export default function PwaPerfil() {
               </div>
               <ChevronRight className="w-5 h-5 text-gray-300" />
             </button>
+            <button onClick={() => window.dispatchEvent(new CustomEvent('mt:open-cookie-settings'))} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors text-left">
+              <div className="flex items-center gap-4">
+                <div className="bg-orange-50 p-2.5 rounded-xl text-orange-600"><ShieldCheck className="w-5 h-5" /></div>
+                <span className="font-bold text-gray-800 text-sm">Privacidade e Cookies</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-300" />
+            </button>
           </div>
         </div>
 

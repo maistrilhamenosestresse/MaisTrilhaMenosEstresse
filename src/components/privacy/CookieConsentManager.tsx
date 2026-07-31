@@ -229,6 +229,15 @@ export default function CookieConsentManager({ gaId }: { gaId: string }) {
   }, [analyticsAllowedOnRoute, consent, gpcLocked]);
 
   useEffect(() => {
+    const handleOpenSettings = () => {
+      if (consent) setDraftAnalytics(consent.analytics);
+      setSettingsOpen(true);
+    };
+    window.addEventListener("mt:open-cookie-settings", handleOpenSettings);
+    return () => window.removeEventListener("mt:open-cookie-settings", handleOpenSettings);
+  }, [consent]);
+
+  useEffect(() => {
     if (!analyticsEnabled || !analyticsLoaded || !window.gtag) return;
     window.gtag("event", "page_view", {
       page_path: pathname,
@@ -387,16 +396,11 @@ export default function CookieConsentManager({ gaId }: { gaId: string }) {
             setDraftAnalytics(consent.analytics);
             setSettingsOpen(true);
           }}
-          className={`fixed left-3 z-[180] inline-flex h-11 min-h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-[#071829] text-xs font-black text-white shadow-xl transition hover:bg-[#12385E] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#D96224]/30 sm:h-auto sm:w-auto sm:gap-2 sm:px-3.5 sm:py-2 ${
-            pathname.startsWith("/app") || pathname.startsWith("/admin") || pathname.startsWith("/agenda")
-              ? "bottom-[calc(env(safe-area-inset-bottom)+7.5rem)]"
-              : "bottom-[calc(env(safe-area-inset-bottom)+0.75rem)]"
-          }`}
-          aria-label="Rever preferências de privacidade"
-          title="Configurações de privacidade"
+          className="fixed bottom-4 left-4 z-[180] hidden md:flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white/70 shadow-lg backdrop-blur-md transition-all hover:bg-black/60 hover:text-white hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F17B37]/50"
+          aria-label="Preferências de Privacidade"
+          title="Configurações de cookies e privacidade"
         >
-          <Settings2 className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
-          <span className="sr-only sm:not-sr-only">Privacidade</span>
+          <ShieldCheck className="h-5 w-5" aria-hidden="true" />
         </button>
       )}
 
