@@ -151,7 +151,7 @@ export default function SobrePage() {
                       alt="Nívea Maria"
                       width={600}
                       height={600}
-                      className="relative z-10 w-full h-[600px] object-cover rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
+                      className="relative z-10 w-full h-[600px] object-cover object-top rounded-[2rem] shadow-2xl border-4 border-white/10 hover:border-[#F17B37]/50 transition-colors duration-500"
                     />
                   </div>
                 </div>
