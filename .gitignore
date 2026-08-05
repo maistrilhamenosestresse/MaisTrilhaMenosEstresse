@@ -12,6 +12,14 @@
 
 # testing
 /coverage
+/tmp/
+
+# Documentos gerados e estratégias internas ficam somente no computador
+/output/
+/scripts/generate-admin-manual-pdf.py
+/scripts/generate-sales-funnel-strategy-pdf.py
+/scripts/qa-admin-manual-pdf.py
+/scripts/qa-sales-funnel-strategy-pdf.py
 
 # next.js
 /.next/

@@ -72,7 +72,12 @@ export default function LoginPage() {
       setMessage({ type: "error", text: `Código inválido ou expirado. Tente pedir um novo código.` });
       setLoading(false);
     } else if (data?.session) {
-      const access = await fetch("/api/auth/admin-eligibility", { cache: "no-store" });
+      const access = await fetch("/api/auth/admin-eligibility", {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${data.session.access_token}`,
+        },
+      });
       if (!access.ok) {
         await supabase.auth.signOut();
         setMessage({ type: "error", text: "Acesso negado: esta conta não possui perfil administrativo." });

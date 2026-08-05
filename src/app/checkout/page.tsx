@@ -33,6 +33,7 @@ function CheckoutAuthContent() {
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [authError, setAuthError] = useState('');
   const [clientData, setClientData] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({});
   
@@ -105,24 +106,35 @@ function CheckoutAuthContent() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setAuthError('');
     const normalizedEmail = email.trim().toLowerCase();
-    const eligibilityResponse = await fetch('/api/auth/client-eligibility', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalizedEmail }),
-    });
-    const eligibility = eligibilityResponse.ok ? await eligibilityResponse.json() : { registered: false };
-    if (!eligibility.registered) {
-      setIsLoading(false);
-      router.push(`/cadastro?email=${encodeURIComponent(email)}`);
-      return;
-    }
-    const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail });
-    setIsLoading(false);
-    if (error) {
-      alert("Erro ao enviar código: " + error.message);
-    } else {
+    try {
+      const eligibilityResponse = await fetch('/api/auth/client-eligibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const eligibility = await eligibilityResponse.json().catch(() => ({}));
+
+      if (!eligibilityResponse.ok) {
+        throw new Error(
+          eligibility.error ||
+          'Não foi possível consultar seu cadastro agora. Aguarde alguns instantes e tente novamente.',
+        );
+      }
+
+      if (eligibility.registered !== true) {
+        router.push(`/cadastro?email=${encodeURIComponent(normalizedEmail)}`);
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail });
+      if (error) throw new Error(`Erro ao enviar código: ${error.message}`);
       setStep('otp');
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'Não foi possível continuar agora. Tente novamente.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -268,9 +280,14 @@ function CheckoutAuthContent() {
               <div className="mb-6">
                 <div className="relative">
                   <Mail className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full pl-12 p-4 bg-[#0F1722]/50 border border-white/10 rounded-2xl focus:ring-1 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" placeholder="email@exemplo.com" />
+                  <input type="email" required value={email} onChange={e => { setEmail(e.target.value); setAuthError(''); }} className="w-full pl-12 p-4 bg-[#0F1722]/50 border border-white/10 rounded-2xl focus:ring-1 focus:ring-[#F17B37] outline-none transition-all placeholder-gray-600" placeholder="email@exemplo.com" />
                 </div>
               </div>
+              {authError && (
+                <div role="alert" aria-live="polite" className="mb-5 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {authError}
+                </div>
+              )}
               <button type="submit" disabled={isLoading || !email} className="w-full bg-[#F17B37] text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#d9682b] transition disabled:opacity-50">
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Continuar <ArrowRight className="h-5 w-5" /></>}
               </button>

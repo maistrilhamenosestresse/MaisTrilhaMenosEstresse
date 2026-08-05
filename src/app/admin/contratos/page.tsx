@@ -9,6 +9,8 @@ export default function ContratosAdminPage() {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [clients, setClients] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<'assinados' | 'pendentes'>('pendentes');
@@ -33,6 +35,8 @@ export default function ContratosAdminPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setIsLoading(true);
+        setLoadError("");
         const response = await fetch('/api/admin/contracts', { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'Falha ao carregar contratos');
@@ -42,12 +46,14 @@ export default function ContratosAdminPage() {
         if (requestedClient) setSearchTerm(requestedClient.full_name);
       } catch (err) {
         console.error("Erro ao carregar clientes para contratos:", err);
+        setClients([]);
+        setLoadError(err instanceof Error ? err.message : "Não foi possível carregar os contratos.");
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [reloadKey]);
 
   const handleCobrarWhatsApp = async (client: any) => {
     if (!(await requirePin(`Cobrar ${client.full_name} no WhatsApp`))) return;
@@ -206,7 +212,20 @@ export default function ContratosAdminPage() {
           </div>
         </div>
         
-        {displayedClients.length === 0 ? (
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-red-200 bg-red-50 p-10 text-center shadow-sm">
+            <XCircle className="mb-4 h-14 w-14 text-red-400" />
+            <h4 className="mb-2 text-xl font-bold text-red-900">Não foi possível consultar os contratos</h4>
+            <p className="max-w-xl text-sm text-red-700">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((value) => value + 1)}
+              className="mt-5 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-red-700"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : displayedClients.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm flex flex-col items-center justify-center">
             <XCircle className="w-16 h-16 text-gray-300 mb-4" />
             <h4 className="text-xl font-bold text-gray-800 mb-2">Nenhum passageiro encontrado</h4>

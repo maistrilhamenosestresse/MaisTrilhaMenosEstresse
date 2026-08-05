@@ -21,7 +21,6 @@ const officialInfinitePayWebhookUrl = `${officialSiteUrl}/api/webhooks/infinitep
 
 const requiredVariables = [
   'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'ADMIN_EMAILS',
   'ASAAS_API_KEY',
@@ -41,6 +40,9 @@ const requiredVariables = [
 
 for (const name of requiredVariables) {
   if (!process.env[name]?.trim()) failures.push(`variável obrigatória ausente: ${name}`);
+}
+if (!(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim()) {
+  failures.push('variável obrigatória ausente: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
 }
 
 if (!allowSandbox) checkProductionUrls();
@@ -83,7 +85,12 @@ async function checkSupabase() {
   try {
     const url = required('NEXT_PUBLIC_SUPABASE_URL').replace(/\/$/, '');
     const serviceKey = required('SUPABASE_SERVICE_ROLE_KEY');
-    const anonKey = required('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    const anonKey = (
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ''
+    ).trim();
+    if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ausente');
     const failureCountBefore = failures.length;
     const response = await fetch(`${url}/rest/v1/`, {
       headers: {

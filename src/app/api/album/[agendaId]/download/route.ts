@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client, BUCKET_NAME } from "@/lib/aws";
 import { requireAgendaCustomer } from "@/lib/server/auth";
+import { assertSameOrigin, readJsonBody } from "@/lib/server/request";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 export const dynamic = "force-dynamic";
@@ -11,27 +12,58 @@ export async function GET(
   context: { params: Promise<{ agendaId: string }> },
 ) {
   const { agendaId } = await context.params;
+  return createAlbumArchive(agendaId);
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ agendaId: string }> },
+) {
+  const originError = assertSameOrigin(request);
+  if (originError) return originError;
+  const parsed = await readJsonBody<{ photoIds?: string[] }>(request, 20_000);
+  if (parsed.response) return parsed.response;
+  const photoIds = Array.isArray(parsed.data.photoIds)
+    ? [...new Set(parsed.data.photoIds.map(String))]
+    : [];
+  if (!photoIds.length || photoIds.length > 250 || photoIds.some((id) => !isUuid(id))) {
+    return Response.json({ error: "Seleção de fotos inválida" }, { status: 400 });
+  }
+  const { agendaId } = await context.params;
+  return createAlbumArchive(agendaId, photoIds);
+}
+
+async function createAlbumArchive(agendaId: string, photoIds?: string[]) {
   const auth = await requireAgendaCustomer(agendaId);
   if (auth.response) return auth.response;
 
-  const { data, error } = await createSupabaseAdmin()
+  const supabase = createSupabaseAdmin();
+  let query = supabase
     .from("fotos_trilhas")
-    .select("aws_key, aws_url, aws_face_id")
+    .select("id, aws_key, aws_url, aws_face_id")
     .eq("agenda_id", agendaId)
     .limit(250);
+  if (photoIds?.length) query = query.in("id", photoIds);
+  const { data, error } = await query;
   if (error) return Response.json({ error: "Não foi possível carregar o álbum" }, { status: 500 });
 
-  const publicPhotos = (data || []).filter((photo) => {
+  const downloadableMedia = (data || []).filter((photo) => {
     if (!photo.aws_face_id) return true;
     return photo.aws_face_id.split(",").filter((id: string) => id.trim()).length >= 3;
   });
-  if (!publicPhotos.length) {
-    return Response.json({ error: "O álbum ainda não possui fotos públicas" }, { status: 404 });
+  if (!downloadableMedia.length) {
+    return Response.json({ error: "O álbum ainda não possui fotos disponíveis para este download" }, { status: 404 });
   }
 
+  const { data: metadata } = await supabase
+    .from("content_documents")
+    .select("title")
+    .eq("document_key", `album:${agendaId}`)
+    .maybeSingle();
+  const albumName = safeFilename(metadata?.title || `album-mais-trilha-${agendaId.slice(0, 8)}`);
   const zip = new JSZip();
   let included = 0;
-  await Promise.all(publicPhotos.map(async (photo, index) => {
+  await Promise.all(downloadableMedia.map(async (photo, index) => {
     try {
       let bytes: Uint8Array;
       if (photo.aws_key) {
@@ -42,8 +74,9 @@ export async function GET(
         if (!response.ok) return;
         bytes = new Uint8Array(await response.arrayBuffer());
       }
-      const extension = String(photo.aws_key || photo.aws_url || "").match(/\.(png|webp|jpe?g)(?:\?|$)/i)?.[1] || "jpg";
-      zip.file(`foto-${String(index + 1).padStart(3, "0")}.${extension}`, bytes);
+      const extension = String(photo.aws_key || photo.aws_url || "").match(/\.(png|webp|heic|jpe?g|mp4|mov|m4v)(?:\?|$)/i)?.[1]?.toLowerCase() || "jpg";
+      const kind = ["mp4", "mov", "m4v"].includes(extension) ? "video" : "foto";
+      zip.file(`${kind}-${String(index + 1).padStart(3, "0")}.${extension}`, bytes, { compression: "STORE" });
       included += 1;
     } catch {
       // Uma mídia indisponível não impede o download das demais.
@@ -51,12 +84,26 @@ export async function GET(
   }));
   if (!included) return Response.json({ error: "Nenhuma foto pôde ser baixada" }, { status: 502 });
 
-  const archive = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 6 } });
+  // STORE preserva os bytes originais e evita recomprimir imagens e vídeos.
+  const archive = await zip.generateAsync({ type: "uint8array", compression: "STORE" });
   return new Response(archive as BodyInit, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="album-mais-trilha-${agendaId}.zip"`,
+      "Content-Disposition": `attachment; filename="${albumName}.zip"`,
       "Cache-Control": "private, no-store",
     },
   });
+}
+
+function safeFilename(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90) || "album-mais-trilha";
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }

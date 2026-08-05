@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentContractVersion, type ContractType } from "@/lib/contracts";
 import { requireAdminUser } from "@/lib/server/auth";
 import { generateContractPdf } from "@/lib/server/contract-pdf";
-import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Tipo de contrato inválido" }, { status: 400 });
   }
 
-  const supabase = createSupabaseAdmin();
+  const supabase = await createClient();
   let query = supabase
     .from("client_contracts")
     .select("id, client_id, contract_type, version, signed_at, signature_url, document_hash, document_snapshot")

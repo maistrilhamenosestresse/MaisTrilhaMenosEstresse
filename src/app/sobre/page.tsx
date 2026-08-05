@@ -200,7 +200,7 @@ export default function SobrePage() {
                   <div className="order-1 md:order-2 relative">
                     <div className="absolute inset-0 bg-[#F17B37] blur-[100px] opacity-20 rounded-full" />
                     <Image
-                      src="/images/wellington_guia.jpg"
+                      src="https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/images/wellington_guia.jpg"
                       alt="Wellington Ferreira"
                       width={600}
                       height={800}

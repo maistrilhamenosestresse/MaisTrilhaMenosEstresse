@@ -12,12 +12,34 @@ export async function POST(req: Request) {
   if (auth.response) return auth.response;
 
   try {
-    const parsed = await readJsonBody<{ agendaId?: string; objectKey?: string; publicUrl?: string }>(req, 50_000);
+    const parsed = await readJsonBody<{ agendaId?: string; objectKey?: string; contentType?: string }>(req, 50_000);
     if (parsed.response) return parsed.response;
-    const { agendaId, objectKey, publicUrl } = parsed.data;
+    const { agendaId, objectKey } = parsed.data;
+    const contentType = String(parsed.data.contentType || '').toLowerCase();
 
-    if (!agendaId || !objectKey || !publicUrl) {
+    if (!agendaId || !objectKey || !contentType) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    }
+    if (!/^[0-9a-f-]{36}$/i.test(agendaId) || !objectKey.startsWith(`trilhas/${agendaId}/`)) {
+      return NextResponse.json({ error: "Arquivo ou trilha inválida" }, { status: 400 });
+    }
+
+    const publicUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${objectKey}`;
+    const supabase = createSupabaseAdmin();
+
+    // Vídeos pertencem ao álbum, mas não são enviados ao Rekognition Image.
+    if (contentType.startsWith('video/')) {
+      const { data: dbData, error: dbError } = await supabase
+        .from('fotos_trilhas')
+        .insert({ agenda_id: agendaId, aws_url: publicUrl, aws_key: objectKey, aws_face_id: null })
+        .select('id')
+        .single();
+      if (dbError) throw dbError;
+      return NextResponse.json({ success: true, dbId: dbData.id, facesIndexed: 0, mediaType: 'video' });
+    }
+
+    if (!['image/jpeg', 'image/png'].includes(contentType)) {
+      return NextResponse.json({ error: "O reconhecimento facial aceita fotos JPG ou PNG" }, { status: 415 });
     }
 
     const collectionId = `trilha_${agendaId.replace(/-/g, '_')}`;
@@ -51,7 +73,7 @@ export async function POST(req: Request) {
     // 3. Salva a foto no Supabase vinculando os FaceIds encontrados
     const faceIds = indexRes.FaceRecords?.map((f) => f.Face?.FaceId).filter(Boolean) || [];
 
-    const { data: dbData, error: dbError } = await createSupabaseAdmin()
+    const { data: dbData, error: dbError } = await supabase
       .from('fotos_trilhas')
       .insert({
         agenda_id: agendaId,

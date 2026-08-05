@@ -191,6 +191,31 @@ textarea:focus-visible {
   }
 }
 
+@media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #admin-print-report,
+  #admin-print-report * {
+    visibility: visible !important;
+  }
+
+  #admin-print-report {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+    color: black;
+  }
+}
+
 /* Custom Scrollbar para conteudos internos (Textareas e Divs de conteudo longo) */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

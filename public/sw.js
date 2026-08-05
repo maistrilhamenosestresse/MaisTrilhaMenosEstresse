@@ -1,5 +1,6 @@
 const DEPLOY_VERSION = new URL(self.location.href).searchParams.get('v') || 'local';
-const CACHE_VERSION = `mt-pwa-v5-${DEPLOY_VERSION.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48)}`;
+const IS_LOCAL_DEVELOPMENT = DEPLOY_VERSION === 'local' || DEPLOY_VERSION === 'local-development';
+const CACHE_VERSION = `mt-pwa-v6-${DEPLOY_VERSION.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48)}`;
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PRIVATE_PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const MAP_CACHE = `${CACHE_VERSION}-maps`;
@@ -62,14 +63,22 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
+  // Os chunks, imagens otimizadas e respostas RSC do Next possuem seu próprio
+  // ciclo de cache. Interceptá-los aqui pode misturar versões de deploy e
+  // provocar "module factory is not available" no cliente.
+  if (url.origin === self.location.origin && isNextRuntimeRequest(request, url)) {
+    return;
+  }
+
   if (request.mode === 'navigate' && url.origin === self.location.origin) {
-    event.respondWith(networkFirstNavigation(request));
+    if (isPrivateAppPath(url.pathname)) {
+      event.respondWith(networkFirstNavigation(request));
+    }
     return;
   }
 
   if (url.origin === self.location.origin && (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/_next/image') ||
+    (!IS_LOCAL_DEVELOPMENT && url.pathname.startsWith('/_next/static/')) ||
     url.pathname.startsWith('/api/pwa/icon/') ||
     url.pathname === '/manifest.webmanifest'
   )) {
@@ -93,17 +102,6 @@ async function warmAppRoute(value) {
   if (!response.ok || response.redirected || !isHtml(response)) return;
   const cache = await caches.open(PRIVATE_PAGE_CACHE);
   await cache.put(path, response.clone());
-  await warmStaticFromHtml(response);
-}
-
-async function warmStaticFromHtml(response) {
-  const html = await response.text();
-  const assetPaths = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
-    .map((match) => match[1])
-    .filter((path) => path.startsWith('/_next/static/'));
-  if (!assetPaths.length) return;
-  const cache = await caches.open(STATIC_CACHE);
-  await Promise.allSettled([...new Set(assetPaths)].map((path) => cache.add(path)));
 }
 
 async function networkFirstNavigation(request) {
@@ -111,9 +109,8 @@ async function networkFirstNavigation(request) {
   const url = new URL(request.url);
   try {
     const response = await fetch(request);
-    if (response.ok && !response.redirected && url.pathname.startsWith('/app') && isHtml(response)) {
+    if (response.ok && !response.redirected && isPrivateAppPath(url.pathname) && isHtml(response)) {
       await cache.put(url.pathname, response.clone());
-      await warmStaticFromHtml(response.clone());
     }
     return response;
   } catch {
@@ -155,10 +152,23 @@ function isHtml(response) {
   return (response.headers.get('content-type') || '').includes('text/html');
 }
 
+function isPrivateAppPath(pathname) {
+  return pathname === '/app' || pathname.startsWith('/app/');
+}
+
+function isNextRuntimeRequest(request, url) {
+  const accept = request.headers.get('accept') || '';
+  const isVersionedStaticAsset = url.pathname.startsWith('/_next/static/');
+  return (url.pathname.startsWith('/_next/') && (!isVersionedStaticAsset || IS_LOCAL_DEVELOPMENT)) ||
+    url.searchParams.has('_rsc') ||
+    request.headers.get('rsc') === '1' ||
+    accept.includes('text/x-component');
+}
+
 function safePrivateAppPath(value) {
   try {
     const url = new URL(String(value || ''), self.location.origin);
-    if (url.origin !== self.location.origin || !url.pathname.startsWith('/app')) return null;
+    if (url.origin !== self.location.origin || !isPrivateAppPath(url.pathname)) return null;
     return `${url.pathname}${url.search}`;
   } catch {
     return null;

@@ -98,7 +98,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     // Se a coleção não existir, é porque ainda não enviaram fotos pra essa trilha
-    if (error.name === 'ResourceNotFoundException') {
+    if (error.name === 'ResourceNotFoundException' || error.name === 'InvalidParameterException') {
       return NextResponse.json({ matches: [] });
     }
     console.error("Erro no find-faces:", error);

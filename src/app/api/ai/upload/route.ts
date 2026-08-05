@@ -21,16 +21,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing agendaId or files array" }, { status: 400 });
     }
 
-    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
-    if (files.length > 100 || files.some((file) => !allowedTypes.has(String(file.type || '')) || Number(file.size) <= 0 || Number(file.size) > 15 * 1024 * 1024)) {
-      return NextResponse.json({ error: "São permitidas até 100 imagens de 15 MB por envio" }, { status: 400 });
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'video/mp4', 'video/quicktime', 'video/x-m4v']);
+    const invalidFile = files.find((file) => {
+      const type = String(file.type || '');
+      const size = Number(file.size);
+      const limit = type.startsWith('image/') ? 20 * 1024 * 1024 : 500 * 1024 * 1024;
+      return !allowedTypes.has(type) || size <= 0 || size > limit;
+    });
+    if (files.length > 100 || invalidFile) {
+      return NextResponse.json({ error: "Envie até 100 arquivos. Fotos devem ser JPG/PNG (até 20 MB) e vídeos MP4/MOV (até 500 MB)." }, { status: 400 });
     }
 
     const urls = [];
 
     // Gerar uma URL assinada para cada arquivo
     for (const file of files) {
-      const ext = ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic' } as Record<string, string>)[file.type!];
+      const ext = ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/x-m4v': 'm4v' } as Record<string, string>)[file.type!] || file.name?.split('.').pop() || 'bin';
       const uniqueFileName = `${crypto.randomUUID()}.${ext}`;
       const objectKey = `trilhas/${agendaId}/${uniqueFileName}`;
 
@@ -52,6 +58,7 @@ export async function POST(req: Request) {
         signedUrl,
         publicUrl,
         objectKey,
+        contentType: file.type,
       });
     }
 

@@ -65,10 +65,17 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseAdmin();
   const [{ data: cpfMatch }, { data: emailMatch }] = await Promise.all([
-    supabase.from('clients').select('id').in('cpf', [formatCpf(cpf), cpf]).limit(1).maybeSingle(),
+    supabase.from('clients').select('id, email').in('cpf', [formatCpf(cpf), cpf]).limit(1).maybeSingle(),
     supabase.from('clients').select('id').ilike('email', email).limit(1).maybeSingle(),
   ]);
-  if (cpfMatch || emailMatch) {
+
+  let existingDependentId: string | null = null;
+
+  if (cpfMatch && !cpfMatch.email) {
+    // É um dependente que foi adicionado em uma reserva, mas não tem e-mail.
+    // Vamos permitir que ele conclua o cadastro atualizando este registro.
+    existingDependentId = cpfMatch.id;
+  } else if (cpfMatch || emailMatch) {
     return NextResponse.json({
       error: 'Cadastro já existente. Entre com o código enviado ao e-mail para atualizar seus dados.',
       existing: true,
@@ -90,10 +97,21 @@ export async function POST(request: Request) {
     signature_url: input.signature_url || null,
     accepted_terms_at: new Date().toISOString(),
   };
-  const { data: client, error } = await supabase.from('clients').insert(payload)
-    .select('*').single();
-  if (error) {
-    return NextResponse.json({ error: 'Não foi possível concluir o cadastro' }, { status: 400 });
+
+  let client;
+
+  if (existingDependentId) {
+    const { data, error } = await supabase.from('clients').update(payload).eq('id', existingDependentId).select('*').single();
+    if (error) {
+      return NextResponse.json({ error: 'Não foi possível atualizar o cadastro do dependente' }, { status: 400 });
+    }
+    client = data;
+  } else {
+    const { data, error } = await supabase.from('clients').insert(payload).select('*').single();
+    if (error) {
+      return NextResponse.json({ error: 'Não foi possível concluir o cadastro' }, { status: 400 });
+    }
+    client = data;
   }
 
   try {

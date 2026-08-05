@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2 } from "lucide-react";
+import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2, CheckCircle2, Square, CheckSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -10,13 +10,15 @@ import { use } from "react";
 export default function AlbumPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const router = useRouter();
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<{ id: string; url: string; type: "image" | "video" }[]>([]);
   const [filteredPhotos, setFilteredPhotos] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAiMode, setIsAiMode] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [downloadingAlbum, setDownloadingAlbum] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -27,7 +29,11 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         
         if (!res.ok) throw new Error(data.error);
         
-        setPhotos(data.photos?.map((f: any) => f.aws_url) || []);
+        setPhotos((data.photos || []).map((photo: any, index: number) => ({
+          id: String(photo.id || `media-${index}`),
+          url: String(photo.aws_url || ""),
+          type: photo.type === "video" ? "video" : "image",
+        })));
       } catch (e) {
         console.error(e);
       } finally {
@@ -71,7 +77,9 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
     reader.readAsDataURL(file);
   };
 
-  const displayPhotos = filteredPhotos !== null ? Array.from(new Set([...filteredPhotos, ...photos])) : photos;
+  const displayPhotos = filteredPhotos !== null
+    ? Array.from(new Set(filteredPhotos)).map((url, index) => ({ id: `face-${index}`, url, type: "image" as const }))
+    : photos;
 
   const downloadPhoto = async (url: string, index: number) => {
     try {
@@ -89,28 +97,20 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
     }
   };
 
-  const downloadAlbum = async () => {
+  const downloadAlbum = async (photoIds?: string[]) => {
     if (!displayPhotos.length) return;
     setDownloadingAlbum(true);
     try {
-      const JSZip = (await import("jszip")).default;
-      const zip = new JSZip();
-      const results = await Promise.allSettled(
-        displayPhotos.map(async (url, index) => {
-          const response = await fetch(url);
-          if (!response.ok) throw new Error("Falha ao baixar foto");
-          const blob = await response.blob();
-          zip.file(
-            `foto-${String(index + 1).padStart(3, "0")}.${extensionFromType(blob.type)}`,
-            await blob.arrayBuffer(),
-          );
-        }),
-      );
-      if (results.every((result) => result.status === "rejected")) {
-        throw new Error("Nenhuma foto pôde ser baixada");
+      const response = await fetch(`/api/album/${unwrappedParams.id}/download`, photoIds?.length ? {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoIds }),
+      } : { cache: "no-store" });
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || "Nenhuma foto pôde ser baixada");
       }
-      const archive = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
-      const objectUrl = URL.createObjectURL(archive);
+      const objectUrl = URL.createObjectURL(await response.blob());
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
       anchor.download = `album-mais-trilha-${unwrappedParams.id.slice(0, 8)}.zip`;
@@ -121,6 +121,15 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
     } finally {
       setDownloadingAlbum(false);
     }
+  };
+
+  const toggleSelection = (photoId: string) => {
+    setSelectedPhotoIds((current) => {
+      const next = new Set(current);
+      if (next.has(photoId)) next.delete(photoId);
+      else next.add(photoId);
+      return next;
+    });
   };
 
   return (
@@ -146,7 +155,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         {displayPhotos.length > 0 && (
           <button
             type="button"
-            onClick={downloadAlbum}
+            onClick={() => void downloadAlbum()}
             disabled={downloadingAlbum}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF0E6] text-[#D96224] disabled:opacity-50"
             aria-label="Baixar álbum completo"
@@ -158,6 +167,15 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
 
       {/* Galeria */}
       <div className="p-2">
+        {!loading && photos.length > 0 && filteredPhotos === null ? (
+          <div className="mb-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
+            <button type="button" onClick={() => { setSelectionMode((current) => !current); setSelectedPhotoIds(new Set()); }} className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-black ${selectionMode ? 'bg-[#0B2540] text-white' : 'bg-gray-100 text-gray-700'}`}>
+              {selectionMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />} {selectionMode ? `${selectedPhotoIds.size} selecionada(s)` : 'Selecionar fotos'}
+            </button>
+            {selectionMode ? <button type="button" onClick={() => setSelectedPhotoIds((current) => current.size === photos.length ? new Set() : new Set(photos.map((photo) => photo.id)))} className="min-h-10 rounded-xl bg-gray-100 px-3 text-xs font-black text-gray-700">{selectedPhotoIds.size === photos.length ? 'Limpar' : 'Todas'}</button> : null}
+            {selectionMode ? <button type="button" disabled={!selectedPhotoIds.size || downloadingAlbum} onClick={() => void downloadAlbum(Array.from(selectedPhotoIds))} className="grid h-10 w-10 place-items-center rounded-xl bg-[#D96224] text-white disabled:opacity-40">{downloadingAlbum ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button> : null}
+          </div>
+        ) : null}
         {loading ? (
           <div className="flex flex-col items-center justify-center pt-32 text-gray-400">
             <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -171,18 +189,19 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-1">
-            {displayPhotos.map((url, i) => (
+            {displayPhotos.map((photo, i) => (
               <motion.button
                 type="button"
-                onClick={() => setSelectedPhoto(url)}
+                onClick={() => selectionMode ? toggleSelection(photo.id) : setSelectedPhoto(photo.url)}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
-                key={i} 
-                className="aspect-square bg-gray-200 relative overflow-hidden group"
+                key={photo.id}
+                className={`aspect-square bg-gray-200 relative overflow-hidden group ${selectedPhotoIds.has(photo.id) ? 'ring-4 ring-inset ring-[#F17B37]' : ''}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`Foto ${i}`} className="object-cover w-full h-full" loading="lazy" />
+                <img src={photo.url} alt={`Foto ${i}`} className="object-cover w-full h-full" loading="lazy" />
+                {selectionMode ? <span className={`absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full ${selectedPhotoIds.has(photo.id) ? 'bg-[#F17B37] text-white' : 'border-2 border-white bg-black/30 text-transparent'}`}><CheckCircle2 className="h-4 w-4" /></span> : null}
                 <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
                   <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
                 </span>
@@ -193,7 +212,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Floating Action Button (IA) */}
-      {!loading && photos.length > 0 && filteredPhotos === null && (
+      {!loading && photos.length > 0 && filteredPhotos === null && !selectionMode && (
         <motion.div 
           initial={{ y: 100 }} animate={{ y: 0 }}
           className="fixed bottom-24 left-0 right-0 px-6 flex justify-center z-50"
@@ -278,7 +297,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
               </button>
               <button
                 type="button"
-                onClick={() => downloadPhoto(selectedPhoto, displayPhotos.indexOf(selectedPhoto))}
+                onClick={() => downloadPhoto(selectedPhoto, Math.max(0, displayPhotos.findIndex((photo) => photo.url === selectedPhoto)))}
                 className="rounded-full bg-white text-gray-900 px-4 py-2.5 font-black text-sm flex items-center gap-2"
               >
                 <Download className="w-5 h-5" />

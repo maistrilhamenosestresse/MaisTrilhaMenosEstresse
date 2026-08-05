@@ -18,6 +18,26 @@ export default function PwaRuntime() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
+    // Service Workers não devem controlar o Turbopack em desenvolvimento.
+    // Os nomes dos módulos locais podem ser reutilizados entre compilações e
+    // um cache antigo quebra a árvore React mesmo quando o código está correto.
+    if (process.env.NODE_ENV !== "production") {
+      void (async () => {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.allSettled(registrations.map((registration) => registration.unregister()));
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.allSettled(
+            cacheNames
+              .filter((name) => name.startsWith("mt-pwa-"))
+              .map((name) => caches.delete(name)),
+          );
+        }
+        localStorage.removeItem(VERSION_STORAGE_KEY);
+      })();
+      return;
+    }
+
     let disposed = false;
     let checking = false;
     let shouldReloadOnControllerChange = false;

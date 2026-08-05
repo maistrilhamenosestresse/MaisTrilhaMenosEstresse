@@ -3,11 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
+  BookOpen,
   Calculator,
   CheckCircle2,
   CircleDollarSign,
   Loader2,
   Medal,
+  MinusCircle,
+  PlusCircle,
   RefreshCw,
   Save,
   Search,
@@ -23,6 +27,7 @@ import { getAdventureProgress } from "@/lib/gamification";
 type RankingClient = {
   id: string;
   name: string;
+  email: string;
   points: number;
   experience: number;
   level: string;
@@ -89,6 +94,12 @@ export default function GamificacaoDashboard() {
   const [config, setConfig] = useState<ConfigDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [balanceError, setBalanceError] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [adjustmentOperation, setAdjustmentOperation] = useState<"add" | "remove">("add");
+  const [adjustmentPoints, setAdjustmentPoints] = useState("");
+  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [adjustingPoints, setAdjustingPoints] = useState(false);
+  const [adjustmentMessage, setAdjustmentMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   const applyBalance = useCallback((
     nextSummary: LoyaltySummary,
@@ -112,7 +123,7 @@ export default function GamificacaoDashboard() {
       const [rankingResult, balanceResponse] = await Promise.all([
         createClient()
         .from("clients")
-        .select("id, full_name, pontos, experiencia")
+        .select("id, full_name, email, pontos, experiencia")
         .order("experiencia", { ascending: false, nullsFirst: false }),
         fetch("/api/admin/loyalty-balance", { cache: "no-store" }),
       ]);
@@ -130,6 +141,7 @@ export default function GamificacaoDashboard() {
         return {
           id: client.id,
           name: client.full_name || "Sem nome",
+          email: client.email || "",
           points,
           experience,
           level: getAdventureProgress(experience).current.name,
@@ -211,8 +223,57 @@ export default function GamificacaoDashboard() {
   };
 
   const filteredRanking = useMemo(() => ranking.filter((client) =>
-    client.name.toLocaleLowerCase("pt-BR").includes(searchTerm.toLocaleLowerCase("pt-BR")),
+    `${client.name} ${client.email}`.toLocaleLowerCase("pt-BR").includes(searchTerm.toLocaleLowerCase("pt-BR")),
   ), [ranking, searchTerm]);
+
+  const selectedClient = ranking.find((client) => client.id === selectedClientId) || null;
+  const pointsAmount = Math.max(0, Number(adjustmentPoints || 0));
+  const projectedBalance = selectedClient
+    ? selectedClient.points + (adjustmentOperation === "add" ? pointsAmount : -pointsAmount)
+    : 0;
+
+  const submitPointsAdjustment = async () => {
+    if (!selectedClient || !Number.isInteger(pointsAmount) || pointsAmount < 1 || adjustmentReason.trim().length < 5) return;
+    setAdjustingPoints(true);
+    setAdjustmentMessage(null);
+    try {
+      const response = await fetch("/api/admin/points-adjustment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: selectedClient.id,
+          operation: adjustmentOperation,
+          points: pointsAmount,
+          reason: adjustmentReason.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Não foi possível ajustar os pontos.");
+      const newBalance = Number(result.adjustment?.new_balance ?? projectedBalance);
+      const difference = newBalance - selectedClient.points;
+      setRanking((current) => current.map((client) => client.id === selectedClient.id ? { ...client, points: newBalance } : client));
+      const engagementDelta = selectedClient.experience === 0
+        ? selectedClient.points === 0 && newBalance > 0
+          ? 1
+          : selectedClient.points > 0 && newBalance === 0
+            ? -1
+            : 0
+        : 0;
+      setStats((current) => ({
+        ...current,
+        totalPoints: Math.max(0, current.totalPoints + difference),
+        engagedUsers: Math.max(0, current.engagedUsers + engagementDelta),
+      }));
+      setAdjustmentPoints("");
+      setAdjustmentReason("");
+      setAdjustmentMessage({ kind: "success", text: `Saldo de ${selectedClient.name} atualizado para ${newBalance.toLocaleString("pt-BR")} pontos.` });
+      await refreshBalance();
+    } catch (error) {
+      setAdjustmentMessage({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível ajustar os pontos." });
+    } finally {
+      setAdjustingPoints(false);
+    }
+  };
 
   if (loading) {
     return <div className="grid min-h-64 place-items-center"><Loader2 className="h-8 w-8 animate-spin text-[#0B2540]" /></div>;
@@ -226,6 +287,71 @@ export default function GamificacaoDashboard() {
           {balanceError}
         </div>
       ) : null}
+
+      <section className="overflow-hidden rounded-3xl border border-orange-100 bg-white shadow-sm">
+        <div className="grid gap-5 bg-[linear-gradient(135deg,#FFF7ED,#FFFFFF)] p-5 md:grid-cols-[1fr_auto] md:p-7">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#B94E16]"><BookOpen className="h-3.5 w-3.5" /> Comece por aqui</span>
+            <h2 className="mt-3 text-2xl font-black text-[#071829]">Como os pontos funcionam</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
+              Pontos são usados somente como desconto: <strong>200 pontos valem R$ 1,00</strong>.
+              Experiência (XP) define o nível e nunca é gasta. O sistema calcula automaticamente
+              quanto pode conceder sem comprometer a margem.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 md:w-[390px]">
+            <SimpleStep number="1" title="Venda paga" text="gera pontos" />
+            <SimpleStep number="2" title="Cliente usa" text="como desconto" />
+            <SimpleStep number="3" title="Cancelamento" text="estorna pontos" />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-black text-slate-800"><Star className="h-5 w-5 text-amber-500" /> Ajustar pontos de um cliente</h2>
+            <p className="mt-1 text-sm text-slate-500">Use somente para correções, bônus ou estornos manuais. Toda mudança exige motivo e fica registrada.</p>
+          </div>
+          <span className="inline-flex items-center gap-2 self-start rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase text-emerald-700"><ShieldCheck className="h-3.5 w-3.5" /> Histórico protegido</span>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1.35fr_.7fr_.65fr]">
+          <label>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-600">1. Escolha a pessoa</span>
+            <select value={selectedClientId} onChange={(event) => { setSelectedClientId(event.target.value); setAdjustmentMessage(null); }} className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none focus:ring-2 focus:ring-orange-200">
+              <option value="">Selecione pelo nome</option>
+              {[...ranking].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((client) => <option key={client.id} value={client.id}>{client.name} · {client.points.toLocaleString("pt-BR")} pts</option>)}
+            </select>
+          </label>
+          <fieldset>
+            <legend className="text-xs font-black uppercase tracking-wider text-slate-600">2. Tipo de ajuste</legend>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAdjustmentOperation("add")} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border text-xs font-black ${adjustmentOperation === "add" ? "border-emerald-400 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-100" : "border-slate-200 bg-slate-50 text-slate-500"}`}><PlusCircle className="h-4 w-4" /> Adicionar</button>
+              <button type="button" onClick={() => setAdjustmentOperation("remove")} className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border text-xs font-black ${adjustmentOperation === "remove" ? "border-red-400 bg-red-50 text-red-800 ring-2 ring-red-100" : "border-slate-200 bg-slate-50 text-slate-500"}`}><MinusCircle className="h-4 w-4" /> Retirar</button>
+            </div>
+          </fieldset>
+          <label>
+            <span className="text-xs font-black uppercase tracking-wider text-slate-600">3. Quantidade</span>
+            <input type="number" min={1} max={100000} step={1} value={adjustmentPoints} onChange={(event) => setAdjustmentPoints(event.target.value)} placeholder="Ex.: 200" className="mt-2 min-h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-black outline-none focus:ring-2 focus:ring-orange-200" />
+          </label>
+        </div>
+
+        <label className="mt-4 block">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-600">4. Por que está fazendo esta mudança?</span>
+          <textarea value={adjustmentReason} onChange={(event) => setAdjustmentReason(event.target.value)} maxLength={180} rows={3} placeholder="Ex.: Correção referente à compra manual da trilha..." className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none focus:ring-2 focus:ring-orange-200" />
+        </label>
+
+        {selectedClient ? <div className={`mt-4 grid gap-3 rounded-2xl border p-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center ${projectedBalance < 0 ? "border-red-200 bg-red-50" : "border-blue-100 bg-blue-50/60"}`}>
+          <div><span className="block text-[10px] font-black uppercase text-slate-500">Saldo atual</span><strong className="text-xl text-slate-800">{selectedClient.points.toLocaleString("pt-BR")} pts</strong></div>
+          <ArrowRight className="hidden h-5 w-5 text-slate-400 sm:block" />
+          <div className="sm:text-right"><span className="block text-[10px] font-black uppercase text-slate-500">Saldo depois da alteração</span><strong className={`text-xl ${projectedBalance < 0 ? "text-red-700" : "text-[#0B2540]"}`}>{projectedBalance.toLocaleString("pt-BR")} pts</strong><span className="block text-[10px] text-slate-500">até {formatCurrency(Math.max(0, projectedBalance) / 200)} em desconto</span></div>
+        </div> : null}
+
+        {adjustmentMessage ? <p className={`mt-4 rounded-2xl border p-4 text-sm font-bold ${adjustmentMessage.kind === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>{adjustmentMessage.text}</p> : null}
+
+        <button type="button" onClick={() => void submitPointsAdjustment()} disabled={adjustingPoints || !selectedClient || !Number.isInteger(pointsAmount) || pointsAmount < 1 || projectedBalance < 0 || adjustmentReason.trim().length < 5} className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] px-5 font-black text-white disabled:cursor-not-allowed disabled:opacity-40 md:w-auto">{adjustingPoints ? <Loader2 className="h-5 w-5 animate-spin" /> : adjustmentOperation === "add" ? <PlusCircle className="h-5 w-5" /> : <MinusCircle className="h-5 w-5" />} Confirmar ajuste com histórico</button>
+      </section>
 
       {summary ? (
         <>
@@ -491,6 +617,16 @@ export default function GamificacaoDashboard() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function SimpleStep({ number, title, text }: { number: string; title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-orange-100 bg-white p-3 text-center shadow-sm">
+      <span className="mx-auto grid h-7 w-7 place-items-center rounded-full bg-[#D96224] text-xs font-black text-white">{number}</span>
+      <strong className="mt-2 block text-[11px] text-slate-800">{title}</strong>
+      <span className="block text-[9px] text-slate-500">{text}</span>
     </div>
   );
 }

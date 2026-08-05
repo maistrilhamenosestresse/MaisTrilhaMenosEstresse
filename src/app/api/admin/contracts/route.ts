@@ -4,7 +4,7 @@ import {
   RESPONSIBILITY_CONTRACT_VERSION,
 } from "@/lib/contracts";
 import { requireAdminUser } from "@/lib/server/auth";
-import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
+import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET() {
   const auth = await requireAdminUser();
   if (auth.response) return auth.response;
 
-  const supabase = createSupabaseAdmin();
+  const supabase = await createClient();
   const [{ data: clients, error: clientsError }, { data: contracts, error: contractsError }] = await Promise.all([
     supabase.from("clients").select("*").order("full_name", { ascending: true }),
     supabase
@@ -21,6 +21,10 @@ export async function GET() {
       .order("signed_at", { ascending: false }),
   ]);
   if (clientsError || contractsError) {
+    console.error("Falha ao carregar contratos no painel:", {
+      clients: clientsError?.message,
+      contracts: contractsError?.message,
+    });
     return NextResponse.json({ error: "Não foi possível carregar os contratos" }, { status: 500 });
   }
 

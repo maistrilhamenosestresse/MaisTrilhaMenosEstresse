@@ -1,12 +1,15 @@
 "use client";
 
+
+import { AdminAgendasTab } from '@/components/admin/AdminAgendasTab';
+import { AdminFinancesTab } from '@/components/admin/AdminFinancesTab';
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DollarSign, FileText, Send, Image as ImageIcon, Video, Loader2, Trash2,
   CalendarDays, Edit2, Sparkles, CheckCircle2, FileUp, Mic, Square, Navigation, 
-  AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, Award, LockKeyhole
+  AlertCircle, X, Plus, Eye, User, ShieldCheck, Search, ChevronDown, ChevronUp, MapPin, Users, Printer, Bell, LogOut, ExternalLink, DownloadCloud, Trophy, Gift, Copy, FileSignature, CreditCard, TrendingUp, Award, LockKeyhole, Images
 } from "lucide-react";
 import { PinModal } from "@/components/PinModal";
 import CobrancasDashboard from "@/components/admin/CobrancasDashboard";
@@ -14,8 +17,9 @@ import LojaDashboard from "@/components/admin/LojaDashboard";
 import GamificacaoDashboard from "@/components/admin/GamificacaoDashboard";
 import AssistenteFinanceiroView from "@/components/admin/AssistenteFinanceiroView";
 import { MediaUploadSection } from "@/components/admin/MediaUploadSection";
-import { PhotosUploadModal } from "@/components/admin/PhotosUploadModal";
 import { ReservationPaymentEditor } from "@/components/admin/ReservationPaymentEditor";
+import { AdminReservationsTab } from "@/components/admin/AdminReservationsTab";
+import { AdminClientsTab } from "@/components/admin/AdminClientsTab";
 import { supabase } from "@/lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { calculateNetProfit } from "@/lib/fees";
@@ -83,8 +87,6 @@ export default function AdminPage() {
     }
   };
 
-  const [selectedPhotosAgendaId, setSelectedPhotosAgendaId] = useState<string | null>(null);
-
   const [expandedTrilhas, setExpandedTrilhas] = useState<string | null>(null);
   const [clientTrails, setClientTrails] = useState<{ [clientId: string]: any[] }>({});
 
@@ -110,7 +112,9 @@ export default function AdminPage() {
   const [clientesTab, setClientesTab] = useState<'todos' | 'listas' | 'avaliacoes'>('todos');
   const [clientSortMode, setClientSortMode] = useState<'recentes' | 'antigos' | 'az' | 'za'>('recentes');
   const [avaliacoesAdmin, setAvaliacoesAdmin] = useState<any[]>([]);
+  const [avaliacoesError, setAvaliacoesError] = useState('');
   const [printMode, setPrintMode] = useState<'todos' | 'van' | 'seguro'>('todos');
+  const [printIssuedAt, setPrintIssuedAt] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
@@ -268,6 +272,7 @@ export default function AdminPage() {
   const handlePrint = async (mode: 'todos' | 'van' | 'seguro') => {
     if (!(await requirePin('Impressão de Listas'))) return;
     setPrintMode(mode);
+    setPrintIssuedAt(new Date().toLocaleDateString('pt-BR'));
     setTimeout(() => {
       window.print();
       setTimeout(() => setPrintMode('todos'), 1000);
@@ -315,8 +320,14 @@ export default function AdminPage() {
       const { data: clientsData } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
       setClients(clientsData || []);
 
-      const { data: avaliacoesData } = await supabase.from('avaliacoes').select('*, agendas(title)').order('created_at', { ascending: false });
-      setAvaliacoesAdmin(avaliacoesData || []);
+      const { data: avaliacoesData, error: avaliacoesFetchError } = await supabase.from('avaliacoes').select('*, agendas(title)').order('created_at', { ascending: false });
+      if (avaliacoesFetchError) {
+        setAvaliacoesAdmin([]);
+        setAvaliacoesError('Não foi possível carregar as avaliações. Confirme se o login administrativo está ativo e tente novamente.');
+      } else {
+        setAvaliacoesAdmin(avaliacoesData || []);
+        setAvaliacoesError('');
+      }
     } catch (error) {
       console.error("Erro ao buscar agendas:", error);
     } finally {
@@ -992,9 +1003,13 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'update', approved: !currentStatus })
       });
-      if (!res.ok) throw new Error('Falha ao atualizar');
-      fetchAgendasAndCleanup();
-    } catch (error) { alert("Erro ao atualizar avaliação"); }
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || 'Falha ao atualizar');
+      setAvaliacoesAdmin(previous => previous.map(item => item.id === id ? { ...item, approved: !currentStatus } : item));
+      setAvaliacoesError('');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao atualizar avaliação");
+    }
   };
   
   const deleteAvaliacao = async (id: string) => {
@@ -1006,9 +1021,13 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, action: 'delete' })
       });
-      if (!res.ok) throw new Error('Falha ao excluir');
-      fetchAgendasAndCleanup();
-    } catch (error) { alert("Erro ao excluir avaliação"); }
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result.error || 'Falha ao excluir');
+      setAvaliacoesAdmin(previous => previous.filter(item => item.id !== id));
+      setAvaliacoesError('');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao excluir avaliação");
+    }
   };
 
   const formatDateDisplay = (dateString: string) => {
@@ -1045,6 +1064,15 @@ export default function AdminPage() {
           >
             <CalendarDays className="h-5 w-5" />
             Trilhas
+          </button>
+
+          <button
+            type="button"
+            onClick={() => window.location.assign('/admin/albuns')}
+            className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 font-bold text-gray-500 transition-all hover:bg-purple-50 hover:text-purple-700"
+          >
+            <Images className="h-5 w-5" />
+            Álbuns e fotos
           </button>
           
           <button 
@@ -1265,1141 +1293,145 @@ export default function AdminPage() {
             {/* --- VISÃO DAS TRILHAS --- */}
             {mainTab === 'trilhas' && (
               <motion.div key="trilhas" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                
-                {/* Banner de Enviar Calendário e Modo Manutenção */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-[#1D2A3A] to-gray-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#25D366] rounded-full blur-[60px] opacity-20" />
-                    <h3 className="font-bold text-lg mb-1">Enviar Calendário</h3>
-                    <p className="text-sm text-gray-300 mb-5 max-w-[80%]">Compartilhe as próximas aventuras.</p>
-                    <a href={whatsappLink} target="_blank" className="inline-flex items-center gap-2 bg-[#25D366] text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:scale-105 transition">
-                      <Send className="h-4 w-4" /> Enviar no Grupo
-                    </a>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[60px] opacity-20" />
-                    <h3 className="font-bold text-lg mb-1">Controle do Site</h3>
-                    <p className="text-sm text-white/80 mb-5 max-w-[80%]">{isMaintenance ? 'O site está pausado. Ninguém pode comprar.' : 'Pause o site para edição.'}</p>
-                    <button 
-                      onClick={handleToggleMaintenance} 
-                      disabled={isTogglingMaintenance}
-                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:scale-105 transition ${isMaintenance ? 'bg-green-500 text-white' : 'bg-red-600 text-white'}`}
-                    >
-                      {isTogglingMaintenance ? <Loader2 className="h-4 w-4 animate-spin" /> : (isMaintenance ? <CheckCircle2 className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)}
-                      {isMaintenance ? 'Colocar Site Online' : 'Pausar Site'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Lista de Trilhas */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="flex items-center gap-2 font-bold text-gray-800">
-                        Trilhas cadastradas
-                        <span className="rounded-full bg-[#F17B37]/10 px-3 py-1 text-xs font-black text-[#F17B37]">{agendas.length}</span>
-                      </h3>
-                      <div className="mt-1 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-wider">
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
-                          {agendas.filter((agenda) => !isArchivedTrailDate(agenda.date)).length} próximas
-                        </span>
-                        <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-500">
-                          <LockKeyhole className="h-3 w-3" />
-                          {agendas.filter((agenda) => isArchivedTrailDate(agenda.date)).length} encerradas
-                        </span>
-                      </div>
-                    </div>
-                    {globalViews > 0 && (
-                      <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-xl border border-green-200 shadow-sm">
-                        <Eye className="h-4 w-4" />
-                        <span className="text-xs font-extrabold uppercase tracking-wide">Acessos: {globalViews}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {isFetching ? (
-                    <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#F17B37]" /></div>
-                  ) : agendas.length === 0 ? (
-                    <div className="bg-white rounded-3xl p-10 text-center border border-gray-100 shadow-sm">
-                      <CalendarDays className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 font-medium">Nenhuma aventura planejada.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {agendas.map((agenda) => {
-                        const occupied = agenda.reservas ? agenda.reservas.filter((r: any) => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length : 0;
-                        const maxCap = agenda.max_capacity || 15;
-                        const isFull = occupied >= maxCap;
-                        const isArchived = isArchivedTrailDate(agenda.date);
-
-                        return (
-                          <div key={agenda.id} className={`rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${isArchived ? 'bg-gray-100/80 opacity-55 saturate-0' : 'bg-white'} ${expandedAgendaId === agenda.id ? 'border-[#F17B37] ring-1 ring-[#F17B37]/20' : 'border-gray-100 hover:shadow-md'} ${isFull && !isArchived ? 'opacity-70 grayscale' : ''}`}>
-                            <div 
-                              onClick={() => setExpandedAgendaId(expandedAgendaId === agenda.id ? null : agenda.id)}
-                              className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 gap-4"
-                            >
-                              <div className="flex items-center gap-4 min-w-0 flex-1">
-                                <div className={`h-14 w-14 rounded-xl flex flex-col items-center justify-center shrink-0 border ${isArchived || isFull ? 'bg-gray-100 border-gray-200' : 'bg-[#F17B37]/10 border-[#F17B37]/20'}`}>
-                                  {isArchived && <LockKeyhole className="mb-0.5 h-3.5 w-3.5 text-gray-500" />}
-                                  <span className={`text-xs font-bold ${isArchived || isFull ? 'text-gray-500' : 'text-[#F17B37]'}`}>{formatDateDisplay(agenda.date).substring(0, 5)}</span>
-                                </div>
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-bold text-gray-900 truncate">{agenda.title}</h4>
-                                    {isArchived
-                                      ? <span className="flex items-center gap-1 rounded border border-gray-300 bg-gray-200 px-2 py-0.5 text-[9px] font-black uppercase text-gray-600"><LockKeyhole className="h-2.5 w-2.5" /> Encerrada</span>
-                                      : isFull && <span className="bg-red-100 text-red-600 text-[9px] font-black uppercase px-2 py-0.5 rounded border border-red-200">Esgotado</span>}
-                                  </div>
-                                  <div className="flex items-center gap-3 mt-0.5">
-                                    <p className="text-sm font-medium text-green-600">R$ {agenda.price}</p>
-                                    <span className="flex items-center gap-1 text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">
-                                      <Eye className="h-3 w-3" /> {agenda.views || 0}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="shrink-0 text-gray-400">
-                                {expandedAgendaId === agenda.id ? <ChevronUp /> : <ChevronDown />}
-                              </div>
-                            </div>
-
-                            <AnimatePresence>
-                              {expandedAgendaId === agenda.id && (
-                                <motion.div 
-                                  initial={{ height: 0, opacity: 0 }} 
-                                  animate={{ height: 'auto', opacity: 1 }} 
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="border-t border-gray-100 bg-gray-50/50"
-                                >
-                                  <div className="p-4 flex flex-col sm:flex-row items-center justify-end gap-3 flex-wrap">
-                                    <button onClick={() => setSelectedPhotosAgendaId(agenda.id)} className="w-full sm:w-auto py-2.5 px-6 bg-purple-50 text-purple-600 font-bold rounded-xl hover:bg-purple-100 transition flex items-center justify-center gap-2"><ImageIcon className="h-4 w-4" /> Fotos da Trilha</button>
-                                    <button onClick={() => handleEdit(agenda)} className={`w-full sm:w-auto py-2.5 px-6 font-bold rounded-xl transition flex items-center justify-center gap-2 ${isArchived ? 'border border-gray-300 bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
-                                      {isArchived ? <LockKeyhole className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
-                                      {isArchived ? "Desbloquear edição" : "Editar Trilha"}
-                                    </button>
-                                    <button onClick={() => deleteAgenda(agenda.id)} className="w-full sm:w-auto py-2.5 px-6 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2"><Trash2 className="h-4 w-4" /> Excluir</button>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                <AdminAgendasTab
+                  agendas={agendas}
+                  whatsappLink={whatsappLink}
+                  isMaintenance={isMaintenance}
+                  isTogglingMaintenance={isTogglingMaintenance}
+                  handleToggleMaintenance={handleToggleMaintenance}
+                  isArchivedTrailDate={isArchivedTrailDate}
+                  globalViews={globalViews}
+                  isFetching={isFetching}
+                  expandedAgendaId={expandedAgendaId}
+                  setExpandedAgendaId={setExpandedAgendaId}
+                  formatDateDisplay={formatDateDisplay}
+                  handleEdit={handleEdit}
+                  deleteAgenda={deleteAgenda}
+                />
               </motion.div>
             )}
 
             {/* --- VISÃO DOS CLIENTES --- */}
             {mainTab === 'clientes' && (
               <motion.div key="clientes" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
-
-                {/* Abas Superiores de Clientes */}
-                <div className="flex bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden shrink-0 mb-4 print:hidden">
-                  <button type="button" onClick={() => setClientesTab('todos')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'todos' ? 'border-[#F17B37] text-[#F17B37] bg-[#F17B37]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Todos Cadastrados</button>
-                  <button type="button" onClick={() => setClientesTab('listas')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'listas' ? 'border-[#1D2A3A] text-[#1D2A3A] bg-[#1D2A3A]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Listas de Embarque/Seguro/Contratos</button>
-                  <button type="button" onClick={() => setClientesTab('avaliacoes')} className={`flex-1 py-3 text-xs font-bold border-b-2 transition-all ${clientesTab === 'avaliacoes' ? 'border-[#25D366] text-[#25D366] bg-[#25D366]/5' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Avaliações</button>
-                </div>
-
-                
-                {/* Cabeçalho Impressão */}
-                <div className="hidden print:block text-center border-b-2 border-black pb-4 mb-6">
-                  <style>{`
-                    @media print { 
-                      @page { size: landscape; margin: 10mm; } 
-                      html, body { width: 1000px !important; min-width: 1000px !important; overflow: visible !important; }
-                    }
-                  `}</style>
-                  <h1 className="text-3xl font-black uppercase tracking-widest mb-2">{printMode === 'van' ? 'LISTA DE EMBARQUE - ' + agendas.find(a => a.id === selectedAgendaId)?.title : (printMode === 'seguro' ? 'LISTA PARA SEGURO - ' + agendas.find(a => a.id === selectedAgendaId)?.title : 'Relatório de Seguros')}</h1>
-                  <p suppressHydrationWarning className="text-gray-600">Mais Trilha Menos Estresse - Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
-                </div>
-
-                {/* Barra de Pesquisa */}
-                {clientesTab === 'todos' && (<>
-                <div className="flex flex-col md:flex-row gap-2 print:hidden mb-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
-                    <input 
-                      type="search" 
-                      placeholder="Buscar por nome ou CPF..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-[#F17B37] outline-none font-medium"
-                    />
-                  </div>
-                  <select 
-                    value={clientSortMode}
-                    onChange={(e) => setClientSortMode(e.target.value as any)}
-                    className="bg-white border border-gray-200 rounded-2xl px-4 py-3.5 font-bold text-sm text-gray-700 outline-none focus:ring-2 focus:ring-[#F17B37] cursor-pointer shadow-sm"
-                  >
-                    <option value="recentes">Mais Recentes</option>
-                    <option value="antigos">Mais Antigos</option>
-                    <option value="az">Nome (A-Z)</option>
-                    <option value="za">Nome (Z-A)</option>
-                  </select>
-                </div>
-
-                <div className="print:hidden">
-                  <div className="flex justify-between items-center mb-3">
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">Total: {filteredClients.length} Cadastrados</p>
-                    {selectedClients.length > 0 && (
-                      <button 
-                        onClick={handleBulkDelete}
-                        className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" /> Excluir {selectedClients.length}
-                      </button>
-                    )}
-                  </div>
-                  
-                  {filteredClients.length === 0 ? (
-                    <div className="text-center py-10">
-                      <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                      <p className="text-gray-500">Nenhum cliente encontrado.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pb-2">
-                      {filteredClients.map(client => {
-  const today = new Date();
-  let isBirthdayClient = false;
-  if (client.birth_date) {
-    const bDate = new Date(client.birth_date);
-    bDate.setFullYear(today.getFullYear());
-    if (bDate < new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)) {
-      bDate.setFullYear(today.getFullYear() + 1);
-    }
-    const diffTime = Math.abs(bDate.getTime() - today.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    isBirthdayClient = diffDays <= 1;
-  }
-  return (
-                        <div key={client.id} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-sm ${expandedClientId === client.id ? 'border-[#F17B37] ring-1 ring-[#F17B37]/20' : 'border-gray-200'}`}>
-                          
-                          {/* Cabeçalho do Card (Sempre visível) */}
-                          <div 
-                            onClick={() => toggleClientExpand(client.id)}
-                            className={`p-4 flex items-center justify-between cursor-pointer ${isBirthdayClient ? 'bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100' : 'hover:bg-gray-50'}`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <input 
-                                type="checkbox" 
-                                checked={selectedClients.includes(client.id)}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  if (e.target.checked) setSelectedClients([...selectedClients, client.id]);
-                                  else setSelectedClients(selectedClients.filter(id => id !== client.id));
-                                }}
-                                className="w-5 h-5 rounded border-gray-300 text-[#F17B37] focus:ring-[#F17B37] cursor-pointer"
-                              />
-                              {client.photo_url ? (
-                                <img src={client.photo_url} alt={`Foto de ${client.full_name || "cliente"}`} className="h-12 w-12 rounded-full object-cover shrink-0 border-2 border-gray-100" />
-                              ) : (
-                                <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                  <User className="h-6 w-6 text-gray-400" />
-                                </div>
-                              )}
-                              <div className="min-w-0 pr-2">
-                                <h4 className="font-bold text-gray-900 truncate">{client.full_name} {isBirthdayClient && <span className="text-xl animate-bounce" title="Aniversariante!">🎁</span>}</h4>
-                                <p className="text-sm text-gray-500">{client.phone}</p>
-                              </div>
-                            </div>
-                            <div className="shrink-0 text-gray-400">
-                              {expandedClientId === client.id ? <ChevronUp /> : <ChevronDown />}
-                            </div>
-                          </div>
-
-                          {/* Detalhes do Card (Sanfona) */}
-                          <AnimatePresence>
-                            {expandedClientId === client.id && (
-                              <motion.div 
-                                initial={{ height: 0, opacity: 0 }} 
-                                animate={{ height: 'auto', opacity: 1 }} 
-                                exit={{ height: 0, opacity: 0 }}
-                                className="border-t border-gray-100 bg-gray-50/50"
-                              >
-                                <div className="p-4 space-y-4">
-                                  <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div><p className="text-gray-500 text-xs font-bold uppercase">Nascimento</p><p className="font-medium">{client.birth_date ? client.birth_date.split('-').reverse().join('/') : 'N/A'}</p></div>
-                                    <div><p className="text-gray-500 text-xs font-bold uppercase">CPF</p><p className="font-medium">{client.cpf}</p></div>
-                                    <div><p className="text-gray-500 text-xs font-bold uppercase">RG</p><p className="font-medium">{client.rg}</p></div>
-                                    <div className="col-span-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                      <div><p className="text-gray-500 text-xs font-bold uppercase">Contato Emergência</p><p className="font-medium">{client.emergency_contact_name} - {client.emergency_contact_phone}</p></div>
-                                      {(!client.rg || !client.birth_date || !client.emergency_contact_name || !client.accepted_terms_at) && (
-                                        <button 
-                                          onClick={() => {
-                                            const link = `${window.location.origin}/cadastro?cpf=${client.cpf}`;
-                                            navigator.clipboard.writeText(link);
-                                            alert("Link copiado: " + link);
-                                          }}
-                                          className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 border border-blue-200 transition"
-                                        >
-                                          <Copy className="h-3 w-3" /> Copiar link de finalizar cadastro
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="bg-red-50 p-3 rounded-xl border border-red-100">
-                                    <p className="text-red-800 text-xs font-bold uppercase mb-1">Saúde &amp; Observações</p>
-                                    <p className="text-sm font-medium text-red-900 whitespace-pre-wrap">{client.health_notes || "Nenhuma anotação."}</p>
-                                  </div>
-
-                                  {/* Área de Membros VIP */}
-                                  <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${client.membro_vip ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
-                                    <div className="flex items-center gap-2">
-                                      <Award className={`h-5 w-5 ${client.membro_vip ? 'text-amber-500' : 'text-gray-400'}`} />
-                                      <div>
-                                        <p className={`text-sm font-black ${client.membro_vip ? 'text-amber-800' : 'text-gray-600'}`}>
-                                          Área de Membros VIP
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                          {client.membro_vip ? '✅ Acesso autorizado manualmente' : 'Sem acesso (requer 3+ trilhas ou autorização)'}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const novoStatus = !client.membro_vip;
-                                        const res = await fetch('/api/admin/membros', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ clientId: client.id, membro_vip: novoStatus })
-                                        });
-                                        if (res.ok) {
-                                          setClients(prev => prev.map(c => c.id === client.id ? { ...c, membro_vip: novoStatus } : c));
-                                        } else {
-                                          alert('Erro ao atualizar status de membro. A coluna membro_vip precisa ser criada no banco.\n\nExecute no Supabase SQL Editor:\nALTER TABLE clients ADD COLUMN IF NOT EXISTS membro_vip BOOLEAN DEFAULT FALSE;');
-                                        }
-                                      }}
-                                      className={`relative w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${client.membro_vip ? 'bg-amber-500' : 'bg-gray-300'}`}
-                                    >
-                                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${client.membro_vip ? 'translate-x-6' : 'translate-x-0'}`} />
-                                    </button>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 pt-2 flex-wrap">
-                                    <button onClick={() => loadClientTrails(client.id)} className="flex-1 bg-green-50 border border-green-200 text-green-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-100 transition shadow-sm" title="Ver Histórico de Trilhas"><MapPin className="h-4 w-4"/> Trilhas</button>
-                                    <a href={`/admin/contratos?clientId=${client.id}`} className="flex-1 bg-orange-50 border border-orange-200 text-orange-700 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-100 transition shadow-sm"><FileText className="h-4 w-4"/> Contratos atuais</a>
-                                    <button onClick={() => setEditingClient(client)} className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition" title="Editar"><Edit2 className="h-4 w-4"/></button>
-                                    <button onClick={() => handleDeleteClient(client.id)} className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition" title="Excluir"><Trash2 className="h-4 w-4"/></button>
-                                  </div>
-                                  <AnimatePresence>
-                                    {expandedTrilhas === client.id && (
-                                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm p-5 flex flex-col rounded-2xl">
-                                        <div className="flex justify-between items-center mb-4 shrink-0">
-                                          <p className="font-bold text-green-800 text-base flex items-center gap-2"><MapPin className="h-5 w-5" /> Histórico de Trilhas ({clientTrails[client.id]?.length || 0})</p>
-                                          <button onClick={() => setExpandedTrilhas(null)} className="p-2 bg-gray-100 text-gray-500 rounded-full hover:bg-red-50 hover:text-red-500 transition"><X className="h-4 w-4" /></button>
-                                        </div>
-                                        <div className="space-y-2 md:overflow-y-auto custom-scrollbar flex-1 md:pr-2">
-                                          {clientTrails[client.id]?.length > 0 ? (
-                                            clientTrails[client.id].map((r: any, idx: number) => (
-                                              <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-green-100 shadow-sm">
-                                                <span className="font-bold text-gray-800">{r.agendas?.title || 'Trilha desconhecida'}</span>
-                                                <div className="flex items-center gap-3">
-                                                  <span className="text-gray-500 text-xs font-medium bg-gray-50 px-2 py-1 rounded-md">{r.agendas?.date ? r.agendas.date.split('-').reverse().join('/') : ''}</span>
-                                                  <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${r.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{r.status_pagamento}</span>
-                                                </div>
-                                              </div>
-                                            ))
-                                          ) : (
-                                            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
-                                              <MapPin className="h-8 w-8 opacity-20" />
-                                              <p className="text-sm font-bold">Nenhuma trilha encontrada para este cliente.</p>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );})}
-                    </div>
-                  )}
-                </div>
-
-                {/* Link de Cadastro */}
-                <div className="mt-8 bg-blue-50 border border-blue-100 p-5 rounded-2xl print:hidden">
-                  <ShieldCheck className="h-8 w-8 text-blue-500 mb-2" />
-                  <p className="font-bold text-blue-900 text-lg">Link Público de Cadastro</p>
-                  <p className="text-sm text-blue-700 mb-3">Envie este link para preenchimento de formulário e seguro:</p>
-                  <a href="/cadastro" target="_blank" className="font-mono bg-white text-blue-600 p-3 rounded-xl border border-blue-200 text-sm hover:bg-blue-600 hover:text-white transition block break-all text-center font-bold shadow-sm">
-                    www.maistrilhasmenosestresse.com/cadastro
-                  </a>
-                </div>
-                </>)}
-
-                
-                {clientesTab === 'listas' && (
-                  <div className="space-y-6 print:hidden">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
-                      <label className="text-sm font-bold text-gray-700">Selecione a Trilha/Evento:</label>
-                      <select 
-                        value={selectedAgendaId} 
-                        onChange={(e) => setSelectedAgendaId(e.target.value)}
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-[#1D2A3A] outline-none"
-                      >
-                        {agendas.map(a => (
-                          <option key={a.id} value={a.id}>{a.title} - {formatDateDisplay(a.date)}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {isFetchingDetails ? (
-                      <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#1D2A3A]" /></div>
-                    ) : (
-                      <>
-                        {/* Ações de Exportação */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Card Van */}
-                          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 shadow-sm">
-                            <h4 className="font-bold text-blue-900 text-lg flex items-center gap-2 mb-2">🚌 Lista para Van</h4>
-                            <p className="text-xs text-blue-700 mb-4">Nome Completo, CPF e Contato.</p>
-                            <div className="flex gap-2">
-                              <button onClick={generateWhatsAppVan} className="flex-1 bg-white text-blue-600 border border-blue-200 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-blue-100 transition shadow-sm">
-                                <Send className="h-4 w-4"/> WhatsApp
-                              </button>
-                              <button onClick={() => handlePrint('van')} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-blue-700 transition shadow-sm">
-                                <Printer className="h-4 w-4"/> Imprimir PDF
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Card Seguro */}
-                          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 shadow-sm">
-                            <h4 className="font-bold text-emerald-900 text-lg flex items-center gap-2 mb-2">🛡️ Lista para Seguro</h4>
-                            <p className="text-xs text-emerald-700 mb-4">Dados completos e anotações médicas.</p>
-                            <div className="flex gap-2">
-                              <button onClick={generateWhatsAppSeguro} className="flex-1 bg-white text-emerald-600 border border-emerald-200 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-emerald-100 transition shadow-sm">
-                                <Send className="h-4 w-4"/> WhatsApp
-                              </button>
-                              <button onClick={() => handlePrint('seguro')} className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-emerald-700 transition shadow-sm">
-                                <Printer className="h-4 w-4"/> Imprimir PDF
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {/* Card Contratos */}
-                          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 shadow-sm mt-4">
-                            <h4 className="font-bold text-orange-900 text-lg flex items-center gap-2 mb-2"><FileSignature className="h-5 w-5" /> Lista de Contratos</h4>
-                            <p className="text-xs text-orange-700 mb-4">Gerencie as assinaturas digitais e baixe os contratos dos passageiros.</p>
-                            <div className="flex gap-2">
-                              <a href="/admin/contratos" className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 hover:bg-orange-700 transition shadow-sm">
-                                <ExternalLink className="h-4 w-4"/> Abrir Painel de Contratos
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-
-
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {clientesTab === 'avaliacoes' && (
-                  <div className="space-y-4 print:hidden">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Moderação de Avaliações</h3>
-                    {avaliacoesAdmin.length === 0 ? (
-                      <div className="p-8 text-center bg-gray-50 border border-gray-200 rounded-2xl text-gray-500">Nenhuma avaliação encontrada no banco de dados.</div>
-                    ) : (
-                      avaliacoesAdmin.map(av => (
-                        <div key={av.id} className={`p-4 rounded-xl border ${av.approved ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200'} shadow-sm`}>
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <p className="font-bold text-gray-800 text-lg">{av.name}</p>
-                              <div className="flex text-orange-500 text-sm">{'★'.repeat(av.rating)}{'☆'.repeat(5 - av.rating)}</div>
-                              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {av.agendas?.title || 'Sem trilha vinculada'}</p>
-                            </div>
-                            <div className="flex gap-2 flex-wrap justify-end">
-                              <button onClick={() => toggleAvaliacao(av.id, av.approved)} className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition ${av.approved ? 'bg-gray-500 hover:bg-gray-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
-                                {av.approved ? 'Ocultar do Site' : 'Aprovar pro Site'}
-                              </button>
-                              <button onClick={() => deleteAvaliacao(av.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition">
-                                Excluir
-                              </button>
-                            </div>
-                          </div>
-                          <p className="text-gray-700 italic mt-3 bg-white/50 p-3 rounded-lg text-sm">&ldquo;{av.comment}&rdquo;</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-
-                {/* Tabela só para Impressão */}
-                <div className="hidden print:block">
-                  <table className="w-full text-left text-[10px] border-collapse">
-                    <thead>
-                      {printMode === 'van' ? (
-                        <tr><th className="border p-2 w-12 text-center">#</th><th className="border p-2">Passageiro</th><th className="border p-2">CPF</th><th className="border p-2">Telefone</th><th className="border p-2">Check</th></tr>
-                      ) : (
-                        <tr><th className="border p-2 w-12 text-center">#</th><th className="border p-2">Cliente</th><th className="border p-2">Documentos</th><th className="border p-2">Contato</th><th className="border p-2">Emergência</th><th className="border p-2">Saúde</th></tr>
-                      )}
-                    </thead>
-                    <tbody>
-                      {(printMode === 'todos' ? clients : (reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').map(r => r.clients))).map((c, idx) => (
-                        printMode === 'van' ? (
-                          <tr key={c.id}>
-                            <td className="border p-2 text-center font-bold">{idx + 1}</td>
-                            <td className="border p-2 font-bold text-[12px]">{c.full_name}</td>
-                            <td className="border p-2 text-[12px]">{c.cpf}</td>
-                            <td className="border p-2 text-[12px]">{c.phone}</td>
-                            <td className="border p-2"></td>
-                          </tr>
-                        ) : (
-                          <tr key={c.id}>
-                            <td className="border p-2 text-center font-bold">{idx + 1}</td>
-                            <td className="border p-2 font-bold">{c.full_name}<br/><span suppressHydrationWarning className="font-normal text-[8px]">Nasc: {c.birth_date ? new Date(c.birth_date).toLocaleDateString('pt-BR') : 'N/A'}</span></td>
-                            <td className="border p-2">CPF: {c.cpf}<br/>RG: {c.rg}</td>
-                            <td className="border p-2">{c.phone}<br/>{c.email}</td>
-                            <td className="border p-2">{c.emergency_contact_name}<br/>{c.emergency_contact_phone}</td>
-                            <td className="border p-2 text-red-700 font-bold max-w-[200px] whitespace-pre-wrap">{c.health_notes}</td>
-                          </tr>
-                        )
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <AdminClientsTab
+                  clients={clients}
+                  setClients={setClients}
+                  clientesTab={clientesTab}
+                  setClientesTab={setClientesTab}
+                  clientSortMode={clientSortMode}
+                  setClientSortMode={setClientSortMode}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  expandedClientId={expandedClientId}
+                  setExpandedClientId={setExpandedClientId}
+                  selectedClients={selectedClients}
+                  setSelectedClients={setSelectedClients}
+                  editingClient={editingClient}
+                  setEditingClient={setEditingClient}
+                  expandedTrilhas={expandedTrilhas}
+                  setExpandedTrilhas={setExpandedTrilhas}
+                  clientTrails={clientTrails}
+                  loadClientTrails={loadClientTrails}
+                  requirePin={requirePin}
+                  handleBulkDelete={handleBulkDelete}
+                  handleDeleteClient={handleDeleteClient}
+                  handleSaveEditedClient={handleSaveEditedClient}
+                  filteredClients={filteredClients}
+                  isBirthday={isBirthday}
+                  agendas={agendas}
+                  selectedAgendaId={selectedAgendaId}
+                  setSelectedAgendaId={setSelectedAgendaId}
+                  formatDateDisplay={formatDateDisplay}
+                  isFetchingDetails={isFetchingDetails}
+                  avaliacoesAdmin={avaliacoesAdmin}
+                  avaliacoesError={avaliacoesError}
+                  toggleAvaliacao={toggleAvaliacao}
+                  deleteAvaliacao={deleteAvaliacao}
+                  reloadAvaliacoes={fetchAgendasAndCleanup}
+                  generateWhatsAppVan={generateWhatsAppVan}
+                  generateWhatsAppSeguro={generateWhatsAppSeguro}
+                  handlePrint={handlePrint}
+                />
               </motion.div>
             )}
 
             {/* --- VISÃO DE RESERVAS (LISTA DE PASSAGEIROS) --- */}
             {mainTab === 'reservas' && (
               <motion.div key="reservas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-6">
-                
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
-                  <label className="text-sm font-bold text-gray-700">Selecione a Trilha:</label>
-                  <select 
-                    value={selectedAgendaId} 
-                    onChange={(e) => setSelectedAgendaId(e.target.value)}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-[#F17B37] outline-none"
-                  >
-                    {agendas.map(a => (
-                      <option key={a.id} value={a.id}>{a.title} - {formatDateDisplay(a.date)}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {isFetchingDetails ? (
-                  <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#F17B37]" /></div>
-                ) : detailsError ? (
-                  <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-red-700 flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold">Falha ao carregar compras</p>
-                      <p className="text-sm mt-1">{detailsError}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="bg-green-50 border border-green-100 rounded-2xl p-4">
-                        <p className="text-[10px] font-black text-green-700 uppercase tracking-wider">Faturamento registrado</p>
-                        <p className="text-2xl font-black text-green-800 mt-1">{formatCurrency(totalRevenue)}</p>
-                      </div>
-                      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                        <p className="text-[10px] font-black text-blue-700 uppercase tracking-wider">Compras pagas</p>
-                        <p className="text-2xl font-black text-blue-800 mt-1">{paidReservations.length}</p>
-                      </div>
-                      <div className={`${paidReservationsWithoutValue.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-100'} border rounded-2xl p-4`}>
-                        <p className={`text-[10px] font-black uppercase tracking-wider ${paidReservationsWithoutValue.length > 0 ? 'text-amber-700' : 'text-gray-500'}`}>Pagas sem valor</p>
-                        <p className={`text-2xl font-black mt-1 ${paidReservationsWithoutValue.length > 0 ? 'text-amber-800' : 'text-gray-700'}`}>{paidReservationsWithoutValue.length}</p>
-                      </div>
-                    </div>
-
-                    {paidReservationsWithoutValue.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                        <p className="text-sm">
-                          Existem {paidReservationsWithoutValue.length} compras antigas marcadas como pagas sem valor registrado.
-                          Elas não entram no faturamento para evitar apresentar receita incorreta.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Lista de Passageiros */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-[#1D2A3A] p-4 flex flex-col md:flex-row justify-between items-start md:items-center text-white gap-4">
-                        <h3 className="font-bold flex items-center gap-2 text-lg"><User className="h-5 w-5"/> Passageiros</h3>
-                        
-                        <div className="flex bg-white/10 p-1 rounded-xl w-full md:w-auto">
-                          {(['ALL', 'pago', 'pendente', 'atrasado'] as const).map(filter => {
-                            const count = filter === 'ALL' ? reservas.length : reservas.filter(r => r.status_pagamento === filter).length;
-                            const label = filter === 'ALL' ? 'Todos' : filter === 'pago' ? 'Pagos' : filter === 'pendente' ? 'Pendentes' : 'Atrasados';
-                            return (
-                              <button
-                                key={filter}
-                                onClick={() => setReservaFilter(filter)}
-                                className={`flex-1 md:flex-none px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${reservaFilter === filter ? 'bg-white text-[#1D2A3A] shadow-sm' : 'text-gray-300 hover:bg-white/20 hover:text-white'}`}
-                              >
-                                {label}
-                                <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${reservaFilter === filter ? 'bg-[#1D2A3A] text-white' : 'bg-white/20'}`}>{count}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                        
-                        <div className="flex gap-2 w-full md:w-auto justify-end">
-                          <button onClick={() => handleExportCSV('reservas')} className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition text-xs font-bold flex items-center gap-1">
-                            <FileUp className="h-4 w-4" /> Excel
-                          </button>
-                          <span className="bg-white/20 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center">{reservas.length} / {selectedAgendaData?.max_capacity || 15} Vagas</span>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3 p-3 sm:p-4">
-                        {reservas.filter(r => reservaFilter === 'ALL' || r.status_pagamento === reservaFilter).length === 0 ? (
-                          <p className="text-center text-gray-400 py-6 text-sm font-medium">Nenhum passageiro {reservaFilter !== 'ALL' ? 'neste status' : 'nesta trilha ainda'}.</p>
-                        ) : (
-                          reservas.filter(r => reservaFilter === 'ALL' || r.status_pagamento === reservaFilter).map(reserva => (
-                            <div key={reserva.id} className="flex items-start justify-between gap-3 p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-bold text-gray-800 text-sm">{reserva.clients?.full_name}</p>
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${reserva.status_pagamento === 'pago' ? 'bg-green-100 text-green-700' : reserva.status_pagamento === 'atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                    {reserva.status_pagamento.toUpperCase()}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                                    {formatPaymentMethod(reserva.metodo_pagamento)}
-                                  </span>
-                                  {reserva.created_at && (
-                                    <span className="text-[10px] font-medium text-gray-500">
-                                      {new Date(reserva.created_at).toLocaleString('pt-BR')}
-                                    </span>
-                                  )}
-                                </div>
-                                {reserva.nsu_transacao && !String(reserva.nsu_transacao).startsWith('CREATING:') && (
-                                  <p className="text-[10px] text-gray-400 mt-1 truncate" title={reserva.nsu_transacao}>
-                                    Referência: {reserva.nsu_transacao}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <div className="text-right">
-                                  {Number(reserva.valor_pago || 0) > 0 ? (
-                                    <>
-                                      <p className="text-[10px] font-bold text-gray-400 uppercase">Valor pago</p>
-                                      <p className="text-sm font-black text-green-700">{formatCurrency(reserva.valor_pago)}</p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <p className="text-[10px] font-black text-amber-700">Valor não registrado</p>
-                                      {selectedAgendaData?.price && (
-                                        <p className="text-[10px] text-gray-500">Preço previsto: {formatCurrency(selectedAgendaData.price)}</p>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                                <button 
-                                  title="Alternar Status de Pagamento"
-                                  onClick={() => handleEditReservationPayment(reserva)} 
-                                  className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                >
-                                  <Edit2 className="h-4 w-4"/>
-                                </button>
-                                <button onClick={() => handleDeleteReserva(reserva.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Trash2 className="h-4 w-4"/></button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Adicionar Manualmente */}
-                    <form onSubmit={handleAddReserva} className={`${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'bg-gray-100 border-gray-200 opacity-70' : 'bg-blue-50/50 border-blue-100'} p-5 rounded-2xl border space-y-4`}>
-                        <h4 className={`font-bold flex items-center gap-2 text-sm ${(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'text-gray-500' : 'text-blue-900'}`}>
-                          <Plus className="h-4 w-4"/> {(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15)) ? 'Trilha Esgotada - Inserção Bloqueada' : 'Inserir Passageiro Manualmente'}
-                        </h4>
-                        <div className="flex flex-col gap-2 relative">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                            <input 
-                              type="text"
-                              placeholder="Pesquisar cliente por nome ou CPF..."
-                              value={novaReservaClientSearch}
-                              onFocus={() => setIsNovaReservaSearchFocused(true)}
-                              onBlur={() => setTimeout(() => setIsNovaReservaSearchFocused(false), 200)}
-                              onChange={(e) => {
-                                setNovaReservaClientSearch(e.target.value);
-                                setNovaReservaClientId('');
-                              }}
-                              disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                              className={`w-full pl-9 p-3 bg-white border ${novaReservaClientId ? 'border-green-500' : 'border-gray-200'} rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#F17B37] disabled:bg-gray-50 disabled:cursor-not-allowed transition-colors`}
-                            />
-                            {novaReservaClientId && (
-                              <CheckCircle2 className="absolute right-3 top-3.5 h-4 w-4 text-green-500" />
-                            )}
-                          </div>
-                          
-                          <AnimatePresence>
-                            {isNovaReservaSearchFocused && !novaReservaClientId && (
-                              <motion.ul 
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -5 }}
-                                className="absolute z-50 w-full top-[100%] mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl"
-                              >
-                                {clients
-                                  .filter(c => 
-                                    !novaReservaClientSearch || 
-                                    c.full_name.toLowerCase().includes(novaReservaClientSearch.toLowerCase()) || 
-                                    (c.cpf && c.cpf.includes(novaReservaClientSearch))
-                                  )
-                                  .slice(0, 15)
-                                  .map(c => (
-                                  <li 
-                                    key={c.id} 
-                                    onClick={() => {
-                                      setNovaReservaClientId(c.id);
-                                      setNovaReservaClientSearch(`${c.full_name} (${c.cpf || 'Sem CPF'})`);
-                                      setIsNovaReservaSearchFocused(false);
-                                    }}
-                                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors"
-                                  >
-                                    <div className="font-bold text-gray-800 text-sm">{c.full_name}</div>
-                                    <div className="text-gray-500 text-xs mt-0.5">CPF: {c.cpf || 'Não informado'}</div>
-                                  </li>
-                                ))}
-                                {clients.filter(c => 
-                                    !novaReservaClientSearch || 
-                                    c.full_name.toLowerCase().includes(novaReservaClientSearch.toLowerCase()) || 
-                                    (c.cpf && c.cpf.includes(novaReservaClientSearch))
-                                  ).length === 0 && (
-                                  <li className="p-4 text-center text-gray-500 text-sm">
-                                    Nenhum cliente encontrado.
-                                  </li>
-                                )}
-                              </motion.ul>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                        <div className="flex gap-3">
-                          <select 
-                            value={novaReservaStatus} 
-                            onChange={(e) => setNovaReservaStatus(e.target.value)}
-                            disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                            className="w-1/3 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          >
-                            <option value="pago">Pago</option>
-                            <option value="pendente">Pendente</option>
-                            <option value="atrasado">Atrasado</option>
-                          </select>
-                          <input 
-                            type="number"
-                            step="0.01"
-                            placeholder="Valor Pago (ex: 150.00)"
-                            value={novaReservaValorPago}
-                            onChange={(e) => setNovaReservaValorPago(e.target.value)}
-                            disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                            className="w-1/3 p-3 bg-white border border-gray-200 rounded-xl text-sm outline-none disabled:bg-gray-50 disabled:cursor-not-allowed"
-                          />
-                          <button 
-                            type="submit" 
-                            disabled={(reservas.filter(r => r.status_pagamento === 'pago' || r.status_pagamento === 'pendente').length >= (selectedAgendaData?.max_capacity || 15))}
-                            className="flex-1 bg-[#1D2A3A] hover:bg-gray-900 text-white p-3 rounded-xl transition font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Adicionar
-                          </button>
-                        </div>
-                      </form>
-                    </>
-                )}
+                <AdminReservationsTab
+                  agendas={agendas}
+                  selectedAgendaId={selectedAgendaId}
+                  setSelectedAgendaId={setSelectedAgendaId}
+                  reservas={reservas}
+                  reservaFilter={reservaFilter}
+                  setReservaFilter={setReservaFilter}
+                  formatCurrency={formatCurrency}
+                  formatDateDisplay={formatDateDisplay}
+                  formatPaymentMethod={formatPaymentMethod}
+                  isFetchingDetails={isFetchingDetails}
+                  detailsError={detailsError}
+                  requirePin={requirePin}
+                  setReservas={setReservas}
+                  handleExportCSV={handleExportCSV}
+                  handlePrint={handlePrint}
+                  generateWhatsAppVan={generateWhatsAppVan}
+                  generateWhatsAppSeguro={generateWhatsAppSeguro}
+                  clients={clients}
+                  novaReservaClientId={novaReservaClientId}
+                  setNovaReservaClientId={setNovaReservaClientId}
+                  novaReservaClientSearch={novaReservaClientSearch}
+                  setNovaReservaClientSearch={setNovaReservaClientSearch}
+                  isNovaReservaSearchFocused={isNovaReservaSearchFocused}
+                  setIsNovaReservaSearchFocused={setIsNovaReservaSearchFocused}
+                  novaReservaStatus={novaReservaStatus}
+                  setNovaReservaStatus={setNovaReservaStatus}
+                  novaReservaValorPago={novaReservaValorPago}
+                  setNovaReservaValorPago={setNovaReservaValorPago}
+                  handleAddReserva={handleAddReserva}
+                  setEditingReservationPayment={setEditingReservationPayment}
+                />
               </motion.div>
             )}
 
             {/* --- VISÃO FINANCEIRA --- */}
             {mainTab === 'financas' && (
               <motion.div key="financas" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-4">
-                
-                {/* Abas Superiores de Finanças (Scroll Horizontal) */}
-                <div className="mt-2 grid shrink-0 grid-cols-2 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm sm:grid-cols-4">
-                  <button type="button" onClick={() => setFinancasTab('asaas')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'asaas' ? 'border-[#0B2540] text-[#0B2540] bg-[#E7EEF6]' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Asaas</button>
-                  <button type="button" onClick={() => setFinancasTab('despesas')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'despesas' ? 'border-red-500 text-red-600 bg-red-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Custos</button>
-                  <button type="button" onClick={() => setFinancasTab('receitas')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'receitas' ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Receitas</button>
-                  <button type="button" onClick={() => setFinancasTab('relatorios')} className={`min-w-0 px-2 py-3 text-xs font-bold border-b-2 transition-all ${financasTab === 'relatorios' ? 'border-[#D96224] text-[#D96224] bg-[#FFF0E6]' : 'border-transparent text-gray-500 hover:bg-gray-50'}`}>Relatório</button>
-                </div>
-
-                {/* CONTEÚDO: ASAAS */}
-                {financasTab === 'asaas' && (
-                  <div className="pt-2">
-                    <CobrancasDashboard />
-                  </div>
-                )}
-
-                {financasTab !== 'relatorios' && financasTab !== 'asaas' && (
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
-                    <label className="text-sm font-bold text-gray-700">Selecione a Trilha:</label>
-                    <select 
-                      value={selectedAgendaId} 
-                      onChange={(e) => setSelectedAgendaId(e.target.value)}
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-[#25D366] outline-none"
-                    >
-                      {agendas.map(a => (
-                        <option key={a.id} value={a.id}>{a.title} - {formatDateDisplay(a.date)}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                {/* CONTEÚDO: DESPESAS */}
-                {financasTab === 'despesas' && (
-                  <div className="space-y-4">
-                    {isFetchingDetails ? (
-                      <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-red-500" /></div>
-                    ) : (
-                      <>
-                        <form onSubmit={handleAddCusto} className="bg-red-50/50 p-5 rounded-2xl border border-red-100 shadow-sm flex flex-col gap-3">
-                          <h4 className="font-bold text-red-900 flex items-center gap-2 text-sm"><Plus className="h-4 w-4"/> Registrar Nova Despesa</h4>
-                          <div className="flex gap-3">
-                            <input type="text" placeholder="Nome do gasto (Ex: Van, Guia)" value={novoCustoNome} onChange={e => setNovoCustoNome(e.target.value)} className="flex-[2] p-3 bg-white border border-red-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400" required />
-                            <input type="text" placeholder="R$ 150.00" inputMode="decimal" value={novoCustoValor} onChange={e => setNovoCustoValor(e.target.value)} className="flex-1 p-3 bg-white border border-red-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-400" required />
-                          </div>
-                          <button type="submit" className="w-full bg-red-500 text-white p-3 rounded-xl font-bold shadow-sm hover:bg-red-600 transition">Salvar Despesa</button>
-                        </form>
-
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                          <div className="bg-gray-50 border-b border-gray-100 p-4 flex justify-between items-center">
-                            <h3 className="font-bold text-gray-800 flex items-center gap-2"><DollarSign className="h-5 w-5 text-red-500"/> Gastos Registrados</h3>
-                            <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg text-xs font-bold">Total: {formatCurrency(totalCosts)}</span>
-                          </div>
-                          <div className="space-y-3 p-4">
-                            {custos.length === 0 ? (
-                              <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum custo registrado.</p>
-                            ) : (
-                              custos.map(custo => (
-                                <div key={custo.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-gray-50">
-                                  <p className="font-bold text-gray-700 text-sm">{custo.item_nome}</p>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-red-500 font-bold text-sm">- {formatCurrency(Number(custo.valor_custo))}</span>
-                                    <button onClick={() => handleDeleteCusto(custo.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="h-4 w-4"/></button>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* CONTEÚDO: RECEITAS */}
-                {financasTab === 'receitas' && (
-                  <div className="space-y-4">
-                    {isFetchingDetails ? (
-                      <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-green-500" /></div>
-                    ) : (
-                      <>
-                        <div className="bg-[#25D366] text-white p-6 rounded-2xl shadow-sm relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-[60px] opacity-20" />
-                            <p className="text-green-100 text-sm font-bold uppercase tracking-wider mb-1">Receita Confirmada</p>
-                            <p className="text-4xl font-black">{formatCurrency(totalRevenue)}</p>
-                            <p className="text-green-100 text-xs mt-2">Soma exata do valor pago por todos os clientes.</p>
-                          </div>
-                        
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                          <div className="bg-gray-50 border-b border-gray-100 p-4">
-                            <h3 className="font-bold text-gray-800 text-sm">Origem das Receitas (Passageiros Pagos)</h3>
-                          </div>
-                          <div className="space-y-2 p-4">
-                            {reservas.filter(r => r.status_pagamento === 'pago').length === 0 ? (
-                              <p className="text-center text-gray-400 py-4 text-sm font-medium">Nenhum pagamento confirmado.</p>
-                            ) : (
-                              reservas.filter(r => r.status_pagamento === 'pago').map(reserva => (
-                                <div key={reserva.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
-                                  <p className="font-bold text-gray-700 text-sm">{reserva.clients?.full_name}</p>
-                                  <span className="text-green-600 font-bold text-sm">+ {formatCurrency(getReservaNetProfit(reserva, selectedAgendaData))}</span>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* CONTEÚDO: RELATÓRIOS */}
-                {financasTab === 'relatorios' && (
-                  <div className="space-y-6 pb-6">
-                    {isFetchingGlobalFinances ? (
-                      <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-[#1D2A3A]" /></div>
-                    ) : (
-                      <div className="space-y-6 print:m-0 print:p-0">
-                        
-                        {/* Header do Relatório */}
-                        <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100 print:shadow-none print:border-none flex-col sm:flex-row gap-4">
-                          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2 w-full sm:w-auto">
-                            <DollarSign className="h-6 w-6 text-[#25D366]" /> Dashboard Financeiro
-                          </h3>
-                          <div className="flex flex-wrap gap-2 print:hidden justify-start sm:justify-end w-full sm:w-auto">
-                            <button 
-                              onClick={() => {
-                                const payload = { agendas, allReservas, allCustos, year: reportYear };
-                                handleGenerateCFOAdvice(payload);
-                              }}
-                              className="bg-purple-50 text-purple-600 hover:bg-purple-100 p-2 rounded-xl transition flex gap-2 text-sm font-bold flex-1 sm:flex-none justify-center"
-                            >
-                              <Sparkles className="h-4 w-4" /> IA CFO
-                            </button>
-                            <button onClick={() => handleExportCSV('relatorios')} className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-2 rounded-xl transition flex gap-2 text-sm font-bold flex-1 sm:flex-none justify-center">
-                              <FileUp className="h-4 w-4" /> Excel
-                            </button>
-                            <button onClick={() => window.print()} className="bg-gray-100 text-gray-700 hover:bg-gray-200 p-2 rounded-xl transition flex gap-2 text-sm font-bold flex-1 sm:flex-none justify-center">
-                              <Printer className="h-4 w-4" /> Imprimir
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Filtro de Ano */}
-                        <div className="flex justify-center gap-2 print:hidden">
-                          {[2024, 2025, 2026].map(y => (
-                            <button key={y} onClick={() => setReportYear(y)} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${reportYear === y ? 'bg-[#1D2A3A] text-white' : 'bg-white text-gray-500 border border-gray-200'}`}>
-                              {y}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Lógica de Dados do Dashboard */}
-                        {(() => {
-                          const monthlyData = Array.from({ length: 12 }, (_, i) => {
-                            const month = i + 1;
-                            const trailsInMonth = agendas.filter(a => {
-                              const d = new Date(a.date + 'T12:00:00Z');
-                              return d.getFullYear() === reportYear && (d.getMonth() + 1) === month;
-                            });
-                            let rev = 0; let cst = 0;
-                            trailsInMonth.forEach(agenda => {
-                              rev += allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').reduce((acc, r) => acc + getReservaNetProfit(r, agenda), 0);
-                              cst += allCustos.filter(c => c.agenda_id === agenda.id).reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
-                            });
-                            return { name: new Date(2000, i).toLocaleString('pt-BR', { month: 'short' }).toUpperCase(), lucro: rev - cst, faturamento: rev, despesas: cst };
-                          });
-
-                          const totalRevYear = monthlyData.reduce((sum, d) => sum + d.faturamento, 0);
-                          const totalCstYear = monthlyData.reduce((sum, d) => sum + d.despesas, 0);
-                          const yearProfit = totalRevYear - totalCstYear;
-                          const monthProfit = monthlyData[reportMonth - 1]?.lucro || 0;
-
-                          const trailsInSelectedMonth = agendas.filter(a => {
-                            const d = new Date(a.date + 'T12:00:00Z');
-                            return d.getFullYear() === reportYear && (d.getMonth() + 1) === reportMonth;
-                          });
-
-                          return (
-                            <>
-                              {/* Cards de Resumo Anual */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="bg-gradient-to-br from-[#1D2A3A] to-gray-900 p-5 rounded-2xl shadow-md text-white overflow-hidden">
-                                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Lucro Anual ({reportYear})</p>
-                                  <p className={`text-2xl sm:text-3xl lg:text-4xl font-black truncate ${yearProfit >= 0 ? 'text-[#25D366]' : 'text-red-500'}`} title={formatCurrency(yearProfit)}>{formatCurrency(yearProfit)}</p>
-                                </div>
-                                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Faturamento Bruto</p>
-                                  <p className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-800 truncate" title={formatCurrency(totalRevYear)}>{formatCurrency(totalRevYear)}</p>
-                                  <p className="text-xs text-gray-500 mt-1 truncate">Custos Totais: <span className="text-red-500 font-bold">- {formatCurrency(totalCstYear)}</span></p>
-                                </div>
-                              </div>
-
-                              {/* Gráfico Mensal */}
-                              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mt-4">
-                                <h4 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wide">Evolução do Lucro (Mensal)</h4>
-                                <div className="h-52 w-full">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} />
-                                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#888' }} tickFormatter={(val) => formatCurrency(val)} />
-                                      <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                      <Bar dataKey="lucro" radius={[4, 4, 4, 4]}>
-                                        {monthlyData.map((entry, index) => (
-                                          <Cell key={`cell-${index}`} fill={entry.lucro >= 0 ? '#25D366' : '#EF4444'} />
-                                        ))}
-                                      </Bar>
-                                    </BarChart>
-                                  </ResponsiveContainer>
-                                </div>
-                              </div>
-
-                              {/* Seleção do Mês (Calendário) */}
-                              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                                <h4 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">Extrato Mensal Detalhado</h4>
-                                <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar print:hidden">
-                                  {Array.from({ length: 12 }, (_, i) => {
-                                    const m = i + 1;
-                                    const mName = new Date(2000, i).toLocaleString('pt-BR', { month: 'short' }).toUpperCase();
-                                    return (
-                                      <button 
-                                        key={m} 
-                                        onClick={() => setReportMonth(m)}
-                                        className={`flex-shrink-0 w-16 py-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1 ${reportMonth === m ? 'border-[#F17B37] bg-[#F17B37]/10' : 'border-gray-200 bg-gray-50'}`}
-                                      >
-                                        <span className={`text-[10px] font-bold ${reportMonth === m ? 'text-[#F17B37]' : 'text-gray-400'}`}>{mName}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-
-                                <div className="mt-4 pt-4 border-t border-gray-100">
-                                  <div className="flex justify-between items-center mb-4">
-                                    <h5 className="font-bold text-gray-700">Trilhas de {new Date(2000, reportMonth - 1).toLocaleString('pt-BR', { month: 'long' })}</h5>
-                                    <span className={`font-black ${monthProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>Balanço: {formatCurrency(monthProfit)}</span>
-                                  </div>
-
-                                  {trailsInSelectedMonth.length === 0 ? (
-                                    <div className="bg-gray-50 rounded-xl p-6 text-center border border-dashed border-gray-200">
-                                      <CalendarDays className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                                      <p className="text-sm font-bold text-gray-500">Nenhuma expedição neste mês.</p>
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-3">
-                                      {trailsInSelectedMonth.map(agenda => {
-                                        const rev = allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').reduce((acc, r) => acc + getReservaNetProfit(r, agenda), 0);
-                                        const cst = allCustos.filter(c => c.agenda_id === agenda.id).reduce((acc, curr) => acc + Number(curr.valor_custo), 0);
-                                        const profit = rev - cst;
-                                        const isPositive = profit >= 0;
-
-                                        return (
-                                          <div key={agenda.id} className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden ${expandedReportId === agenda.id ? 'border-[#1D2A3A] ring-1 ring-[#1D2A3A]/20' : 'border-gray-200 hover:border-gray-300'}`}>
-                                            <div onClick={() => setExpandedReportId(expandedReportId === agenda.id ? null : agenda.id)} className="p-4 flex items-center justify-between cursor-pointer">
-                                              <div>
-                                                <h4 className="font-bold text-gray-900 text-sm line-clamp-1">{agenda.title}</h4>
-                                                <p className="text-xs text-gray-500 mt-0.5">{formatDateDisplay(agenda.date)}</p>
-                                              </div>
-                                              <div className="flex items-center gap-3">
-                                                <span className={`text-[10px] font-black px-2 py-1 rounded-md ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                  {formatCurrency(profit)}
-                                                </span>
-                                                {expandedReportId === agenda.id ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
-                                              </div>
-                                            </div>
-
-                                            <AnimatePresence>
-                                              {expandedReportId === agenda.id && (
-                                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-gray-100 bg-gray-50/50">
-                                                  <div className="p-4 flex justify-between">
-                                                    <div>
-                                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Receitas</p>
-                                                      <p className="font-bold text-green-600 text-sm">{formatCurrency(rev)}</p>
-                                                    </div>
-                                                    <div>
-                                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Despesas</p>
-                                                      <p className="font-bold text-red-500 text-sm">{formatCurrency(cst)}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Margem</p>
-                                                      <p className="font-bold text-gray-800 text-sm">{rev > 0 ? ((profit / rev) * 100).toFixed(1) : '0'}%</p>
-                                                    </div>
-                                                  </div>
-                                                  {allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').length > 0 && (
-                                                    <div className="p-4 pt-0 mt-2 border-t border-gray-100">
-                                                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 mt-3">Passageiros Pagos</p>
-                                                      <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar pr-1">
-                                                        {allReservas.filter(r => r.agenda_id === agenda.id && r.status_pagamento === 'pago').map(reserva => (
-                                                          <div key={reserva.id} className="flex justify-between items-center text-xs bg-white p-2.5 rounded-lg border border-gray-100 shadow-sm">
-                                                            <span className="font-bold text-gray-800 truncate pr-2">{reserva.clients?.full_name}</span>
-                                                            <div className="flex items-center gap-2 shrink-0">
-                                                              {(() => {
-                                                                const paymentMethod = String(reserva.metodo_pagamento || '').toUpperCase();
-                                                                const isCreditCard = paymentMethod.includes('CREDIT_CARD') || (reserva.valor_pago && (Number(reserva.valor_pago) > Number(agenda.price) + 0.1));
-                                                                const methodLabel = paymentMethod.includes('CREDIT_CARD')
-                                                                  ? 'Cartão'
-                                                                  : paymentMethod.includes('PIX')
-                                                                    ? 'Pix'
-                                                                    : paymentMethod === 'BOLETO'
-                                                                      ? 'Boleto'
-                                                                      : 'Saldo / Dinheiro';
-                                                                const revenueValue = getReservaNetProfit(reserva, agenda);
-                                                                return (
-                                                                  <>
-                                                                    <span className={`text-[9px] px-2 py-0.5 rounded border font-bold uppercase ${isCreditCard ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                                                      {methodLabel}
-                                                                    </span>
-                                                                    <span className="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-100" title={`Lucro Líquido desta reserva`}>
-                                                                      {formatCurrency(revenueValue)}
-                                                                    </span>
-                                                                  </>
-                                                                );
-                                                              })()}
-                                                            </div>
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                    </div>
-                                                  )}
-                                                </motion.div>
-                                              )}
-                                            </AnimatePresence>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Ranking dos Top Clientes */}
-                              {(() => {
-                                const clientRanking = allReservas.reduce((acc, curr) => {
-                                  if (curr.status_pagamento === 'pago' && curr.clients) {
-                                    if (!acc[curr.client_id]) {
-                                      acc[curr.client_id] = { name: curr.clients.full_name, count: 0 };
-                                    }
-                                    acc[curr.client_id].count += 1;
-                                  }
-                                  return acc;
-                                }, {} as Record<string, { name: string, count: number }>);
-                                
-                                const topClients = Object.values(clientRanking)
-                                  .sort((a: any, b: any) => b.count - a.count)
-                                  .slice(0, 10);
-                                  
-                                if (topClients.length === 0) return null;
-
-                                return (
-                                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mt-4 print:hidden">
-                                    <h4 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wide flex items-center gap-2">
-                                      <Users className="h-5 w-5 text-[#F17B37]" /> Ranking Top Trilheiros
-                                    </h4>
-                                    <div className="space-y-2">
-                                      {topClients.map((client: any, index: number) => (
-                                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                          <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-[#1D2A3A] text-white flex items-center justify-center text-xs font-black shrink-0 shadow-md">
-                                              #{index + 1}
-                                            </div>
-                                            <div>
-                                              <p className="text-sm font-bold text-gray-900">{client.name}</p>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-1 bg-orange-100 text-[#F17B37] px-3 py-1 rounded-lg border border-orange-200">
-                                            <span className="text-sm font-black">{client.count}</span>
-                                            <span className="text-[10px] font-bold uppercase">Trilhas</span>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <AdminFinancesTab
+                  financasTab={financasTab}
+                  setFinancasTab={setFinancasTab}
+                  selectedAgendaId={selectedAgendaId}
+                  setSelectedAgendaId={setSelectedAgendaId}
+                  agendas={agendas}
+                  formatDateDisplay={formatDateDisplay}
+                  isFetchingDetails={isFetchingDetails}
+                  novoCustoNome={novoCustoNome}
+                  setNovoCustoNome={setNovoCustoNome}
+                  novoCustoValor={novoCustoValor}
+                  setNovoCustoValor={setNovoCustoValor}
+                  handleAddCusto={handleAddCusto}
+                  handleDeleteCusto={handleDeleteCusto}
+                  custos={custos}
+                  totalCosts={totalCosts}
+                  formatCurrency={formatCurrency}
+                  totalRevenue={totalRevenue}
+                  reservas={reservas}
+                  selectedAgendaData={selectedAgendaData}
+                  getReservaNetProfit={getReservaNetProfit}
+                  isFetchingGlobalFinances={isFetchingGlobalFinances}
+                  allReservas={allReservas}
+                  allCustos={allCustos}
+                  reportYear={reportYear}
+                  setReportYear={setReportYear}
+                  reportMonth={reportMonth}
+                  setReportMonth={setReportMonth}
+                  expandedReportId={expandedReportId}
+                  setExpandedReportId={setExpandedReportId}
+                  handleGenerateCFOAdvice={handleGenerateCFOAdvice}
+                  handleExportCSV={handleExportCSV}
+                />
               </motion.div>
             )}
-          
 
               {/* --- VISÃO DE LOJA --- */}
               {mainTab === 'loja' && (
@@ -2448,6 +1480,75 @@ export default function AdminPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            <section id="admin-print-report" className="hidden print:block">
+              <div className="text-center border-b-2 border-black pb-4 mb-6">
+                <h1 className="text-2xl font-black uppercase tracking-widest mb-2">
+                  {printMode === 'van'
+                    ? `Lista de embarque — ${agendas.find(agenda => agenda.id === selectedAgendaId)?.title || 'Trilha'}`
+                    : printMode === 'seguro'
+                      ? `Lista para seguro — ${agendas.find(agenda => agenda.id === selectedAgendaId)?.title || 'Trilha'}`
+                      : 'Relatório geral de clientes'}
+                </h1>
+                <p className="text-sm text-gray-600">
+                  Mais Trilha Menos Estresse · Emissão: {printIssuedAt || '—'}
+                </p>
+              </div>
+
+              <table className="w-full text-left text-[10px] border-collapse">
+                <thead>
+                  {printMode === 'van' ? (
+                    <tr>
+                      <th className="border p-2 w-12 text-center">#</th>
+                      <th className="border p-2">Passageiro</th>
+                      <th className="border p-2">CPF</th>
+                      <th className="border p-2">Telefone</th>
+                      <th className="border p-2">Embarque</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th className="border p-2 w-12 text-center">#</th>
+                      <th className="border p-2">Cliente</th>
+                      <th className="border p-2">Documentos</th>
+                      <th className="border p-2">Contato</th>
+                      <th className="border p-2">Emergência</th>
+                      <th className="border p-2">Saúde e observações</th>
+                    </tr>
+                  )}
+                </thead>
+                <tbody>
+                  {(printMode === 'todos'
+                    ? clients
+                    : reservas
+                        .filter(reserva => reserva.status_pagamento === 'pago' || reserva.status_pagamento === 'pendente')
+                        .map(reserva => reserva.clients)
+                        .filter(Boolean)
+                  ).map((client, index) => (
+                    printMode === 'van' ? (
+                      <tr key={`${client.id}-${index}`}>
+                        <td className="border p-2 text-center font-bold">{index + 1}</td>
+                        <td className="border p-2 font-bold text-xs">{client.full_name || 'Nome não informado'}</td>
+                        <td className="border p-2 text-xs">{client.cpf || 'N/A'}</td>
+                        <td className="border p-2 text-xs">{client.phone || 'N/A'}</td>
+                        <td className="border p-2">□</td>
+                      </tr>
+                    ) : (
+                      <tr key={`${client.id}-${index}`}>
+                        <td className="border p-2 text-center font-bold">{index + 1}</td>
+                        <td className="border p-2 font-bold">
+                          {client.full_name || 'Nome não informado'}<br />
+                          <span className="font-normal text-[8px]">Nascimento: {client.birth_date ? String(client.birth_date).split('-').reverse().join('/') : 'N/A'}</span>
+                        </td>
+                        <td className="border p-2">CPF: {client.cpf || 'N/A'}<br />RG: {client.rg || 'N/A'}</td>
+                        <td className="border p-2">{client.phone || 'N/A'}<br />{client.email || 'N/A'}</td>
+                        <td className="border p-2">{client.emergency_contact_name || 'N/A'}<br />{client.emergency_contact_phone || 'N/A'}</td>
+                        <td className="border p-2 text-red-700 font-bold max-w-[220px] whitespace-pre-wrap">{client.health_notes || 'Nenhuma observação'}</td>
+                      </tr>
+                    )
+                  ))}
+                </tbody>
+              </table>
+            </section>
           </div>
           <PinModal isOpen={isPinModalOpen} onClose={() => { setIsPinModalOpen(false); if(pinAction) pinAction.onCancel(); }} onSuccess={() => { if(pinAction) pinAction.onConfirm(); }} actionName={pinAction?.name} />
       </main>
@@ -2484,6 +1585,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
                   <button onClick={() => { setMainTab('trilhas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'trilhas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><CalendarDays className="h-5 w-5" /> Trilhas</button>
+                  <button type="button" onClick={() => window.location.assign('/admin/albuns')} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 font-bold text-gray-500 transition-all hover:bg-purple-50 hover:text-purple-700"><Images className="h-5 w-5" /> Álbuns e fotos</button>
                   <button onClick={() => { setMainTab('clientes'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'clientes' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><FileText className="h-5 w-5" /> Clientes</button>
                   <button onClick={() => { setMainTab('reservas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'reservas' ? 'bg-orange-50 text-[#F17B37]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><CheckCircle2 className="h-5 w-5" /> Reservas</button>
                   <button onClick={() => { setMainTab('financas'); setIsMobileMenuOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${mainTab === 'financas' ? 'bg-green-50 text-[#25D366]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}><DollarSign className="h-5 w-5" /> Finanças</button>
@@ -2719,7 +1821,15 @@ export default function AdminPage() {
 
                   {/* FOTOS DA GALERIA */}
                   <div>
-                    <h3 className="font-black text-gray-800 mb-2">Álbum da Trilha (Galeria)</h3>
+                    <div className="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                      <div>
+                        <h3 className="font-black text-gray-800">Galeria comercial da trilha</h3>
+                        <p className="mt-1 text-xs text-gray-500">Estas imagens aparecem na página de venda antes da compra. Não são o álbum dos participantes.</p>
+                      </div>
+                      <a href="/admin/albuns" className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-50 px-3 py-2 text-xs font-black text-purple-700">
+                        <Images className="h-4 w-4" /> Gerenciar álbum dos clientes
+                      </a>
+                    </div>
                     {editingAgenda?.images && editingAgenda.images.length > 0 && (
                       <div className="grid grid-cols-3 gap-3 mb-4">
                         {editingAgenda.images.map((img: string, idx: number) => (
@@ -2742,7 +1852,7 @@ export default function AdminPage() {
                     
                     <div className="border-2 border-dashed border-orange-200 bg-orange-50/50 hover:bg-orange-50 transition-colors rounded-2xl p-6 text-center relative">
                       <ImageIcon className="mx-auto h-8 w-8 text-orange-400 mb-2" />
-                      <p className="font-bold text-gray-700">Adicionar mais fotos à galeria</p>
+                      <p className="font-bold text-gray-700">Adicionar fotos para a página de venda</p>
                       <input type="file" multiple accept="image/*" {...register("images")} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                     </div>
                   </div>
@@ -3072,12 +2182,6 @@ export default function AdminPage() {
         onSaved={handleReservationPaymentSaved}
       />
 
-      {selectedPhotosAgendaId && (
-        <PhotosUploadModal 
-          agendaId={selectedPhotosAgendaId} 
-          onClose={() => setSelectedPhotosAgendaId(null)} 
-        />
-      )}
     </div>
   );
 }

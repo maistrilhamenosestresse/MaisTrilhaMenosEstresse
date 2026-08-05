@@ -4,7 +4,6 @@ import "./globals.css";
 import VisualEditorBridge from "@/components/VisualEditorBridge";
 import { Navigation } from "@/components/Navigation";
 import { Toaster } from "sonner";
-import Script from "next/script";
 import PwaRuntime from "@/components/PwaRuntime";
 import CookieConsentManager from "@/components/privacy/CookieConsentManager";
 
@@ -19,6 +18,21 @@ const geistMono = Geist_Mono({
 });
 
 const logoUrl = process.env.NEXT_PUBLIC_LOGO_URL || 'https://maistrilha-menosestresse.s3.us-east-2.amazonaws.com/legacy-media/images/logo.png';
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Mais Trilha Menos Estresse',
+  alternateName: ['Mais Trilha', 'Mais Trilha, menos estresse', 'MaisTrilha'],
+  url: 'https://www.maistrilhasmenosestresse.com',
+  logo: logoUrl,
+  sameAs: ['https://www.instagram.com/maistrilhamenosestresse'],
+};
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Mais Trilha Menos Estresse',
+  url: 'https://www.maistrilhasmenosestresse.com',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.maistrilhasmenosestresse.com'),
@@ -79,39 +93,18 @@ export default function RootLayout({
         <div id="_tela" style={{ display: 'none' }}></div>
         
         {/* JSON-LD Schema.org para o Google Search (Associação da Marca e Sitelinks) */}
-        <Script
+        <script
           id="json-ld-organization"
           type="application/ld+json"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              "name": "Mais Trilha Menos Estresse",
-              "alternateName": [
-                "Mais Trilha",
-                "Mais Trilha, menos estresse",
-                "MaisTrilha"
-              ],
-              "url": "https://www.maistrilhasmenosestresse.com",
-              "logo": logoUrl,
-              "sameAs": [
-                "https://www.instagram.com/maistrilhamenosestresse"
-              ]
-            })
+            __html: JSON.stringify(organizationJsonLd).replace(/</g, '\\u003c'),
           }}
         />
-        <Script
+        <script
           id="json-ld-website"
           type="application/ld+json"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              "name": "Mais Trilha Menos Estresse",
-              "url": "https://www.maistrilhasmenosestresse.com"
-            })
+            __html: JSON.stringify(websiteJsonLd).replace(/</g, '\\u003c'),
           }}
         />
 

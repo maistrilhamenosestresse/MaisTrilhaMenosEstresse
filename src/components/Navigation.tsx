@@ -10,7 +10,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, ShoppingCart } from "lucide-react";
+import { Images, Menu, X, ShoppingCart } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useEffect } from "react";
@@ -49,7 +49,7 @@ export function Navigation() {
   const cartQuantity = mounted ? getTotalQuantity() : 0;
 
   // Hide the navigation on admin or specific pages if needed.
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app') || pathname?.startsWith('/cadastro') || pathname?.startsWith('/cupom') || pathname?.startsWith('/termo') || pathname?.startsWith('/contratos')) return null;
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/app') || pathname === '/album/dashboard' || pathname?.startsWith('/cadastro') || pathname?.startsWith('/cupom') || pathname?.startsWith('/termo') || pathname?.startsWith('/contratos')) return null;
 
   return (
     <>
@@ -95,10 +95,10 @@ export function Navigation() {
               Fale Conosco
             </Link>
             <Link
-              href="/app"
-              className={`text-sm font-bold px-4 py-1.5 rounded-full border border-[#F17B37] transition-all hover:bg-[#F17B37] hover:text-white ${pathname === '/app' ? 'bg-[#F17B37] text-white' : 'text-[#F17B37]'}`}
+              href="/album"
+              className={`flex items-center gap-1.5 text-sm font-bold transition-colors hover:text-[#F17B37] ${pathname?.startsWith('/album') ? 'text-[#F17B37]' : 'text-gray-300'}`}
             >
-              Área de Membros
+              <Images className="h-4 w-4" /> Álbum IA
             </Link>
           </div>
 
@@ -106,6 +106,15 @@ export function Navigation() {
           {/* Cart Icon & Comprar Button */}
           {!pathname?.startsWith('/carrinho') && !pathname?.startsWith('/checkout') && !pathname?.startsWith('/bolao') && (
             <div className="flex items-center gap-2">
+              {!pathname?.startsWith('/agenda') && (
+                <button
+                  onClick={() => router.push('/agenda')}
+                  className="bg-[#F17B37] hover:bg-[#e06925] text-white px-5 py-2 md:px-6 md:py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 shadow-[0_0_15px_rgba(241,123,55,0.4)]"
+                >
+                  Comprar
+                </button>
+              )}
+
               <button
                 onClick={() => router.push('/carrinho')}
                 className="relative p-2 text-white hover:text-[#F17B37] transition-colors bg-white/5 md:bg-transparent rounded-xl md:rounded-none border border-white/10 md:border-transparent"
@@ -118,15 +127,6 @@ export function Navigation() {
                   </span>
                 )}
               </button>
-
-              {!pathname?.startsWith('/agenda') && (
-                <button
-                  onClick={() => router.push('/agenda')}
-                  className="bg-[#F17B37] hover:bg-[#e06925] text-white px-5 py-2 md:px-6 md:py-2.5 rounded-full font-bold text-sm transition-all hover:scale-105 shadow-[0_0_15px_rgba(241,123,55,0.4)]"
-                >
-                  Comprar
-                </button>
-              )}
             </div>
           )}
 
@@ -186,13 +186,12 @@ export function Navigation() {
               >
                 Fale Conosco
               </Link>
-
               <Link
-                href="/app"
+                href="/album"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="mt-2 text-[#F17B37] border-2 border-[#F17B37] px-6 py-2 rounded-full font-bold text-xl hover:bg-[#F17B37] hover:text-white transition-all"
+                className={`flex items-center gap-2 transition-colors hover:text-[#F17B37] ${pathname?.startsWith('/album') ? 'text-[#F17B37]' : 'text-white'}`}
               >
-                Área de Membros
+                <Images className="h-6 w-6" /> Álbum IA
               </Link>
 
               <button

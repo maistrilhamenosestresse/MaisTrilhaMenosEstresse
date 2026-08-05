@@ -74,14 +74,16 @@ export async function requireAdminRequest(request: Request): Promise<AuthSuccess
 export async function isAdminUser(user: User) {
   const email = user.email?.toLowerCase();
   const metadataRole = user.app_metadata?.role;
+  if (metadataRole === "admin" || (!!email && getAdminEmails().includes(email))) {
+    return true;
+  }
+
   const { data: profile } = await createSupabaseAdmin()
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
-  return profile?.role === "admin" ||
-    metadataRole === "admin" ||
-    (!!email && getAdminEmails().includes(email));
+  return profile?.role === "admin";
 }
 
 export async function requireAgendaCustomer(agendaId: string): Promise<AuthSuccess | AuthFailure> {
