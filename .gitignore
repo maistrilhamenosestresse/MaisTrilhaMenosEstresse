@@ -63,4 +63,7 @@ backup_*.json
 .media-migration-complete.json
 /create_test_user.js
 
+# Credenciais OAuth do Google nunca devem entrar no repositório
+client_secret_*.json
+
 .vercel

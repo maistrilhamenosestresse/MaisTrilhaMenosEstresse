@@ -21,7 +21,7 @@ export async function GET(
 
     const { data, error } = await createSupabaseAdmin()
       .from('fotos_trilhas')
-      .select('id, aws_key, aws_url, aws_face_id')
+      .select('id, aws_key, aws_url, aws_face_id, original_aws_key')
       .eq('agenda_id', agendaId);
 
     if (error) throw error;
@@ -62,7 +62,7 @@ export async function GET(
     const photosWithSignedUrls = await Promise.all(
       publicPhotos.map(async (foto) => {
         const mediaType = isVideoMedia(foto.aws_key, foto.aws_url) ? 'video' : 'image';
-        if (!foto.aws_key) return { id: foto.id, aws_url: foto.aws_url, type: mediaType };
+        if (!foto.aws_key) return { id: foto.id, aws_url: foto.aws_url, download_url: foto.aws_url, type: mediaType };
         
         try {
           const command = new GetObjectCommand({
@@ -70,9 +70,12 @@ export async function GET(
             Key: foto.aws_key,
           });
           const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 * 24 }); // 24 hours
-          return { id: foto.id, aws_url: signedUrl, type: mediaType };
+          const downloadUrl = foto.original_aws_key
+            ? await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: BUCKET_NAME, Key: foto.original_aws_key }), { expiresIn: 3600 * 24 })
+            : signedUrl;
+          return { id: foto.id, aws_url: signedUrl, download_url: downloadUrl, type: mediaType };
         } catch {
-          return { id: foto.id, aws_url: foto.aws_url, type: mediaType };
+          return { id: foto.id, aws_url: foto.aws_url, download_url: foto.aws_url, type: mediaType };
         }
       })
     );

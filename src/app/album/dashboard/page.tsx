@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, Camera, LogOut, Download, Sparkles, Filter, CheckCircle2, AlertCircle, Play, X, House, Images, Square, CheckSquare, CalendarDays, Maximize2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Camera, LogOut, Download, Sparkles, Filter, CheckCircle2, AlertCircle, Play, X, House, Images, Square, CheckSquare, CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
 import { SlideshowViewer } from "@/components/album/SlideshowViewer";
+import { HorizontalMediaCarousel } from "@/components/album/HorizontalMediaCarousel";
 import Webcam from "react-webcam";
 
 type AlbumStats = {
@@ -25,7 +26,7 @@ export default function AlbumDashboard() {
   const router = useRouter();
   const [tours, setTours] = useState<any[]>([]);
   const [selectedTour, setSelectedTour] = useState<string | null>(null);
-  const [photos, setPhotos] = useState<{ id: string; aws_url: string; type: "image" | "video" }[]>([]);
+  const [photos, setPhotos] = useState<{ id: string; aws_url: string; download_url?: string; type: "image" | "video" }[]>([]);
   const [loadingTours, setLoadingTours] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [downloadingAlbum, setDownloadingAlbum] = useState(false);
@@ -104,6 +105,7 @@ export default function AlbumDashboard() {
       setPhotos((data.photos || []).map((photo: any, index: number) => ({
         id: String(photo.id || `media-${index}`),
         aws_url: String(photo.aws_url || ""),
+        download_url: String(photo.download_url || photo.aws_url || ""),
         type: photo.type === "video" ? "video" : "image",
       })));
       setAlbumStats({ ...EMPTY_STATS, ...(data.stats || {}) });
@@ -141,9 +143,10 @@ export default function AlbumDashboard() {
       if (!res.ok) throw new Error(data.error || 'Não foi possível analisar a selfie');
       
       if (data.matches && data.matches.length > 0) {
-        setPhotos(data.matches.map((match: string | { id?: string; url?: string; type?: string }, index: number) => ({
-          id: `face-result-${index}`,
+        setPhotos(data.matches.map((match: string | { id?: string; url?: string; download_url?: string; type?: string }, index: number) => ({
+          id: typeof match === "string" ? `face-result-${index}` : String(match.id || `face-result-${index}`),
           aws_url: typeof match === "string" ? match : String(match.url || ""),
+          download_url: typeof match === "string" ? match : String(match.download_url || match.url || ""),
           type: typeof match !== "string" && match.type === "video" ? "video" : "image",
         })));
         setIsFaceSearchMode(true);
@@ -211,10 +214,10 @@ export default function AlbumDashboard() {
     }
   };
 
-  const downloadPhoto = async (photo: { id: string; aws_url: string; type: "image" | "video" }, index: number) => {
+  const downloadPhoto = async (photo: { id: string; aws_url: string; download_url?: string; type: "image" | "video" }, index: number) => {
     setDownloadingPhotoId(photo.id);
     try {
-      const response = await fetch(photo.aws_url);
+      const response = await fetch(photo.download_url || photo.aws_url);
       if (!response.ok) throw new Error('Falha ao baixar');
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -224,7 +227,7 @@ export default function AlbumDashboard() {
       link.click();
       URL.revokeObjectURL(objectUrl);
     } catch {
-      window.open(photo.aws_url, '_blank', 'noopener,noreferrer');
+      window.open(photo.download_url || photo.aws_url, '_blank', 'noopener,noreferrer');
     } finally {
       setDownloadingPhotoId(null);
     }
@@ -391,49 +394,21 @@ export default function AlbumDashboard() {
             </p>
             {albumStats.searchablePhotos > 0 ? <button type="button" onClick={openScanner} className="mt-5 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-purple-600 px-5 text-sm font-black text-white shadow-lg"><Sparkles className="h-4 w-4" /> Encontrar minhas fotos</button> : null}
           </div>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4"
-          >
+        ) : selectionMode ? (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {visiblePhotos.map((photo, idx) => {
-              const isVideo = photo.type === 'video';
               const selected = selectedPhotoIds.has(photo.id);
-              return (
-                <motion.div
-                  key={photo.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(idx * 0.035, 0.4) }}
-                  className={`relative group rounded-2xl overflow-hidden cursor-pointer break-inside-avoid bg-white/5 border transition ${selected ? 'border-orange-300 ring-4 ring-orange-300/20' : 'border-white/10'}`}
-                  onClick={() => selectionMode ? toggleSelection(photo.id) : setSlideshowIndex(idx)}
-                >
-                  {isVideo ? (
-                    <div className="aspect-[9/16] bg-gray-900 flex items-center justify-center relative">
-                      <video src={photo.aws_url} className="absolute inset-0 w-full h-full object-cover opacity-80" />
-                      <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center z-10 border border-white/20">
-                        <Play className="w-5 h-5 text-white ml-1" />
-                      </div>
-                    </div>
-                  ) : (
-                    <img 
-                      src={photo.aws_url} 
-                      alt={`Foto ${idx}`} 
-                      className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-110"
-                      loading="lazy"
-                    />
-                  )}
-                  {selectionMode ? <span className={`absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border-2 ${selected ? 'border-orange-300 bg-[#F17B37] text-white' : 'border-white bg-black/45 text-transparent'}`}><CheckCircle2 className="h-5 w-5" /></span> : null}
-                  {!selectionMode ? <span className="absolute left-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm"><Maximize2 className="h-4 w-4" /></span> : null}
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent p-3 pt-12 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-white/80">{isVideo ? 'Vídeo' : `Foto ${String(idx + 1).padStart(3, '0')}`}</span>
-                    {!selectionMode ? <button type="button" onClick={(event) => { event.stopPropagation(); void downloadPhoto(photo, idx); }} className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#071829] shadow-lg" aria-label={`Baixar ${isVideo ? 'vídeo' : 'foto'}`}>{downloadingPhotoId === photo.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button> : null}
-                  </div>
-                </motion.div>
-              );
+              return <button key={photo.id} type="button" onClick={() => toggleSelection(photo.id)} className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-slate-900 ${selected ? "border-orange-300 ring-2 ring-orange-300/25" : "border-white/10"}`}>{photo.type === "video" ? <video src={photo.aws_url} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={photo.aws_url} alt={`Foto ${idx + 1}`} loading="lazy" className="h-full w-full object-cover" />}<span className={`absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full ${selected ? "bg-[#F17B37] text-white" : "border-2 border-white bg-black/40 text-transparent"}`}><CheckCircle2 className="h-4 w-4" /></span></button>;
             })}
-          </motion.div>
+          </div>
+        ) : (
+          <HorizontalMediaCarousel
+            items={visiblePhotos.map((photo, index) => ({ id: photo.id, url: photo.aws_url, type: photo.type, label: photo.type === "video" ? `Vídeo ${index + 1}` : `Foto ${index + 1}` }))}
+            tone="dark"
+            onExpand={(_item, index) => setSlideshowIndex(index)}
+            onDownload={(item, index) => void downloadPhoto(visiblePhotos[index] || { id: item.id, aws_url: item.url, type: item.type }, index)}
+            downloadingId={downloadingPhotoId}
+          />
         )}
         {!loadingPhotos && photos.length > INITIAL_MEDIA_COUNT ? (
           <div className="mt-5 flex justify-center">

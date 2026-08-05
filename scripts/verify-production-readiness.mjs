@@ -230,7 +230,7 @@ async function checkActiveMediaReferences(supabase) {
     ['agendas', 'images,video_url,flyer_url'],
     ['produtos', 'image'],
     ['client_contracts', 'signature_url'],
-    ['fotos_trilhas', 'aws_url,aws_key'],
+    ['fotos_trilhas', 'aws_url,aws_key,original_aws_key'],
   ];
   const supabaseStoragePattern = /\.supabase\.co\/storage\/v1\/object\//i;
 

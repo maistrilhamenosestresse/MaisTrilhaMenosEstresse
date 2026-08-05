@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2, CheckCircle2, Square, CheckSquare, Play, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, CheckCircle2, Square, CheckSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { HorizontalMediaCarousel } from "@/components/album/HorizontalMediaCarousel";
 
 import { use } from "react";
 
@@ -17,7 +18,7 @@ type AlbumStats = {
   videos: number;
 };
 
-type AlbumMedia = { id: string; url: string; type: "image" | "video" };
+type AlbumMedia = { id: string; url: string; downloadUrl?: string; type: "image" | "video" };
 
 const EMPTY_STATS: AlbumStats = {
   total: 0,
@@ -34,7 +35,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   const unwrappedParams = use(params);
   const router = useRouter();
   const [photos, setPhotos] = useState<AlbumMedia[]>([]);
-  const [filteredPhotos, setFilteredPhotos] = useState<string[] | null>(null);
+  const [filteredPhotos, setFilteredPhotos] = useState<AlbumMedia[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAiMode, setIsAiMode] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -59,6 +60,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         setPhotos((data.photos || []).map((photo: any, index: number) => ({
           id: String(photo.id || `media-${index}`),
           url: String(photo.aws_url || ""),
+          downloadUrl: String(photo.download_url || photo.aws_url || ""),
           type: photo.type === "video" ? "video" : "image",
         })));
         setAlbumStats({ ...EMPTY_STATS, ...(data.stats || {}) });
@@ -114,9 +116,12 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         if (!res.ok) throw new Error(data.error || "Não foi possível analisar a selfie.");
 
         if (data.matches && data.matches.length > 0) {
-          setFilteredPhotos(data.matches.map((match: string | { url?: string }) =>
-            typeof match === "string" ? match : String(match.url || ""),
-          ).filter(Boolean));
+          setFilteredPhotos(data.matches.map((match: string | { id?: string; url?: string; download_url?: string }, index: number) => ({
+            id: typeof match === "string" ? `face-${index}` : String(match.id || `face-${index}`),
+            url: typeof match === "string" ? match : String(match.url || ""),
+            downloadUrl: typeof match === "string" ? match : String(match.download_url || match.url || ""),
+            type: "image" as const,
+          })).filter((media: AlbumMedia) => Boolean(media.url)));
           setVisibleMediaCount(INITIAL_MEDIA_COUNT);
           setAiFeedback({ success: true, message: `${data.matches.length} foto(s) encontrada(s).` });
           window.setTimeout(() => setIsAiMode(false), 1100);
@@ -135,13 +140,13 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const displayPhotos: AlbumMedia[] = filteredPhotos !== null
-    ? Array.from(new Set(filteredPhotos)).map((url, index) => ({ id: `face-${index}`, url, type: "image" as const }))
+    ? Array.from(new Map(filteredPhotos.map((media) => [media.id, media])).values())
     : photos;
   const visiblePhotos = displayPhotos.slice(0, visibleMediaCount);
 
   const downloadPhoto = async (media: AlbumMedia, index: number) => {
     try {
-      const response = await fetch(media.url);
+      const response = await fetch(media.downloadUrl || media.url);
       if (!response.ok) throw new Error("Falha ao baixar foto");
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
@@ -151,7 +156,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
       anchor.click();
       URL.revokeObjectURL(objectUrl);
     } catch {
-      window.open(media.url, "_blank", "noopener,noreferrer");
+      window.open(media.downloadUrl || media.url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -268,34 +273,20 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
               </button>
             ) : null}
           </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-1">
-            {visiblePhotos.map((photo, i) => (
-              <motion.button
-                type="button"
-                onClick={() => selectionMode ? toggleSelection(photo.id) : setSelectedPhoto(photo)}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                key={photo.id}
-                className={`aspect-square bg-gray-200 relative overflow-hidden group ${selectedPhotoIds.has(photo.id) ? 'ring-4 ring-inset ring-[#F17B37]' : ''}`}
-              >
-                {photo.type === "video" ? (
-                  <>
-                    <video src={photo.url} className="h-full w-full object-cover" preload="metadata" muted playsInline />
-                    <span className="absolute inset-0 grid place-items-center bg-black/15"><span className="grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white"><Play className="h-5 w-5 fill-current" /></span></span>
-                  </>
-                ) : (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={photo.url} alt={`Foto ${i + 1}`} className="object-cover w-full h-full" loading="lazy" />
-                )}
-                {selectionMode ? <span className={`absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full ${selectedPhotoIds.has(photo.id) ? 'bg-[#F17B37] text-white' : 'border-2 border-white bg-black/30 text-transparent'}`}><CheckCircle2 className="h-4 w-4" /></span> : null}
-                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
-                  <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
-                </span>
-              </motion.button>
-            ))}
+        ) : selectionMode ? (
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+            {visiblePhotos.map((photo, index) => {
+              const selected = selectedPhotoIds.has(photo.id);
+              return <button key={photo.id} type="button" onClick={() => toggleSelection(photo.id)} className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-slate-900 ${selected ? "border-[#F17B37] ring-2 ring-orange-300/25" : "border-white"}`}>{photo.type === "video" ? <video src={photo.url} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={photo.url} alt={`Foto ${index + 1}`} loading="lazy" className="h-full w-full object-cover" />}<span className={`absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full ${selected ? "bg-[#F17B37] text-white" : "border-2 border-white bg-black/40 text-transparent"}`}><CheckCircle2 className="h-4 w-4" /></span></button>;
+            })}
           </div>
+        ) : (
+          <HorizontalMediaCarousel
+            items={visiblePhotos.map((photo, index) => ({ ...photo, label: photo.type === "video" ? `Vídeo ${index + 1}` : `Foto ${index + 1}` }))}
+            tone="light"
+            onExpand={(item, index) => setSelectedPhoto(visiblePhotos[index] || { id: item.id, url: item.url, type: item.type })}
+            onDownload={(item, index) => void downloadPhoto(visiblePhotos[index] || { id: item.id, url: item.url, type: item.type }, index)}
+          />
         )}
         {!loading && displayPhotos.length > INITIAL_MEDIA_COUNT ? (
           <div className="flex justify-center py-5">

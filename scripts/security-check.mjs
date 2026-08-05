@@ -44,6 +44,10 @@ for (const requiredPath of [
   'supabase/migrations/202607180003_hybrid_infinitepay_asaas.sql',
   'supabase/migrations/202607180004_web_push_notifications.sql',
   'supabase/migrations/202607290002_loyalty_balance_and_contract_backup.sql',
+  'supabase/migrations/202608050002_google_photos_import.sql',
+  'supabase/migrations/202608050003_google_photos_token_cleanup.sql',
+  'src/lib/server/google-photos.ts',
+  'infra/google-photos-import-worker/index.mjs',
 ]) {
   try { await readFile(path.join(root, requiredPath)); } catch { failures.push(`arquivo obrigatório ausente: ${requiredPath}`); }
 }

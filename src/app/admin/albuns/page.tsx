@@ -7,8 +7,11 @@ import {
   CalendarDays,
   Camera,
   CheckCircle2,
+  CheckSquare,
   ChevronDown,
+  CloudDownload,
   Eye,
+  ExternalLink,
   FileImage,
   Film,
   Images,
@@ -18,6 +21,7 @@ import {
   Save,
   Search,
   Sparkles,
+  Square,
   Trash2,
   UploadCloud,
   X,
@@ -50,6 +54,16 @@ type AlbumMedia = {
 
 type Draft = Pick<AlbumSummary, "title" | "description" | "photographer" | "published">;
 type MobileStep = "details" | "upload" | "media";
+type GoogleImportJob = {
+  id: string;
+  agendaId: string;
+  status: "awaiting_selection" | "queued" | "processing" | "completed" | "completed_with_errors" | "failed" | "expired" | "cancelled";
+  pickerUri: string | null;
+  totalItems: number;
+  processedItems: number;
+  failedItems: number;
+  errorMessage: string | null;
+};
 
 export default function AdminAlbumsPage() {
   const router = useRouter();
@@ -69,6 +83,12 @@ export default function AdminAlbumsPage() {
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [preview, setPreview] = useState<AlbumMedia | null>(null);
   const [mobileStep, setMobileStep] = useState<MobileStep>("details");
+  const [selectedMediaIds, setSelectedMediaIds] = useState<Set<string>>(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
+  const [googleImportJobId, setGoogleImportJobId] = useState("");
+  const [googleImportJob, setGoogleImportJob] = useState<GoogleImportJob | null>(null);
+  const [startingGoogleImport, setStartingGoogleImport] = useState(false);
+  const googleSyncingRef = useRef(false);
 
   const selectedAlbum = useMemo(
     () => albums.find((album) => album.agendaId === selectedId) || null,
@@ -99,6 +119,7 @@ export default function AdminAlbumsPage() {
       if (!response.ok) throw new Error(result.error || "Falha ao abrir o álbum");
       setAlbums(result.albums || []);
       setMedia(result.media || []);
+      setSelectedMediaIds(new Set());
       applyDraft(result.album || null);
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível abrir o álbum" });
@@ -129,11 +150,30 @@ export default function AdminAlbumsPage() {
     void load();
   }, [loadAlbumDetails]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const jobId = params.get("googleImportJob") || "";
+    const importError = params.get("googleImportError");
+    if (jobId) setGoogleImportJobId(jobId);
+    if (importError) setMessage({ kind: "error", text: importError });
+    if (jobId || importError) {
+      params.delete("googleImportJob");
+      params.delete("googleAlbumAgenda");
+      params.delete("googleImportError");
+      window.history.replaceState({}, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`);
+    }
+  }, []);
+
   const selectAlbum = (album: AlbumSummary) => {
+    if (googleImportJob?.agendaId && googleImportJob.agendaId !== album.agendaId) {
+      setGoogleImportJobId("");
+      setGoogleImportJob(null);
+    }
     setSelectedId(album.agendaId);
     setMobileStep("details");
     setFiles([]);
     setUploadProgress(0);
+    setSelectedMediaIds(new Set());
     applyDraft(album);
     void loadAlbumDetails(album.agendaId);
   };
@@ -160,6 +200,66 @@ export default function AdminAlbumsPage() {
       setSaving(false);
     }
   };
+
+  const startGooglePhotosImport = async () => {
+    if (!selectedId || startingGoogleImport) return;
+    setStartingGoogleImport(true);
+    setMessage(null);
+    try {
+      const metadataSaved = await saveMetadata(false);
+      if (!metadataSaved) throw new Error("Salve o nome do álbum antes de conectar o Google Fotos.");
+      const response = await fetch("/api/admin/albums/google/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agendaId: selectedId }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.authorizationUrl) throw new Error(result.error || "Não foi possível conectar o Google Fotos");
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : "Falha ao conectar o Google Fotos" });
+      setStartingGoogleImport(false);
+    }
+  };
+
+  const syncGooglePhotosImport = useCallback(async (jobId: string) => {
+    if (!jobId || googleSyncingRef.current) return;
+    googleSyncingRef.current = true;
+    try {
+      const response = await fetch(`/api/admin/albums/google/jobs/${encodeURIComponent(jobId)}`, { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.job) throw new Error(result.error || "Falha ao acompanhar a importação");
+      const job = result.job as GoogleImportJob;
+      setGoogleImportJob(job);
+      if (job.agendaId && job.agendaId !== selectedId) {
+        const album = albums.find((candidate) => candidate.agendaId === job.agendaId);
+        setSelectedId(job.agendaId);
+        setMobileStep("upload");
+        if (album) applyDraft(album);
+        await loadAlbumDetails(job.agendaId);
+      }
+      if (["completed", "completed_with_errors"].includes(job.status)) {
+        await loadAlbumDetails(job.agendaId);
+        setMessage({
+          kind: job.status === "completed" ? "success" : "error",
+          text: job.status === "completed"
+            ? `${job.processedItems} arquivo(s) importado(s) do Google Fotos para a AWS.`
+            : `Importação finalizada: ${job.processedItems} concluído(s) e ${job.failedItems} com falha.`,
+        });
+      }
+    } catch (error) {
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível acompanhar a importação" });
+    } finally {
+      googleSyncingRef.current = false;
+    }
+  }, [albums, applyDraft, loadAlbumDetails, selectedId]);
+
+  useEffect(() => {
+    if (!googleImportJobId || ["completed", "completed_with_errors", "failed", "expired", "cancelled"].includes(googleImportJob?.status || "")) return;
+    void syncGooglePhotosImport(googleImportJobId);
+    const timer = window.setInterval(() => void syncGooglePhotosImport(googleImportJobId), 4000);
+    return () => window.clearInterval(timer);
+  }, [googleImportJob?.status, googleImportJobId, syncGooglePhotosImport]);
 
   const addFiles = (incoming: File[]) => {
     const allowed = incoming.filter((file) => [
@@ -250,6 +350,11 @@ export default function AdminAlbumsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Falha ao excluir o arquivo");
       setMedia((current) => current.filter((mediaItem) => mediaItem.id !== item.id));
+      setSelectedMediaIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
       setAlbums((current) => current.map((album) => album.agendaId === selectedId
         ? {
             ...album,
@@ -261,6 +366,62 @@ export default function AdminAlbumsPage() {
       setMessage({ kind: "success", text: `${item.label} excluído do álbum.` });
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível excluir" });
+    }
+  };
+
+  const toggleMediaSelection = (mediaId: string) => {
+    setSelectedMediaIds((current) => {
+      const next = new Set(current);
+      if (next.has(mediaId)) next.delete(mediaId);
+      else next.add(mediaId);
+      return next;
+    });
+  };
+
+  const toggleAllMedia = () => {
+    setSelectedMediaIds((current) => current.size === media.length
+      ? new Set()
+      : new Set(media.map((item) => item.id)));
+  };
+
+  const removeSelectedMedia = async () => {
+    const selectedItems = media.filter((item) => selectedMediaIds.has(item.id));
+    if (!selectedId || !selectedItems.length || deletingBulk) return;
+    if (!window.confirm(`Excluir definitivamente ${selectedItems.length} arquivo(s) do álbum e da AWS? Esta ação não pode ser desfeita.`)) return;
+
+    setDeletingBulk(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/albums/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agendaId: selectedId, mediaIds: selectedItems.map((item) => item.id) }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Falha ao excluir os arquivos selecionados");
+
+      const deletedIds = new Set(selectedItems.map((item) => item.id));
+      const deletedImages = selectedItems.filter((item) => item.type === "image").length;
+      const deletedVideos = selectedItems.filter((item) => item.type === "video").length;
+      setMedia((current) => current.filter((item) => !deletedIds.has(item.id)));
+      setAlbums((current) => current.map((album) => album.agendaId === selectedId
+        ? {
+            ...album,
+            mediaCount: Math.max(0, album.mediaCount - selectedItems.length),
+            imageCount: Math.max(0, album.imageCount - deletedImages),
+            videoCount: Math.max(0, album.videoCount - deletedVideos),
+          }
+        : album));
+      setSelectedMediaIds(new Set());
+      const hasWarnings = Array.isArray(result.cleanupWarnings) && result.cleanupWarnings.length > 0;
+      setMessage({
+        kind: "success",
+        text: `${selectedItems.length} arquivo(s) excluído(s) com sucesso.${hasWarnings ? " Alguns arquivos externos exigirão uma nova tentativa de limpeza." : ""}`,
+      });
+    } catch (error) {
+      setMessage({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível excluir a seleção" });
+    } finally {
+      setDeletingBulk(false);
     }
   };
 
@@ -407,6 +568,42 @@ export default function AdminAlbumsPage() {
 
               <section className={`${mobileStep === "upload" ? "block" : "hidden"} rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5 md:block md:p-7`}>
                 <div><h2 className="text-xl font-black">2. Enviar fotos e vídeos</h2><p className="mt-1 text-sm text-slate-500">Os originais vão para a AWS. Fotos JPG/PNG recebem reconhecimento facial; vídeos são organizados sem análise de rosto.</p></div>
+                <div className="mt-4 overflow-hidden rounded-3xl border border-blue-100 bg-[linear-gradient(135deg,#071829,#123A5D)] p-4 text-white shadow-xl sm:mt-5 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 text-orange-200"><CloudDownload className="h-5 w-5" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-200">Importação automática</p>
+                      <h3 className="mt-1 text-base font-black sm:text-lg">Trazer um álbum do Google Fotos</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-blue-100/75">Conecte sua conta, pesquise o nome do álbum no Google e selecione até 2.000 itens. As fotos originais e os vídeos na máxima qualidade disponibilizada continuam sendo transferidos para a AWS mesmo se você fechar esta página.</p>
+                    </div>
+                  </div>
+
+                  {googleImportJob ? (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-black">{googleImportStatusLabel(googleImportJob.status)}</span>
+                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-blue-100">{googleImportJob.processedItems + googleImportJob.failedItems} de {googleImportJob.totalItems || "—"}</span>
+                      </div>
+                      {googleImportJob.totalItems > 0 ? (
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/25"><motion.div className="h-full rounded-full bg-[linear-gradient(90deg,#F17B37,#FDBA74)]" animate={{ width: `${Math.min(100, ((googleImportJob.processedItems + googleImportJob.failedItems) / googleImportJob.totalItems) * 100)}%` }} /></div>
+                      ) : null}
+                      {googleImportJob.errorMessage ? <p className="mt-2 text-[11px] text-red-200">{googleImportJob.errorMessage}</p> : null}
+                      {googleImportJob.status === "awaiting_selection" && googleImportJob.pickerUri ? (
+                        <button type="button" onClick={() => window.open(googleImportJob.pickerUri || "", "google-photos-picker", "popup,width=920,height=760")} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-[#071829] shadow-lg"><ExternalLink className="h-4 w-4" /> Abrir Google Fotos e selecionar</button>
+                      ) : null}
+                      {["failed", "expired", "cancelled"].includes(googleImportJob.status) ? (
+                        <button type="button" onClick={() => { setGoogleImportJob(null); setGoogleImportJobId(""); void startGooglePhotosImport(); }} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F17B37] px-4 text-xs font-black text-white"><RefreshCw className="h-4 w-4" /> Conectar novamente</button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => void startGooglePhotosImport()} disabled={startingGoogleImport || saving || draft.title.trim().length < 3} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-black text-[#071829] shadow-lg disabled:opacity-50">
+                      {startingGoogleImport ? <Loader2 className="h-5 w-5 animate-spin" /> : <CloudDownload className="h-5 w-5 text-[#D96224]" />}
+                      {startingGoogleImport ? "Conectando com segurança..." : "Conectar Google Fotos"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="my-5 flex items-center gap-3"><span className="h-px flex-1 bg-slate-200" /><span className="text-[10px] font-black uppercase tracking-wider text-slate-400">ou envie do aparelho</span><span className="h-px flex-1 bg-slate-200" /></div>
                 <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,video/mp4,video/quicktime,video/x-m4v" onChange={(event) => addFiles(Array.from(event.target.files || []))} className="hidden" />
                 <button type="button" onClick={() => inputRef.current?.click()} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addFiles(Array.from(event.dataTransfer.files)); }} className="mt-4 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/50 p-5 text-center transition hover:border-[#D96224] hover:bg-orange-50 sm:mt-5 sm:rounded-3xl sm:p-8">
                   <UploadCloud className="h-10 w-10 text-[#D96224]" /><span className="mt-3 font-black">Selecionar ou arrastar arquivos</span><span className="mt-1 text-xs text-slate-500">Até 100 arquivos por envio · JPG/PNG até 20 MB · MP4/MOV até 500 MB</span>
@@ -417,8 +614,48 @@ export default function AdminAlbumsPage() {
               </section>
 
               <section className={`${mobileStep === "media" ? "block" : "hidden"} rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5 md:block md:p-7`}>
-                <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-black">3. Arquivos publicados</h2><p className="mt-1 text-sm text-slate-500">Confira o resultado antes de liberar para os participantes.</p></div><button type="button" onClick={() => void loadAlbumDetails(selectedId)} disabled={loadingMedia} className="grid h-11 w-11 place-items-center rounded-xl bg-slate-100 text-[#0B2540]" aria-label="Atualizar arquivos"><RefreshCw className={`h-4 w-4 ${loadingMedia ? "animate-spin" : ""}`} /></button></div>
-                {loadingMedia ? <div className="grid min-h-52 place-items-center"><Loader2 className="h-7 w-7 animate-spin text-[#D96224]" /></div> : media.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">{media.map((item, index) => <motion.article key={item.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: Math.min(index * 0.025, 0.25) }} className="group relative aspect-square overflow-hidden rounded-2xl bg-slate-900">{item.type === "video" ? <video src={item.url} className="h-full w-full object-cover" muted playsInline /> : <img src={item.url} alt={item.label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />}<div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/85 to-transparent p-3 pt-10"><span><span className="block text-[11px] font-black text-white">{item.label}</span><span className="text-[9px] text-white/65">{item.type === "image" ? `${item.faceCount} rosto(s)` : "Vídeo"}</span></span><span className="flex gap-1"><button type="button" onClick={() => setPreview(item)} className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white backdrop-blur-md"><Eye className="h-4 w-4" /></button><button type="button" onClick={() => void removeMedia(item)} className="grid h-8 w-8 place-items-center rounded-full bg-red-500/90 text-white"><Trash2 className="h-4 w-4" /></button></span></div></motion.article>)}</div> : <div className="mt-5 grid min-h-52 place-items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 text-center"><div><Camera className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-black text-slate-600">Álbum ainda vazio</p><p className="mt-1 text-xs text-slate-400">Envie os primeiros arquivos na etapa acima.</p></div></div>}
+                <div className="flex items-start justify-between gap-3">
+                  <div><h2 className="text-xl font-black">3. Arquivos publicados</h2><p className="mt-1 text-sm text-slate-500">Selecione arquivos para excluir vários de uma vez.</p></div>
+                  <button type="button" onClick={() => void loadAlbumDetails(selectedId)} disabled={loadingMedia} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-[#0B2540]" aria-label="Atualizar arquivos"><RefreshCw className={`h-4 w-4 ${loadingMedia ? "animate-spin" : ""}`} /></button>
+                </div>
+                {media.length && !loadingMedia ? (
+                  <div className="sticky top-[4.7rem] z-20 mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-lg backdrop-blur-xl md:static md:shadow-none">
+                    <button type="button" onClick={toggleAllMedia} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-100 px-3 text-xs font-black text-[#0B2540]">
+                      {selectedMediaIds.size === media.length ? <CheckSquare className="h-4 w-4 text-[#D96224]" /> : <Square className="h-4 w-4" />}
+                      {selectedMediaIds.size === media.length ? "Limpar seleção" : "Selecionar tudo"}
+                    </button>
+                    <span className="min-w-0 flex-1 text-right text-xs font-bold text-slate-500 sm:text-left">{selectedMediaIds.size} de {media.length}</span>
+                    {selectedMediaIds.size ? (
+                      <button type="button" onClick={() => void removeSelectedMedia()} disabled={deletingBulk} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-red-600 px-3 text-xs font-black text-white shadow-md disabled:opacity-50">
+                        {deletingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Excluir selecionados
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {loadingMedia ? (
+                  <div className="grid min-h-52 place-items-center"><Loader2 className="h-7 w-7 animate-spin text-[#D96224]" /></div>
+                ) : media.length ? (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                    {media.map((item, index) => {
+                      const selected = selectedMediaIds.has(item.id);
+                      return (
+                        <motion.article key={item.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: Math.min(index * 0.025, 0.25) }} className={`group relative aspect-square overflow-hidden rounded-2xl border-2 bg-slate-900 transition ${selected ? "border-[#F17B37] ring-4 ring-orange-200" : "border-transparent"}`}>
+                          {item.type === "video" ? <video src={item.url} className="h-full w-full object-cover" muted playsInline preload="metadata" /> : <img src={item.url} alt={item.label} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />}
+                          <button type="button" onClick={() => toggleMediaSelection(item.id)} className={`absolute left-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full border-2 shadow-lg backdrop-blur-md ${selected ? "border-orange-200 bg-[#D96224] text-white" : "border-white bg-black/40 text-white"}`} aria-label={selected ? `Desmarcar ${item.label}` : `Selecionar ${item.label}`}>
+                            {selected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                          </button>
+                          <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/85 to-transparent p-3 pt-10">
+                            <span className="min-w-0"><span className="block truncate text-[11px] font-black text-white">{item.label}</span><span className="text-[9px] text-white/65">{item.type === "image" ? `${item.faceCount} rosto(s)` : "Vídeo"}</span></span>
+                            <span className="flex shrink-0 gap-1"><button type="button" onClick={() => setPreview(item)} className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white backdrop-blur-md" aria-label={`Visualizar ${item.label}`}><Eye className="h-4 w-4" /></button><button type="button" onClick={() => void removeMedia(item)} className="grid h-8 w-8 place-items-center rounded-full bg-red-500/90 text-white" aria-label={`Excluir ${item.label}`}><Trash2 className="h-4 w-4" /></button></span>
+                          </div>
+                        </motion.article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="mt-5 grid min-h-52 place-items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 text-center"><div><Camera className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-black text-slate-600">Álbum ainda vazio</p><p className="mt-1 text-xs text-slate-400">Envie os primeiros arquivos na etapa acima.</p></div></div>
+                )}
               </section>
             </>
           )}
@@ -454,6 +691,20 @@ function Metric({ icon: Icon, value, label }: { icon: typeof Images; value: numb
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function googleImportStatusLabel(status: GoogleImportJob["status"]) {
+  const labels: Record<GoogleImportJob["status"], string> = {
+    awaiting_selection: "Aguardando sua seleção no Google Fotos",
+    queued: "Arquivos na fila segura da AWS",
+    processing: "Transferindo originais e reconhecendo rostos",
+    completed: "Importação concluída",
+    completed_with_errors: "Importação concluída com pendências",
+    failed: "Importação interrompida",
+    expired: "Seleção expirada",
+    cancelled: "Importação cancelada",
+  };
+  return labels[status];
 }
 
 function formatDate(value: string) {

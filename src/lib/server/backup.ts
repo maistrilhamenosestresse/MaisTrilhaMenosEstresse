@@ -17,13 +17,14 @@ const BACKUP_TABLES = [
   'loyalty_balance_snapshots', 'profiles', 'asaas_webhook_events',
   'asaas_payments', 'infinitepay_checkouts', 'audit_logs', 'backup_runs',
   'backup_restore_tests', 'dependent_registration_invites',
-  'api_rate_limits',
+  'api_rate_limits', 'google_photos_import_jobs', 'google_photos_import_items',
 ] as const;
 
 const OPTIONAL_TABLES = new Set([
   'global_stats', 'trilha_custos', 'notificacoes', 'coupon_redemptions',
   'bolao_apostas', 'settings', 'trilha_gpx', 'fotos_trilhas',
   'infinitepay_checkouts',
+  'google_photos_import_jobs', 'google_photos_import_items',
 ]);
 
 const MEDIA_PREFIXES = [

@@ -40,7 +40,7 @@ async function createAlbumArchive(agendaId: string, photoIds?: string[]) {
   const supabase = createSupabaseAdmin();
   let query = supabase
     .from("fotos_trilhas")
-    .select("id, aws_key, aws_url, aws_face_id")
+    .select("id, aws_key, aws_url, aws_face_id, original_aws_key, original_mime_type")
     .eq("agenda_id", agendaId)
     .limit(250);
   if (photoIds?.length) query = query.in("id", photoIds);
@@ -66,15 +66,18 @@ async function createAlbumArchive(agendaId: string, photoIds?: string[]) {
   await Promise.all(downloadableMedia.map(async (photo, index) => {
     try {
       let bytes: Uint8Array;
-      if (photo.aws_key) {
-        const object = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: photo.aws_key }));
+      const downloadKey = photo.original_aws_key || photo.aws_key;
+      if (downloadKey) {
+        const object = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: downloadKey }));
         bytes = await object.Body!.transformToByteArray();
       } else {
         const response = await fetch(photo.aws_url);
         if (!response.ok) return;
         bytes = new Uint8Array(await response.arrayBuffer());
       }
-      const extension = String(photo.aws_key || photo.aws_url || "").match(/\.(png|webp|heic|jpe?g|mp4|mov|m4v)(?:\?|$)/i)?.[1]?.toLowerCase() || "jpg";
+      const extension = extensionFromMime(photo.original_mime_type)
+        || String(photo.original_aws_key || photo.aws_key || photo.aws_url || "").match(/\.(png|webp|heic|heif|jpe?g|mp4|mov|m4v)(?:\?|$)/i)?.[1]?.toLowerCase()
+        || "jpg";
       const kind = ["mp4", "mov", "m4v"].includes(extension) ? "video" : "foto";
       zip.file(`${kind}-${String(index + 1).padStart(3, "0")}.${extension}`, bytes, { compression: "STORE" });
       included += 1;
@@ -102,6 +105,20 @@ function safeFilename(value: string) {
     .replace(/[^a-zA-Z0-9_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 90) || "album-mais-trilha";
+}
+
+function extensionFromMime(value: unknown) {
+  const extensions: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
+    "video/x-m4v": "m4v",
+  };
+  return extensions[String(value || "").toLowerCase()] || "";
 }
 
 function isUuid(value: string) {

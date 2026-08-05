@@ -30,6 +30,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Arquivo não encontrado" }, { status: 404 });
   }
 
+  const { error: deleteError } = await supabase.from("fotos_trilhas").delete().eq("id", photoId);
+  if (deleteError) {
+    return NextResponse.json({ error: "Não foi possível remover o arquivo do álbum" }, { status: 500 });
+  }
+
   const cleanupWarnings: string[] = [];
   const faceIds = String(photo.aws_face_id || "").split(",").map((id) => id.trim()).filter(Boolean);
   if (faceIds.length) {
@@ -50,11 +55,6 @@ export async function DELETE(
       console.warn("Não foi possível remover mídia do S3:", error);
       cleanupWarnings.push("arquivo da AWS");
     }
-  }
-
-  const { error: deleteError } = await supabase.from("fotos_trilhas").delete().eq("id", photoId);
-  if (deleteError) {
-    return NextResponse.json({ error: "Não foi possível remover o arquivo do álbum" }, { status: 500 });
   }
 
   await supabase.from("audit_logs").insert({

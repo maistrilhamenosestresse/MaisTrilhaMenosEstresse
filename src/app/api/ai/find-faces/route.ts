@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     // Faremos um fetch de todas as fotos daquela agenda, e filtramos no JS (pois LIKE em arrays de string via Supabase JS pode ser complexo sem RPC).
     const { data: fotos, error } = await createSupabaseAdmin()
       .from('fotos_trilhas')
-      .select('aws_url, aws_face_id, aws_key')
+      .select('id, aws_url, aws_face_id, aws_key, original_aws_key')
       .eq('agenda_id', agendaId);
 
     if (error) throw error;
@@ -110,6 +110,7 @@ export async function POST(req: Request) {
     const matchedUrls = await Promise.all(
       matchedFotos.map(async (foto) => {
         let url = foto.aws_url;
+        let downloadUrl = foto.aws_url;
         try {
           if (foto.aws_key) {
             const command = new GetObjectCommand({
@@ -117,11 +118,14 @@ export async function POST(req: Request) {
               Key: foto.aws_key,
             });
             url = await getSignedUrl(s3Client, command, { expiresIn: 3600 * 24 });
+            downloadUrl = foto.original_aws_key
+              ? await getSignedUrl(s3Client, new GetObjectCommand({ Bucket: BUCKET_NAME, Key: foto.original_aws_key }), { expiresIn: 3600 * 24 })
+              : url;
           }
         } catch {
           // Mantém a URL persistida como fallback.
         }
-        return { url, similarity: Math.round(foto.similarity * 10) / 10 };
+        return { id: foto.id, url, download_url: downloadUrl, similarity: Math.round(foto.similarity * 10) / 10 };
       })
     );
 
