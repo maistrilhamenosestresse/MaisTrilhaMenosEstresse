@@ -90,6 +90,9 @@ export async function requireAgendaCustomer(agendaId: string): Promise<AuthSucce
   const auth = await requireAuthenticatedUser();
   if (auth.response) return auth;
 
+  // Administradores podem conferir o portal do cliente antes de publicar o álbum.
+  if (await isAdminUser(auth.user)) return auth;
+
   const supabase = createSupabaseAdmin();
   const client = await resolveAuthenticatedClient(auth.user);
 

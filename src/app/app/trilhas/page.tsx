@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2, WifiOff, ShoppingCart } from "lucide-react";
+import { Search, MapPin, Calendar, Clock, ChevronRight, Navigation, Backpack, CloudLightning, Loader2, WifiOff, ShoppingCart, Images, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -93,9 +93,27 @@ export default function PwaTrilhas() {
                 weather: "Ver Previsão",
                 image: "⛰️"
               }));
-            setEuVouTrails(mappedEuVou);
           }
         }
+
+        // Mostra quais trilhas já possuem álbum e quais recursos estão disponíveis.
+        // A rota respeita as reservas pagas do usuário autenticado.
+        try {
+          const albumsResponse = await fetch("/api/album/tours", { cache: "no-store" });
+          if (albumsResponse.ok) {
+            const albumsData = await albumsResponse.json();
+            const albumsByAgenda = new Map(
+              (albumsData.tours || []).map((album: any) => [String(album.id), album]),
+            );
+            mappedEuVou = mappedEuVou.map((trail) => ({
+              ...trail,
+              album: albumsByAgenda.get(String(trail.id)) || null,
+            }));
+          }
+        } catch {
+          // A lista de trilhas continua útil mesmo se o resumo do álbum estiver indisponível.
+        }
+        setEuVouTrails(mappedEuVou);
 
         // 3. Busca Agendas Futuras (Explorar)
         const hoje = new Date().toISOString().slice(0, 10);
@@ -265,12 +283,40 @@ export default function PwaTrilhas() {
                       </div>
                     </div>
 
-                    <button 
-                      onClick={() => navigateAppOfflineFirst(router, `/app/trilhas/${trail.id}`)}
-                      className="relative z-10 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B2540] py-3.5 font-bold text-white shadow-md transition-all hover:bg-[#061B30] group-hover:scale-[1.01]"
-                    >
-                      <Navigation className="w-4 h-4" /> Acessar Álbum / Informações
-                    </button>
+                    {trail.album ? (
+                      <div className="relative z-10 mb-3 rounded-2xl border border-purple-100 bg-purple-50 p-3 text-purple-950">
+                        <div className="flex items-start gap-2.5">
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-purple-700 shadow-sm"><Images className="h-4 w-4" /></span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-black">Álbum disponível</p>
+                            <p className="mt-0.5 text-[10px] leading-relaxed text-purple-900/65">
+                              {trail.album.public_media_count || 0} arquivo(s) geral(is)
+                              {trail.album.video_count ? ` · ${trail.album.video_count} vídeo(s)` : ""}
+                            </p>
+                            {trail.album.face_search_available ? <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-purple-200/60 px-2 py-1 text-[9px] font-black"><Sparkles className="h-3 w-3" /> Reconhecimento facial</span> : null}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="relative z-10 grid grid-cols-[auto_1fr] gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigateAppOfflineFirst(router, `/app/trilhas/${trail.id}`)}
+                        className="grid min-h-12 w-12 place-items-center rounded-2xl border border-slate-200 bg-white text-[#0B2540]"
+                        aria-label="Ver informações da trilha"
+                      >
+                        <Navigation className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigateAppOfflineFirst(router, trail.album ? `/app/album/${trail.id}` : `/app/trilhas/${trail.id}`)}
+                        className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#0B2540] px-4 text-sm font-black text-white shadow-md transition-all hover:bg-[#061B30] group-hover:scale-[1.01]"
+                      >
+                        {trail.album ? <Images className="h-4 w-4" /> : <Navigation className="h-4 w-4" />}
+                        {trail.album ? "Abrir álbum" : "Ver informações"}
+                      </button>
+                    </div>
                   </div>
                 )) : (
                   <div className="text-center py-12">

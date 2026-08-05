@@ -1,21 +1,44 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2, CheckCircle2, Square, CheckSquare } from "lucide-react";
+import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2, CheckCircle2, Square, CheckSquare, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { use } from "react";
 
+type AlbumStats = {
+  total: number;
+  publicMedia: number;
+  searchablePhotos: number;
+  landscapes: number;
+  groups: number;
+  privatePortraits: number;
+  videos: number;
+};
+
+type AlbumMedia = { id: string; url: string; type: "image" | "video" };
+
+const EMPTY_STATS: AlbumStats = {
+  total: 0,
+  publicMedia: 0,
+  searchablePhotos: 0,
+  landscapes: 0,
+  groups: 0,
+  privatePortraits: 0,
+  videos: 0,
+};
+
 export default function AlbumPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const router = useRouter();
-  const [photos, setPhotos] = useState<{ id: string; url: string; type: "image" | "video" }[]>([]);
+  const [photos, setPhotos] = useState<AlbumMedia[]>([]);
   const [filteredPhotos, setFilteredPhotos] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAiMode, setIsAiMode] = useState(true);
+  const [isAiMode, setIsAiMode] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<AlbumMedia | null>(null);
+  const [albumStats, setAlbumStats] = useState<AlbumStats>(EMPTY_STATS);
   const [downloadingAlbum, setDownloadingAlbum] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
@@ -34,6 +57,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           url: String(photo.aws_url || ""),
           type: photo.type === "video" ? "video" : "image",
         })));
+        setAlbumStats({ ...EMPTY_STATS, ...(data.stats || {}) });
       } catch (e) {
         console.error(e);
       } finally {
@@ -61,8 +85,12 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         });
         const data = await res.json();
         
+        if (!res.ok) throw new Error(data.error || "Não foi possível analisar a selfie.");
+
         if (data.matches && data.matches.length > 0) {
-          setFilteredPhotos(data.matches);
+          setFilteredPhotos(data.matches.map((match: string | { url?: string }) =>
+            typeof match === "string" ? match : String(match.url || ""),
+          ).filter(Boolean));
         } else {
           alert("Nenhuma foto sua foi encontrada nesta trilha! :(");
           setFilteredPhotos(null);
@@ -77,23 +105,23 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
     reader.readAsDataURL(file);
   };
 
-  const displayPhotos = filteredPhotos !== null
+  const displayPhotos: AlbumMedia[] = filteredPhotos !== null
     ? Array.from(new Set(filteredPhotos)).map((url, index) => ({ id: `face-${index}`, url, type: "image" as const }))
     : photos;
 
-  const downloadPhoto = async (url: string, index: number) => {
+  const downloadPhoto = async (media: AlbumMedia, index: number) => {
     try {
-      const response = await fetch(url);
+      const response = await fetch(media.url);
       if (!response.ok) throw new Error("Falha ao baixar foto");
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download = `mais-trilha-foto-${String(index + 1).padStart(3, "0")}.${extensionFromType(blob.type)}`;
+      anchor.download = `mais-trilha-${media.type === "video" ? "video" : "foto"}-${String(index + 1).padStart(3, "0")}.${extensionFromType(blob.type, media.type)}`;
       anchor.click();
       URL.revokeObjectURL(objectUrl);
     } catch {
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(media.url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -152,7 +180,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             Ver Todas
           </button>
         )}
-        {displayPhotos.length > 0 && (
+        {displayPhotos.length > 0 && filteredPhotos === null && (
           <button
             type="button"
             onClick={() => void downloadAlbum()}
@@ -167,6 +195,20 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
 
       {/* Galeria */}
       <div className="p-2">
+        {!loading && filteredPhotos === null && (albumStats.publicMedia > 0 || albumStats.searchablePhotos > 0) ? (
+          <section className="mb-3 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(135deg,#0B2540,#173E63)] p-4 text-white shadow-lg">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-200">Álbum liberado</p>
+            <h2 className="mt-1 text-lg font-black">Paisagens, grupos e vídeos para todos</h2>
+            <p className="mt-1 text-xs leading-relaxed text-blue-100/75">
+              As fotos gerais aparecem abaixo. Retratos individuais ficam protegidos e só aparecem depois que a IA reconhecer você.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black">
+              <span className="rounded-full bg-white/10 px-2.5 py-1.5">{albumStats.publicMedia} gerais</span>
+              <span className="rounded-full bg-white/10 px-2.5 py-1.5">{albumStats.videos} vídeo(s)</span>
+              {albumStats.searchablePhotos > 0 ? <span className="rounded-full bg-purple-400/20 px-2.5 py-1.5 text-purple-100">Busca facial disponível</span> : null}
+            </div>
+          </section>
+        ) : null}
         {!loading && photos.length > 0 && filteredPhotos === null ? (
           <div className="mb-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
             <button type="button" onClick={() => { setSelectionMode((current) => !current); setSelectedPhotoIds(new Set()); }} className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-black ${selectionMode ? 'bg-[#0B2540] text-white' : 'bg-gray-100 text-gray-700'}`}>
@@ -181,26 +223,42 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             <Loader2 className="w-8 h-8 animate-spin mb-4" />
             <p className="text-sm font-medium">Carregando memórias...</p>
           </div>
-        ) : photos.length === 0 ? (
+        ) : displayPhotos.length === 0 ? (
           <div className="flex flex-col items-center justify-center pt-32 text-gray-400 text-center px-6">
             <ImageIcon className="w-12 h-12 mb-4 opacity-50" />
-            <h3 className="text-lg font-bold text-gray-700 mb-1">Álbum Vazio</h3>
-            <p className="text-sm text-gray-500">Os fotógrafos ainda não enviaram as fotos desta aventura.</p>
+            <h3 className="text-lg font-bold text-gray-700 mb-1">{albumStats.searchablePhotos > 0 ? "Seus retratos estão protegidos" : "Álbum vazio"}</h3>
+            <p className="text-sm text-gray-500">
+              {albumStats.searchablePhotos > 0
+                ? "Use o reconhecimento facial para localizar somente as fotos em que você aparece."
+                : "Os fotógrafos ainda não enviaram as fotos desta aventura."}
+            </p>
+            {albumStats.searchablePhotos > 0 && filteredPhotos === null ? (
+              <button type="button" onClick={() => setIsAiMode(true)} className="mt-5 flex min-h-12 items-center gap-2 rounded-2xl bg-[#0B2540] px-5 text-sm font-black text-white shadow-lg">
+                <Sparkles className="h-5 w-5" /> Encontrar minhas fotos
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-1">
             {displayPhotos.map((photo, i) => (
               <motion.button
                 type="button"
-                onClick={() => selectionMode ? toggleSelection(photo.id) : setSelectedPhoto(photo.url)}
+                onClick={() => selectionMode ? toggleSelection(photo.id) : setSelectedPhoto(photo)}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
                 key={photo.id}
                 className={`aspect-square bg-gray-200 relative overflow-hidden group ${selectedPhotoIds.has(photo.id) ? 'ring-4 ring-inset ring-[#F17B37]' : ''}`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={photo.url} alt={`Foto ${i}`} className="object-cover w-full h-full" loading="lazy" />
+                {photo.type === "video" ? (
+                  <>
+                    <video src={photo.url} className="h-full w-full object-cover" preload="metadata" muted playsInline />
+                    <span className="absolute inset-0 grid place-items-center bg-black/15"><span className="grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white"><Play className="h-5 w-5 fill-current" /></span></span>
+                  </>
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={photo.url} alt={`Foto ${i + 1}`} className="object-cover w-full h-full" loading="lazy" />
+                )}
                 {selectionMode ? <span className={`absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full ${selectedPhotoIds.has(photo.id) ? 'bg-[#F17B37] text-white' : 'border-2 border-white bg-black/30 text-transparent'}`}><CheckCircle2 className="h-4 w-4" /></span> : null}
                 <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
                   <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100" />
@@ -212,7 +270,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Floating Action Button (IA) */}
-      {!loading && photos.length > 0 && filteredPhotos === null && !selectionMode && (
+      {!loading && albumStats.searchablePhotos > 0 && filteredPhotos === null && !selectionMode && (
         <motion.div 
           initial={{ y: 100 }} animate={{ y: 0 }}
           className="fixed bottom-24 left-0 right-0 px-6 flex justify-center z-50"
@@ -297,7 +355,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
               </button>
               <button
                 type="button"
-                onClick={() => downloadPhoto(selectedPhoto, Math.max(0, displayPhotos.findIndex((photo) => photo.url === selectedPhoto)))}
+                onClick={() => downloadPhoto(selectedPhoto, Math.max(0, displayPhotos.findIndex((photo) => photo.url === selectedPhoto.url)))}
                 className="rounded-full bg-white text-gray-900 px-4 py-2.5 font-black text-sm flex items-center gap-2"
               >
                 <Download className="w-5 h-5" />
@@ -305,8 +363,12 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
               </button>
             </header>
             <div className="flex-1 min-h-0 p-3 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={selectedPhoto} alt="Foto ampliada" className="max-w-full max-h-full object-contain rounded-xl" />
+              {selectedPhoto.type === "video" ? (
+                <video src={selectedPhoto.url} controls autoPlay playsInline className="max-h-full max-w-full rounded-xl object-contain" />
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={selectedPhoto.url} alt="Foto ampliada" className="max-w-full max-h-full object-contain rounded-xl" />
+              )}
             </div>
           </motion.div>
         )}
@@ -316,9 +378,11 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   );
 }
 
-function extensionFromType(contentType: string) {
+function extensionFromType(contentType: string, mediaType: "image" | "video") {
   if (contentType.includes("png")) return "png";
   if (contentType.includes("webp")) return "webp";
   if (contentType.includes("heic")) return "heic";
-  return "jpg";
+  if (contentType.includes("quicktime")) return "mov";
+  if (contentType.includes("mp4")) return "mp4";
+  return mediaType === "video" ? "mp4" : "jpg";
 }

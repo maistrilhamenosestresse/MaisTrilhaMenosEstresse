@@ -26,16 +26,42 @@ export async function GET(
 
     if (error) throw error;
 
-    // Filter for public photos (0 faces or >= 3 faces)
-    const publicPhotos = (data || []).filter(foto => {
-      if (!foto.aws_face_id) return true; // Landscape (0 faces)
-      const faceCount = foto.aws_face_id.split(',').filter((id: string) => id.trim() !== '').length;
-      return faceCount >= 3; // Group (3+ faces)
+    const stats = {
+      total: 0,
+      publicMedia: 0,
+      searchablePhotos: 0,
+      landscapes: 0,
+      groups: 0,
+      privatePortraits: 0,
+      videos: 0,
+    };
+    const publicPhotos = (data || []).filter((photo) => {
+      const video = isVideoMedia(photo.aws_key, photo.aws_url);
+      const faces = String(photo.aws_face_id || '').split(',').filter((id: string) => id.trim()).length;
+      stats.total += 1;
+      if (video) {
+        stats.videos += 1;
+        stats.publicMedia += 1;
+        return true;
+      }
+      if (faces === 0) {
+        stats.landscapes += 1;
+        stats.publicMedia += 1;
+        return true;
+      }
+      stats.searchablePhotos += 1;
+      if (faces >= 3) {
+        stats.groups += 1;
+        stats.publicMedia += 1;
+        return true;
+      }
+      stats.privatePortraits += 1;
+      return false;
     });
 
     const photosWithSignedUrls = await Promise.all(
       publicPhotos.map(async (foto) => {
-        const mediaType = /\.(mp4|mov|m4v)(?:\?|$)/i.test(String(foto.aws_key || foto.aws_url || '')) ? 'video' : 'image';
+        const mediaType = isVideoMedia(foto.aws_key, foto.aws_url) ? 'video' : 'image';
         if (!foto.aws_key) return { id: foto.id, aws_url: foto.aws_url, type: mediaType };
         
         try {
@@ -45,15 +71,23 @@ export async function GET(
           });
           const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 * 24 }); // 24 hours
           return { id: foto.id, aws_url: signedUrl, type: mediaType };
-        } catch (e) {
+        } catch {
           return { id: foto.id, aws_url: foto.aws_url, type: mediaType };
         }
       })
     );
 
-    return NextResponse.json({ photos: photosWithSignedUrls });
+    return NextResponse.json({
+      photos: photosWithSignedUrls,
+      stats,
+      faceSearchAvailable: stats.searchablePhotos > 0,
+    });
   } catch (error: any) {
     console.error("Erro ao buscar fotos:", error);
     return NextResponse.json({ error: 'Não foi possível carregar o álbum agora' }, { status: 500 });
   }
+}
+
+function isVideoMedia(key: unknown, url: unknown) {
+  return /\.(mp4|mov|m4v)(?:\?|$)/i.test(String(key || url || ""));
 }
