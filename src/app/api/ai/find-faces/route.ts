@@ -30,17 +30,14 @@ export async function POST(req: Request) {
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, "base64");
 
-    // Procura a selfie do usuário na coleção da trilha!
-    const searchCommand = new SearchFacesByImageCommand({
-      CollectionId: collectionId,
-      Image: {
-        Bytes: imageBuffer,
-      },
-      FaceMatchThreshold: 90, // Só retorna rostos com >90% de semelhança (precisão altíssima)
-      MaxFaces: 100, // Limite máximo de match
-    });
-
-    const searchRes = await rekognitionClient.send(searchCommand);
+    // Primeiro busca com alta precisão. Se não houver resultado, amplia de forma
+    // controlada a sensibilidade para fotos com ângulo, luz ou distância diferentes.
+    let sensitivity: "precise" | "flexible" = "precise";
+    let searchRes = await searchFaces(collectionId, imageBuffer, 92);
+    if (!searchRes.FaceMatches?.length) {
+      sensitivity = "flexible";
+      searchRes = await searchFaces(collectionId, imageBuffer, 88);
+    }
     
     if (!searchRes.FaceMatches || searchRes.FaceMatches.length === 0) {
       return NextResponse.json({ matches: [] }); // Nenhuma foto encontrada
@@ -52,9 +49,11 @@ export async function POST(req: Request) {
     // Agora vamos buscar as URLs públicas originais no Supabase baseadas nessas keys
     // Como a ExternalImageId precisou ser sanitizada, vamos usar a busca pelo aws_key original que mapeia
     // Uma forma mais segura seria buscar pelo ID do Rosto (FaceId) que foi retornado:
-    const matchedFaceIds = searchRes.FaceMatches
-      .map(match => match.Face?.FaceId)
-      .filter(Boolean) as string[];
+    const similarityByFaceId = new Map<string, number>();
+    for (const match of searchRes.FaceMatches || []) {
+      if (match.Face?.FaceId) similarityByFaceId.set(match.Face.FaceId, Number(match.Similarity || 0));
+    }
+    const matchedFaceIds = [...similarityByFaceId.keys()];
 
     if (matchedFaceIds.length === 0) {
       return NextResponse.json({ matches: [] });
@@ -69,11 +68,15 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
-    const matchedFotos = fotos?.filter(foto => {
-      if (!foto.aws_face_id) return false;
-      const faceIdsInPhoto = foto.aws_face_id.split(',');
-      return matchedFaceIds.some(id => faceIdsInPhoto.includes(id));
-    }) || [];
+    const matchedFotos = (fotos || []).flatMap(foto => {
+      if (!foto.aws_face_id) return [];
+      const faceIdsInPhoto = foto.aws_face_id.split(',').map((id: string) => id.trim()).filter(Boolean);
+      const similarities = faceIdsInPhoto
+        .map((id: string) => similarityByFaceId.get(id))
+        .filter((value: number | undefined): value is number => typeof value === "number");
+      if (!similarities.length) return [];
+      return [{ ...foto, similarity: Math.max(...similarities) }];
+    }).sort((a, b) => b.similarity - a.similarity);
 
     const { s3Client, BUCKET_NAME } = await import("@/lib/aws");
     const { GetObjectCommand } = await import("@aws-sdk/client-s3");
@@ -81,20 +84,23 @@ export async function POST(req: Request) {
 
     const matchedUrls = await Promise.all(
       matchedFotos.map(async (foto) => {
-        if (!foto.aws_key) return foto.aws_url;
+        let url = foto.aws_url;
         try {
-          const command = new GetObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: foto.aws_key,
-          });
-          return await getSignedUrl(s3Client, command, { expiresIn: 3600 * 24 });
-        } catch (e) {
-          return foto.aws_url;
+          if (foto.aws_key) {
+            const command = new GetObjectCommand({
+              Bucket: BUCKET_NAME,
+              Key: foto.aws_key,
+            });
+            url = await getSignedUrl(s3Client, command, { expiresIn: 3600 * 24 });
+          }
+        } catch {
+          // Mantém a URL persistida como fallback.
         }
+        return { url, similarity: Math.round(foto.similarity * 10) / 10 };
       })
     );
 
-    return NextResponse.json({ matches: matchedUrls });
+    return NextResponse.json({ matches: matchedUrls, sensitivity });
 
   } catch (error: any) {
     // Se a coleção não existir, é porque ainda não enviaram fotos pra essa trilha
@@ -104,4 +110,13 @@ export async function POST(req: Request) {
     console.error("Erro no find-faces:", error);
     return NextResponse.json({ error: 'Não foi possível localizar as fotos agora' }, { status: 500 });
   }
+}
+
+function searchFaces(collectionId: string, imageBuffer: Buffer, threshold: number) {
+  return rekognitionClient.send(new SearchFacesByImageCommand({
+    CollectionId: collectionId,
+    Image: { Bytes: imageBuffer },
+    FaceMatchThreshold: threshold,
+    MaxFaces: 100,
+  }));
 }

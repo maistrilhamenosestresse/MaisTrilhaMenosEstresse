@@ -37,6 +37,8 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true);
   const [isAiMode, setIsAiMode] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiScanStep, setAiScanStep] = useState(0);
+  const [aiFeedback, setAiFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<AlbumMedia | null>(null);
   const [albumStats, setAlbumStats] = useState<AlbumStats>(EMPTY_STATS);
   const [downloadingAlbum, setDownloadingAlbum] = useState(false);
@@ -67,9 +69,30 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
     loadPhotos();
   }, [unwrappedParams.id]);
 
+  useEffect(() => {
+    if (!aiLoading) {
+      setAiScanStep(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setAiScanStep((current) => Math.min(current + 1, 2));
+    }, 850);
+    return () => window.clearInterval(timer);
+  }, [aiLoading]);
+
   const handleSelfieUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setAiFeedback(null);
+    if (!file.type.startsWith("image/")) {
+      setAiFeedback({ success: false, message: "Escolha uma foto ou selfie válida." });
+      return;
+    }
+    if (file.size > 10_000_000) {
+      setAiFeedback({ success: false, message: "A selfie deve ter no máximo 10 MB." });
+      return;
+    }
 
     setAiLoading(true);
 
@@ -91,15 +114,17 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           setFilteredPhotos(data.matches.map((match: string | { url?: string }) =>
             typeof match === "string" ? match : String(match.url || ""),
           ).filter(Boolean));
+          setAiFeedback({ success: true, message: `${data.matches.length} foto(s) encontrada(s).` });
+          window.setTimeout(() => setIsAiMode(false), 1100);
         } else {
-          alert("Nenhuma foto sua foi encontrada nesta trilha! :(");
+          setAiFeedback({ success: false, message: "Não encontramos você. Tente outra selfie com o rosto de frente e boa iluminação." });
           setFilteredPhotos(null);
         }
-      } catch {
-        alert("Erro ao analisar a foto.");
+      } catch (error) {
+        setAiFeedback({ success: false, message: error instanceof Error ? error.message : "Erro ao analisar a selfie." });
       } finally {
         setAiLoading(false);
-        setIsAiMode(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
       }
     };
     reader.readAsDataURL(file);
@@ -163,21 +188,21 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   return (
     <div className="mt-app-page flex min-h-full flex-col pb-24">
       {/* Header */}
-      <div className="mt-app-header sticky top-0 z-40 flex items-center gap-4 border-b px-4 py-3">
-        <button onClick={() => router.back()} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors">
-          <ChevronLeft className="w-6 h-6 text-gray-700" />
+      <div className="mt-app-header sticky top-0 z-40 flex items-center gap-2 border-b px-3 py-2.5 backdrop-blur-xl">
+        <button onClick={() => router.back()} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gray-50 transition-colors hover:bg-gray-100">
+          <ChevronLeft className="h-5 w-5 text-gray-700" />
         </button>
         <div className="flex-1">
-          <h1 className="font-black text-gray-800 leading-tight">
-            {filteredPhotos !== null ? 'Suas Fotos' : 'Álbum da Trilha'}
+          <h1 className="truncate text-sm font-black leading-tight text-gray-800">
+            {filteredPhotos !== null ? 'Fotos encontradas' : 'Álbum da trilha'}
           </h1>
-          <p className="text-xs text-gray-500 font-medium">
-            {displayPhotos.length} {displayPhotos.length === 1 ? 'foto' : 'fotos'}
+          <p className="text-[10px] font-medium text-gray-500">
+            {displayPhotos.length} {displayPhotos.length === 1 ? 'arquivo' : 'arquivos'}
           </p>
         </div>
         {filteredPhotos !== null && (
-          <button onClick={() => setFilteredPhotos(null)} className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
-            Ver Todas
+          <button onClick={() => setFilteredPhotos(null)} className="rounded-full bg-blue-50 px-2.5 py-1.5 text-[10px] font-black text-blue-700">
+            Galeria geral
           </button>
         )}
         {displayPhotos.length > 0 && filteredPhotos === null && (
@@ -185,7 +210,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             type="button"
             onClick={() => void downloadAlbum()}
             disabled={downloadingAlbum}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF0E6] text-[#D96224] disabled:opacity-50"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#FFF0E6] text-[#D96224] disabled:opacity-50"
             aria-label="Baixar álbum completo"
           >
             {downloadingAlbum ? <Loader2 className="w-5 h-5 animate-spin" /> : <Images className="w-5 h-5" />}
@@ -194,23 +219,23 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Galeria */}
-      <div className="p-2">
+      <div className="p-2 pt-1">
         {!loading && filteredPhotos === null && (albumStats.publicMedia > 0 || albumStats.searchablePhotos > 0) ? (
-          <section className="mb-3 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(135deg,#0B2540,#173E63)] p-4 text-white shadow-lg">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-200">Álbum liberado</p>
-            <h2 className="mt-1 text-lg font-black">Paisagens, grupos e vídeos para todos</h2>
-            <p className="mt-1 text-xs leading-relaxed text-blue-100/75">
-              As fotos gerais aparecem abaixo. Retratos individuais ficam protegidos e só aparecem depois que a IA reconhecer você.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black">
-              <span className="rounded-full bg-white/10 px-2.5 py-1.5">{albumStats.publicMedia} gerais</span>
-              <span className="rounded-full bg-white/10 px-2.5 py-1.5">{albumStats.videos} vídeo(s)</span>
-              {albumStats.searchablePhotos > 0 ? <span className="rounded-full bg-purple-400/20 px-2.5 py-1.5 text-purple-100">Busca facial disponível</span> : null}
+          <section className="mb-2 flex items-center gap-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#0B2540,#173E63)] p-3 text-white shadow-md">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-orange-200"><Images className="h-5 w-5" /></span>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-sm font-black">Galeria geral</h2>
+              <p className="mt-0.5 text-[10px] font-bold text-blue-100/65">{albumStats.publicMedia} mídias · {albumStats.videos} vídeos</p>
             </div>
+            {albumStats.searchablePhotos > 0 ? (
+              <button type="button" onClick={() => { setAiFeedback(null); setIsAiMode(true); }} className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl bg-white px-3 text-[10px] font-black text-[#0B2540] shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-purple-600" /> Me encontrar
+              </button>
+            ) : null}
           </section>
         ) : null}
         {!loading && photos.length > 0 && filteredPhotos === null ? (
-          <div className="mb-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-white p-2 shadow-sm">
+          <div className="mb-2 flex items-center gap-2 rounded-xl border border-gray-100 bg-white p-1.5 shadow-sm">
             <button type="button" onClick={() => { setSelectionMode((current) => !current); setSelectedPhotoIds(new Set()); }} className={`flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-black ${selectionMode ? 'bg-[#0B2540] text-white' : 'bg-gray-100 text-gray-700'}`}>
               {selectionMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />} {selectionMode ? `${selectedPhotoIds.size} selecionada(s)` : 'Selecionar fotos'}
             </button>
@@ -269,74 +294,72 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
         )}
       </div>
 
-      {/* Floating Action Button (IA) */}
-      {!loading && albumStats.searchablePhotos > 0 && filteredPhotos === null && !selectionMode && (
-        <motion.div 
-          initial={{ y: 100 }} animate={{ y: 0 }}
-          className="fixed bottom-24 left-0 right-0 px-6 flex justify-center z-50"
-        >
-          <button 
-            onClick={() => setIsAiMode(true)}
-            className="flex items-center gap-3 rounded-full bg-[#0B2540] px-6 py-4 text-sm font-black text-white shadow-xl shadow-slate-950/20 transition-transform hover:scale-[1.02]"
-          >
-            <Sparkles className="w-5 h-5" />
-            Achar minhas fotos com IA
-          </button>
-        </motion.div>
-      )}
-
       {/* Modal da IA */}
       <AnimatePresence>
         {isAiMode && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center p-6"
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-[#03111f]/95 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:items-center sm:p-6"
           >
-            <button onClick={() => setIsAiMode(false)} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full text-white flex items-center gap-1 text-sm font-bold pr-4">
-              <X className="w-5 h-5" /> Ver Paisagens e Grupos
-            </button>
+            <motion.div initial={{ y: 36, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 36, scale: 0.97 }} className="relative w-full max-w-sm overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(155deg,#102b45,#071829)] p-5 text-center text-white shadow-2xl">
+              <button type="button" onClick={() => setIsAiMode(false)} className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white" aria-label="Fechar reconhecimento facial">
+                <X className="h-5 w-5" />
+              </button>
 
-            <div className="text-center max-w-sm w-full bg-white rounded-3xl p-8 relative overflow-hidden">
-              {/* Background Decoration */}
-              <div className="absolute left-0 top-0 h-32 w-full bg-gradient-to-br from-orange-100 to-blue-50" />
-              
-              <div className="relative z-10">
-                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-xl shadow-orange-900/15">
-                  {aiLoading ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-[#D96224]" />
-                  ) : (
-                    <Sparkles className="h-8 w-8 text-[#D96224]" />
-                  )}
+              <div className="relative mx-auto mb-4 h-44 w-36">
+                <motion.span animate={aiLoading ? { scale: [0.92, 1.08, 0.92], opacity: [0.15, 0.35, 0.15] } : { scale: 1, opacity: 0.18 }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-1 rounded-full bg-purple-400 blur-2xl" />
+                <div className="absolute inset-0 overflow-hidden rounded-[4rem] border border-white/15 bg-white/[0.04]">
+                  <div className="absolute left-1/2 top-8 h-16 w-16 -translate-x-1/2 rounded-full border-2 border-dashed border-white/40" />
+                  <div className="absolute bottom-5 left-1/2 h-16 w-24 -translate-x-1/2 rounded-t-full border-2 border-b-0 border-dashed border-white/30" />
+                  {aiLoading ? <motion.span initial={{ top: "8%" }} animate={{ top: "88%" }} transition={{ repeat: Infinity, repeatType: "reverse", duration: 1.2, ease: "easeInOut" }} className="absolute left-3 right-3 h-0.5 bg-gradient-to-r from-transparent via-orange-300 to-transparent shadow-[0_0_14px_rgba(253,186,116,1)]" /> : null}
                 </div>
-
-                <h2 className="text-2xl font-black text-gray-800 mb-2">
-                  {aiLoading ? 'Procurando...' : 'Filtro Mágico'}
-                </h2>
-                <p className="text-sm text-gray-500 font-medium mb-8">
-                  {aiLoading 
-                    ? 'A Inteligência Artificial da Amazon está escaneando milhares de rostos no álbum. Isso leva alguns segundos.' 
-                    : 'Tire uma selfie agora mesmo e nossa Inteligência Artificial vai vasculhar o álbum inteiro para te encontrar!'}
-                </p>
-
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="user" 
-                  ref={fileInputRef} 
-                  onChange={handleSelfieUpload}
-                  className="hidden" 
-                />
-
-                <button 
-                  disabled={aiLoading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Camera className="w-5 h-5" />
-                  {aiLoading ? 'Analisando Rosto...' : 'Tirar Selfie Agora'}
-                </button>
+                <span className="absolute left-0 top-5 h-6 w-6 rounded-tl-xl border-l-2 border-t-2 border-orange-300" />
+                <span className="absolute right-0 top-5 h-6 w-6 rounded-tr-xl border-r-2 border-t-2 border-orange-300" />
+                <span className="absolute bottom-5 left-0 h-6 w-6 rounded-bl-xl border-b-2 border-l-2 border-orange-300" />
+                <span className="absolute bottom-5 right-0 h-6 w-6 rounded-br-xl border-b-2 border-r-2 border-orange-300" />
+                <span className="absolute inset-0 grid place-items-center"><Camera className="h-7 w-7 text-white/75" /></span>
               </div>
-            </div>
+
+              <h2 className="text-xl font-black">
+                {aiLoading ? ["Validando selfie", "Comparando rostos", "Organizando suas fotos"][aiScanStep] : aiFeedback?.success ? "Você foi encontrado!" : "Encontre suas fotos"}
+              </h2>
+              <p className="mx-auto mt-1.5 max-w-xs text-xs leading-relaxed text-blue-100/65">
+                {aiLoading ? "Nossa busca analisa ângulos e iluminação em duas etapas." : "Use uma selfie de frente, sem óculos escuros e com boa luz."}
+              </p>
+
+              <div className="mt-4 flex justify-center gap-1.5" aria-hidden="true">
+                {[0, 1, 2].map((step) => <span key={step} className={`h-1.5 rounded-full transition-all duration-500 ${aiLoading && step <= aiScanStep ? "w-7 bg-orange-300" : "w-1.5 bg-white/20"}`} />)}
+              </div>
+
+              {aiFeedback ? (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`mt-4 flex items-start gap-2 rounded-2xl p-3 text-left text-xs font-bold ${aiFeedback.success ? "bg-emerald-400/15 text-emerald-100" : "bg-red-400/15 text-red-100"}`}>
+                  {aiFeedback.success ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <X className="mt-0.5 h-4 w-4 shrink-0" />}
+                  <span>{aiFeedback.message}</span>
+                </motion.div>
+              ) : null}
+
+              <input
+                type="file"
+                accept="image/*"
+                capture="user"
+                ref={fileInputRef}
+                onChange={handleSelfieUpload}
+                className="hidden"
+              />
+
+              <button
+                disabled={aiLoading}
+                onClick={() => { setAiFeedback(null); fileInputRef.current?.click(); }}
+                className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#F17B37] px-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(241,123,55,0.25)] disabled:opacity-60"
+              >
+                {aiLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+                {aiLoading ? 'Buscando com segurança...' : aiFeedback ? 'Tentar outra selfie' : 'Tirar selfie'}
+              </button>
+
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-[9px] font-bold text-white/40">
+                <CheckCircle2 className="h-3 w-3" /> Sua selfie é usada somente nesta busca
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -38,6 +38,7 @@ export default function AlbumDashboard() {
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [scanStep, setScanStep] = useState(0);
   const [scanResult, setScanResult] = useState<{success: boolean; message: string} | null>(null);
   const webcamRef = useRef<Webcam>(null);
 
@@ -49,6 +50,15 @@ export default function AlbumDashboard() {
   useEffect(() => {
     fetchTours();
   }, []);
+
+  useEffect(() => {
+    if (!scanning) {
+      setScanStep(0);
+      return;
+    }
+    const timer = window.setInterval(() => setScanStep((current) => Math.min(current + 1, 2)), 800);
+    return () => window.clearInterval(timer);
+  }, [scanning]);
 
   const fetchTours = async () => {
     try {
@@ -123,7 +133,8 @@ export default function AlbumDashboard() {
         setIsFaceSearchMode(true);
         setSelectionMode(false);
         setSelectedPhotoIds(new Set());
-        setScanResult({ success: true, message: `Encontramos ${data.matches.length} fotos suas!` });
+        const bestSimilarity = typeof data.matches[0] === "object" ? Number(data.matches[0]?.similarity || 0) : 0;
+        setScanResult({ success: true, message: `Encontramos ${data.matches.length} foto(s)${bestSimilarity ? ` · melhor correspondência ${bestSimilarity.toFixed(0)}%` : ""}.` });
         setTimeout(() => setShowScanner(false), 2000);
       } else {
         setScanResult({ success: false, message: 'Nenhum rosto encontrado nesta trilha.' });
@@ -217,32 +228,23 @@ export default function AlbumDashboard() {
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#F17B37] rounded-full blur-[200px] opacity-10 pointer-events-none" />
 
       {/* Navbar */}
-      <header className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-white/10 bg-[#0F1722]/80 px-3 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-white/10 bg-[#0F1722]/90 px-3 py-2.5 backdrop-blur-xl sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-[#F17B37] to-orange-400 p-[2px] rounded-full">
+          <div className="h-9 w-9 bg-gradient-to-tr from-[#F17B37] to-orange-400 p-[2px] rounded-full">
             <div className="w-full h-full bg-[#0F1722] rounded-full flex items-center justify-center">
               <Camera className="w-5 h-5 text-[#F17B37]" />
             </div>
           </div>
-          <h1 className="text-xl font-black tracking-tight hidden sm:block">Álbuns VIP</h1>
+          <div className="min-w-0">
+            <h1 className="text-sm font-black tracking-tight sm:text-base">Álbuns</h1>
+            <p className="max-w-[48vw] truncate text-[9px] font-bold text-white/45 sm:max-w-sm">{activeTour?.album_title || activeTour?.title || "Escolha uma trilha"}</p>
+          </div>
         </div>
 
         <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <button onClick={() => router.push('/')} className="p-2 text-gray-400 hover:text-white transition-colors" aria-label="Voltar ao site">
             <House className="w-5 h-5" />
           </button>
-          <select 
-            value={selectedTour || ''} 
-            onChange={(e) => handleSelectTour(e.target.value)}
-            aria-label="Selecionar álbum"
-            className="min-w-0 max-w-[52vw] truncate rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#F17B37] sm:max-w-xs sm:px-4 sm:text-sm"
-          >
-            {tours.length === 0 && <option value="">Nenhuma trilha encontrada</option>}
-            {tours.map(t => (
-              <option key={t.id} value={t.id} className="bg-[#0F1722]">{t.album_title || t.title}</option>
-            ))}
-          </select>
-
           <button onClick={logout} className="p-2 text-gray-400 hover:text-red-400 transition-colors">
             <LogOut className="w-5 h-5" />
           </button>
@@ -250,7 +252,7 @@ export default function AlbumDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 relative z-10 max-w-7xl mx-auto w-full">
+      <main className="relative z-10 mx-auto w-full max-w-7xl flex-1 p-3 md:p-6">
         {pageError && (
           <div className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm font-bold text-red-200">
             <span>{pageError}</span>
@@ -259,15 +261,12 @@ export default function AlbumDashboard() {
         )}
         
         {tours.length > 0 && (
-          <section className="mb-5">
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-300">Álbuns disponíveis</p>
-                <h2 className="mt-1 text-lg font-black">Suas trilhas com fotos</h2>
-              </div>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black text-white/70">{tours.length} {tours.length === 1 ? "trilha" : "trilhas"}</span>
+          <section className="mb-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-orange-300">Escolha a trilha</p>
+              <span className="text-[9px] font-bold text-white/40">Deslize para ver mais →</span>
             </div>
-            <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:px-0">
+            <div className="-mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
               {tours.map((tour) => {
                 const active = tour.id === selectedTour;
                 return (
@@ -275,17 +274,17 @@ export default function AlbumDashboard() {
                     key={tour.id}
                     type="button"
                     onClick={() => void handleSelectTour(tour.id)}
-                    className={`relative min-h-28 w-[78vw] max-w-72 shrink-0 snap-start overflow-hidden rounded-2xl border p-4 text-left transition ${active ? "border-orange-300 bg-orange-300/10 ring-2 ring-orange-300/20" : "border-white/10 bg-white/[0.04]"}`}
+                    className={`relative h-[4.75rem] w-[68vw] max-w-64 shrink-0 snap-start overflow-hidden rounded-2xl border p-3 text-left transition ${active ? "border-orange-300 bg-orange-300/10 ring-2 ring-orange-300/20" : "border-white/10 bg-white/[0.04]"}`}
                   >
                     {tour.cover_url ? <img src={tour.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15" /> : null}
                     <span className="absolute inset-0 bg-gradient-to-r from-[#071829] via-[#071829]/90 to-[#071829]/55" />
                     <span className="relative block">
                       <span className="block truncate text-sm font-black text-white">{tour.album_title || tour.title}</span>
-                      <span className="mt-1 block text-[10px] font-bold text-white/55">{formatAlbumDate(tour.date)}</span>
-                      <span className="mt-3 flex flex-wrap gap-1.5">
-                        <span className="rounded-full bg-white/10 px-2 py-1 text-[9px] font-black text-white/75">{tour.public_media_count} gerais</span>
-                        {tour.face_search_available ? <span className="rounded-full bg-purple-500/25 px-2 py-1 text-[9px] font-black text-purple-100">IA disponível</span> : null}
-                        {tour.video_count ? <span className="rounded-full bg-blue-500/25 px-2 py-1 text-[9px] font-black text-blue-100">{tour.video_count} vídeo(s)</span> : null}
+                      <span className="mt-1 flex items-center gap-2 text-[9px] font-bold text-white/55">
+                        <span>{formatAlbumDate(tour.date)}</span>
+                        <span>•</span>
+                        <span>{tour.public_media_count} mídias</span>
+                        {tour.face_search_available ? <Sparkles className="h-3 w-3 text-purple-300" /> : null}
                       </span>
                     </span>
                   </button>
@@ -298,53 +297,41 @@ export default function AlbumDashboard() {
         {activeTour && (
           <motion.section
             key={activeTour.id}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative mb-6 overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,#071829,#173E63)] shadow-2xl"
+            className="relative mb-3 flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,#071829,#173E63)] p-3 shadow-xl"
           >
-            {activeTour.cover_url ? <img src={activeTour.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15 blur-[1px]" /> : null}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#071829] via-[#071829]/90 to-[#071829]/55" />
-            <div className="relative grid gap-5 p-5 sm:p-7 md:grid-cols-[1fr_auto] md:items-end">
-              <div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-orange-300/20 bg-orange-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-orange-200">
-                  <Sparkles className="h-3 w-3" /> Memórias da sua aventura
-                </span>
-                <h2 className="mt-4 max-w-3xl text-2xl font-black leading-tight sm:text-4xl">{activeTour.album_title || activeTour.title}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-blue-100/70">{activeTour.album_description}</p>
-                <div className="mt-4 flex flex-wrap gap-3 text-[11px] font-bold text-blue-100/65">
-                  <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-orange-300" /> {formatAlbumDate(activeTour.date)}</span>
-                  <span className="flex items-center gap-1.5"><Images className="h-3.5 w-3.5 text-orange-300" /> {albumStats.publicMedia} arquivos gerais</span>
-                  {albumStats.searchablePhotos > 0 ? <span className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-purple-300" /> Reconhecimento facial disponível</span> : null}
-                  <span className="flex items-center gap-1.5"><Camera className="h-3.5 w-3.5 text-orange-300" /> {activeTour.photographer}</span>
-                </div>
-              </div>
-              <button onClick={() => setSlideshowIndex(0)} disabled={!photos.length} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-black text-[#071829] shadow-xl disabled:opacity-40">
-                <Play className="h-4 w-4 fill-current" /> Assistir apresentação
-              </button>
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white/10">
+              {activeTour.cover_url ? <img src={activeTour.cover_url} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full place-items-center"><Images className="h-5 w-5 text-orange-300" /></span>}
             </div>
+            <div className="relative min-w-0 flex-1">
+              <h2 className="truncate text-sm font-black">{activeTour.album_title || activeTour.title}</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-bold text-blue-100/60">
+                <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-orange-300" /> {formatAlbumDate(activeTour.date)}</span>
+                <span>{albumStats.publicMedia} gerais</span>
+                {albumStats.searchablePhotos > 0 ? <span className="flex items-center gap-1 text-purple-200"><Sparkles className="h-3 w-3" /> IA</span> : null}
+              </div>
+            </div>
+            <button onClick={() => setSlideshowIndex(0)} disabled={!photos.length} className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#071829] shadow-lg disabled:opacity-40" aria-label="Assistir apresentação">
+              <Play className="h-4 w-4 fill-current" />
+            </button>
           </motion.section>
         )}
 
-        <div className="mb-6 flex flex-col justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center">
-          <div>
-            <h3 className="text-xl font-black">{isFaceSearchMode ? 'Encontramos você!' : 'Paisagens, grupos e vídeos'}</h3>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-gray-400">
-              {selectionMode
-                ? `${selectedPhotoIds.size} selecionada(s)`
-                : isFaceSearchMode
-                  ? `${photos.length} retrato(s) localizado(s) com privacidade.`
-                  : `${photos.length} arquivo(s) gerais em qualidade original, disponíveis para os participantes desta trilha.`}
-            </p>
+        <div className="sticky top-[3.65rem] z-30 mb-3 flex items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#111d2a]/95 p-2.5 shadow-xl backdrop-blur-xl">
+          <div className="min-w-0 pl-1">
+            <h3 className="truncate text-sm font-black">{isFaceSearchMode ? 'Suas fotos' : 'Galeria geral'}</h3>
+            <p className="text-[9px] font-bold text-gray-400">{selectionMode ? `${selectedPhotoIds.size} selecionada(s)` : `${photos.length} mídia(s)`}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+          <div className="flex items-center gap-1.5">
             {isFaceSearchMode ? (
-              <button onClick={() => handleSelectTour(selectedTour!)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-xs font-black hover:bg-white/10"><Filter className="h-4 w-4" /> Ver todas</button>
+              <button onClick={() => handleSelectTour(selectedTour!)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 text-[10px] font-black hover:bg-white/10"><Filter className="h-3.5 w-3.5" /> Geral</button>
             ) : photos.length ? (
-              <button onClick={() => { setSelectionMode((current) => !current); setSelectedPhotoIds(new Set()); }} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-xs font-black ${selectionMode ? 'border-orange-300 bg-orange-300/10 text-orange-200' : 'border-white/10 bg-white/5'}`}>{selectionMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />} Selecionar</button>
+              <button onClick={() => { setSelectionMode((current) => !current); setSelectedPhotoIds(new Set()); }} className={`grid h-10 w-10 place-items-center rounded-xl border ${selectionMode ? 'border-orange-300 bg-orange-300/10 text-orange-200' : 'border-white/10 bg-white/5'}`} aria-label="Selecionar fotos">{selectionMode ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}</button>
             ) : null}
-            {!isFaceSearchMode ? <button onClick={openScanner} disabled={!selectedTour || albumStats.searchablePhotos === 0} title={albumStats.searchablePhotos === 0 ? 'Este álbum ainda não possui retratos indexados' : undefined} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 text-xs font-black shadow-[0_0_20px_rgba(147,51,234,0.25)] disabled:cursor-not-allowed disabled:opacity-40"><Sparkles className="h-4 w-4" /> Encontrar minhas fotos</button> : null}
-            {selectionMode ? <button onClick={selectAll} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-xs font-black">{selectedPhotoIds.size === photos.length ? 'Limpar seleção' : 'Selecionar tudo'}</button> : null}
-            {photos.length && !isFaceSearchMode ? <button onClick={() => void handleBulkDownload(selectionMode ? Array.from(selectedPhotoIds) : undefined)} disabled={downloadingAlbum || (selectionMode && !selectedPhotoIds.size)} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#F17B37] px-4 text-xs font-black shadow-[0_0_20px_rgba(241,123,55,0.25)] disabled:opacity-50 sm:col-span-1">{downloadingAlbum ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {selectionMode ? `Baixar ${selectedPhotoIds.size || ''} selecionada(s)` : 'Baixar galeria geral'}</button> : null}
+            {!isFaceSearchMode ? <button onClick={openScanner} disabled={!selectedTour || albumStats.searchablePhotos === 0} title={albumStats.searchablePhotos === 0 ? 'Este álbum ainda não possui retratos indexados' : undefined} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-purple-600 px-3 text-[10px] font-black shadow-[0_0_18px_rgba(147,51,234,0.25)] disabled:cursor-not-allowed disabled:opacity-40"><Sparkles className="h-3.5 w-3.5" /> Me encontrar</button> : null}
+            {selectionMode ? <button onClick={selectAll} className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-[10px] font-black">{selectedPhotoIds.size === photos.length ? 'Limpar' : 'Todas'}</button> : null}
+            {photos.length && !isFaceSearchMode ? <button onClick={() => void handleBulkDownload(selectionMode ? Array.from(selectedPhotoIds) : undefined)} disabled={downloadingAlbum || (selectionMode && !selectedPhotoIds.size)} className="grid h-10 w-10 place-items-center rounded-xl bg-[#F17B37] text-white shadow-[0_0_18px_rgba(241,123,55,0.25)] disabled:opacity-50" aria-label={selectionMode ? 'Baixar seleção' : 'Baixar galeria'}>{downloadingAlbum ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button> : null}
           </div>
         </div>
 
@@ -419,38 +406,43 @@ export default function AlbumDashboard() {
         {showScanner && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] flex items-end justify-center bg-[#020b14]/95 p-3 backdrop-blur-xl sm:items-center sm:p-4"
           >
-            <div className="w-full max-w-md bg-[#0F1722] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+            <motion.div initial={{ y: 32, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 32, scale: 0.98 }} className="relative w-full max-w-sm overflow-hidden rounded-[2rem] border border-white/10 bg-[#0F1722] shadow-2xl">
               <button 
                 onClick={() => setShowScanner(false)} 
-                className="absolute top-4 right-4 z-10 bg-black/50 p-2 rounded-full text-white/70 hover:text-white"
+                className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white/80 hover:text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
 
-              <div className="p-6 text-center border-b border-white/10 bg-gradient-to-b from-purple-900/40 to-transparent">
-                <Sparkles className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                <h3 className="text-xl font-black">Escaneamento Mágico</h3>
-                <p className="text-sm text-gray-400 mt-1">Tire uma selfie para encontrarmos você nas fotos da trilha.</p>
+              <div className="border-b border-white/10 bg-gradient-to-b from-purple-900/35 to-transparent px-5 py-4 text-center">
+                <h3 className="text-lg font-black">Encontre suas fotos</h3>
+                <p className="mt-1 text-[11px] font-medium text-gray-400">Rosto de frente · boa luz · sem óculos escuros</p>
               </div>
 
-              <div className="relative aspect-[3/4] bg-black flex items-center justify-center overflow-hidden">
+              <div className="relative mx-auto aspect-[4/5] max-h-[54vh] w-full overflow-hidden bg-black">
                 <Webcam
                   audio={false}
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
-                  videoConstraints={{ facingMode: "user" }}
-                  className="w-full h-full object-cover"
+                  screenshotQuality={0.92}
+                  videoConstraints={{ facingMode: "user", width: 960, height: 1200 }}
+                  className="h-full w-full object-cover"
                 />
+
+                <div className="pointer-events-none absolute inset-[12%_19%] rounded-[45%] border-2 border-white/75 shadow-[0_0_0_999px_rgba(0,0,0,0.28)]" />
+                <span className="pointer-events-none absolute left-[16%] top-[9%] h-9 w-9 rounded-tl-2xl border-l-2 border-t-2 border-orange-300" />
+                <span className="pointer-events-none absolute right-[16%] top-[9%] h-9 w-9 rounded-tr-2xl border-r-2 border-t-2 border-orange-300" />
+                <span className="pointer-events-none absolute bottom-[9%] left-[16%] h-9 w-9 rounded-bl-2xl border-b-2 border-l-2 border-orange-300" />
+                <span className="pointer-events-none absolute bottom-[9%] right-[16%] h-9 w-9 rounded-br-2xl border-b-2 border-r-2 border-orange-300" />
                 
-                {/* Scanner Overlay Animation */}
                 {scanning && (
                   <motion.div 
-                    initial={{ top: '0%' }}
-                    animate={{ top: '100%' }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                    className="absolute left-0 right-0 h-1 bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,1)]"
+                    initial={{ top: '16%' }}
+                    animate={{ top: '82%' }}
+                    transition={{ repeat: Infinity, repeatType: "reverse", duration: 1.15, ease: "easeInOut" }}
+                    className="pointer-events-none absolute left-[19%] right-[19%] h-0.5 bg-gradient-to-r from-transparent via-orange-300 to-transparent shadow-[0_0_15px_rgba(253,186,116,1)]"
                   />
                 )}
                 
@@ -459,25 +451,34 @@ export default function AlbumDashboard() {
                   {scanResult && (
                     <motion.div 
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md ${scanResult.success ? 'bg-green-900/80' : 'bg-red-900/80'}`}
+                      className={`absolute inset-0 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md ${scanResult.success ? 'bg-emerald-950/82' : 'bg-red-950/82'}`}
                     >
-                      {scanResult.success ? <CheckCircle2 className="w-16 h-16 text-green-400 mb-4" /> : <AlertCircle className="w-16 h-16 text-red-400 mb-4" />}
-                      <p className="text-xl font-bold">{scanResult.message}</p>
+                      {scanResult.success ? <CheckCircle2 className="mb-3 h-14 w-14 text-emerald-300" /> : <AlertCircle className="mb-3 h-14 w-14 text-red-300" />}
+                      <p className="max-w-xs text-base font-black">{scanResult.message}</p>
+                      {!scanResult.success ? <p className="mt-2 text-[11px] text-white/60">Tente novamente olhando diretamente para a câmera.</p> : null}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="p-6">
+              <div className="p-4">
+                {scanning ? (
+                  <div className="mb-3">
+                    <p className="text-center text-xs font-black text-purple-100">{["Validando selfie", "Comparando rostos", "Organizando resultados"][scanStep]}</p>
+                    <div className="mt-2 flex justify-center gap-1.5">{[0, 1, 2].map((step) => <span key={step} className={`h-1.5 rounded-full transition-all ${step <= scanStep ? "w-7 bg-purple-400" : "w-1.5 bg-white/15"}`} />)}</div>
+                  </div>
+                ) : null}
                 <button 
-                  onClick={captureAndSearch}
-                  disabled={scanning || !!scanResult}
-                  className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                  onClick={() => scanResult && !scanResult.success ? setScanResult(null) : void captureAndSearch()}
+                  disabled={scanning || Boolean(scanResult?.success)}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-purple-600 px-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(147,51,234,0.25)] hover:bg-purple-700 disabled:opacity-50"
                 >
-                  {scanning ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Camera className="w-5 h-5" /> Tirar Foto e Buscar</>}
+                  {scanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+                  {scanning ? "Busca inteligente em andamento" : scanResult ? "Tentar novamente" : "Tirar selfie e buscar"}
                 </button>
+                <p className="mt-2 text-center text-[9px] font-bold text-white/35">A selfie não é salva no álbum.</p>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
