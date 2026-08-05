@@ -24,9 +24,10 @@ GOOGLE_PHOTOS_CLIENT_ID=
 GOOGLE_PHOTOS_CLIENT_SECRET=
 GOOGLE_PHOTOS_REDIRECT_URI=https://www.maistrilhasmenosestresse.com/api/admin/albums/google/callback
 GOOGLE_PHOTOS_IMPORT_QUEUE_URL=
+GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY=
 ```
 
-`GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY` é opcional. Quando ausente, o servidor deriva uma chave isolada a partir de `NEXTAUTH_SECRET`. Não altere `NEXTAUTH_SECRET` durante importações em andamento.
+`GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY` é obrigatória e deve ser exatamente a mesma na Vercel e na Lambda. Use 32 bytes aleatórios em base64url. O script de infraestrutura valida o tamanho antes de atualizar o worker.
 
 ## 3. Banco e worker AWS
 

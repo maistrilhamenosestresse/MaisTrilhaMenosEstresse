@@ -32,7 +32,8 @@ export function googlePhotosConfigured() {
   return Boolean(
     process.env.GOOGLE_PHOTOS_CLIENT_ID?.trim()
     && process.env.GOOGLE_PHOTOS_CLIENT_SECRET?.trim()
-    && process.env.GOOGLE_PHOTOS_IMPORT_QUEUE_URL?.trim(),
+    && process.env.GOOGLE_PHOTOS_IMPORT_QUEUE_URL?.trim()
+    && process.env.GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY?.trim(),
   );
 }
 
@@ -210,15 +211,10 @@ async function pickerRequest<T>(path: string, accessToken: string, init: Request
 }
 
 function tokenEncryptionKey() {
-  const configured = process.env.GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY?.trim();
-  if (configured) {
-    const decoded = Buffer.from(configured, "base64url");
-    if (decoded.length !== 32) throw new Error("GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY deve possuir 32 bytes em base64url");
-    return decoded;
-  }
-  return createHash("sha256")
-    .update(`maistrilha/google-photos/v1/${requireServerEnv("NEXTAUTH_SECRET")}`)
-    .digest();
+  const configured = requireServerEnv("GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY");
+  const decoded = Buffer.from(configured, "base64url");
+  if (decoded.length !== 32) throw new Error("GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY deve possuir 32 bytes em base64url");
+  return decoded;
 }
 
 function extensionForMime(mimeType: string) {

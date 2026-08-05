@@ -36,6 +36,11 @@ const requiredVariables = [
   'CRON_SECRET',
   'RATE_LIMIT_SECRET',
   'REGISTRATION_SIGNING_SECRET',
+  'GOOGLE_PHOTOS_CLIENT_ID',
+  'GOOGLE_PHOTOS_CLIENT_SECRET',
+  'GOOGLE_PHOTOS_REDIRECT_URI',
+  'GOOGLE_PHOTOS_IMPORT_QUEUE_URL',
+  'GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY',
 ];
 
 for (const name of requiredVariables) {
@@ -47,7 +52,7 @@ if (!(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLI
 
 if (!allowSandbox) checkProductionUrls();
 
-const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET', 'WEB_PUSH_VAPID_PRIVATE_KEY'];
+const secretNames = ['ASAAS_WEBHOOK_TOKEN', 'CRON_SECRET', 'RATE_LIMIT_SECRET', 'REGISTRATION_SIGNING_SECRET', 'WEB_PUSH_VAPID_PRIVATE_KEY', 'GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY'];
 const configuredSecrets = [];
 for (const name of secretNames) {
   const value = process.env[name]?.trim();

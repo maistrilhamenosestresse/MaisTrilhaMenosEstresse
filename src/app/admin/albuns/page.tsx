@@ -568,35 +568,35 @@ export default function AdminAlbumsPage() {
 
               <section className={`${mobileStep === "upload" ? "block" : "hidden"} rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5 md:block md:p-7`}>
                 <div><h2 className="text-xl font-black">2. Enviar fotos e vídeos</h2><p className="mt-1 text-sm text-slate-500">Os originais vão para a AWS. Fotos JPG/PNG recebem reconhecimento facial; vídeos são organizados sem análise de rosto.</p></div>
-                <div className="mt-4 overflow-hidden rounded-3xl border border-blue-100 bg-[linear-gradient(135deg,#071829,#123A5D)] p-4 text-white shadow-xl sm:mt-5 sm:p-5">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-4 text-[#10243A] sm:mt-5 sm:p-5">
                   <div className="flex items-start gap-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/10 text-orange-200"><CloudDownload className="h-5 w-5" /></span>
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[#D96224] shadow-sm"><CloudDownload className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-200">Importação automática</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D96224]">Google Fotos</p>
                       <h3 className="mt-1 text-base font-black sm:text-lg">Trazer um álbum do Google Fotos</h3>
-                      <p className="mt-1 text-xs leading-relaxed text-blue-100/75">Conecte sua conta, pesquise o nome do álbum no Google e selecione até 2.000 itens. As fotos originais e os vídeos na máxima qualidade disponibilizada continuam sendo transferidos para a AWS mesmo se você fechar esta página.</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">Escolha somente as fotos e os vídeos desta trilha. O envio continua em segundo plano e você pode fechar esta página.</p>
                     </div>
                   </div>
 
                   {googleImportJob ? (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-3.5">
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-xs font-black">{googleImportStatusLabel(googleImportJob.status)}</span>
-                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-blue-100">{googleImportJob.processedItems + googleImportJob.failedItems} de {googleImportJob.totalItems || "—"}</span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">{googleImportJob.processedItems + googleImportJob.failedItems} de {googleImportJob.totalItems || "—"}</span>
                       </div>
                       {googleImportJob.totalItems > 0 ? (
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/25"><motion.div className="h-full rounded-full bg-[linear-gradient(90deg,#F17B37,#FDBA74)]" animate={{ width: `${Math.min(100, ((googleImportJob.processedItems + googleImportJob.failedItems) / googleImportJob.totalItems) * 100)}%` }} /></div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><motion.div className="h-full rounded-full bg-[#D96224]" animate={{ width: `${Math.min(100, ((googleImportJob.processedItems + googleImportJob.failedItems) / googleImportJob.totalItems) * 100)}%` }} /></div>
                       ) : null}
-                      {googleImportJob.errorMessage ? <p className="mt-2 text-[11px] text-red-200">{googleImportJob.errorMessage}</p> : null}
+                      {googleImportJob.errorMessage ? <p className="mt-2 text-[11px] font-bold text-red-600">{googleImportJob.errorMessage}</p> : null}
                       {googleImportJob.status === "awaiting_selection" && googleImportJob.pickerUri ? (
-                        <button type="button" onClick={() => window.open(googleImportJob.pickerUri || "", "google-photos-picker", "popup,width=920,height=760")} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black text-[#071829] shadow-lg"><ExternalLink className="h-4 w-4" /> Abrir Google Fotos e selecionar</button>
+                        <button type="button" onClick={() => window.open(googleImportJob.pickerUri || "", "google-photos-picker", "popup,width=920,height=760")} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#10243A] px-4 text-xs font-black text-white"><ExternalLink className="h-4 w-4" /> Escolher fotos no Google</button>
                       ) : null}
                       {["failed", "expired", "cancelled"].includes(googleImportJob.status) ? (
                         <button type="button" onClick={() => { setGoogleImportJob(null); setGoogleImportJobId(""); void startGooglePhotosImport(); }} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#F17B37] px-4 text-xs font-black text-white"><RefreshCw className="h-4 w-4" /> Conectar novamente</button>
                       ) : null}
                     </div>
                   ) : (
-                    <button type="button" onClick={() => void startGooglePhotosImport()} disabled={startingGoogleImport || saving || draft.title.trim().length < 3} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-black text-[#071829] shadow-lg disabled:opacity-50">
+                    <button type="button" onClick={() => void startGooglePhotosImport()} disabled={startingGoogleImport || saving || draft.title.trim().length < 3} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#10243A] px-5 text-sm font-black text-white disabled:opacity-50">
                       {startingGoogleImport ? <Loader2 className="h-5 w-5 animate-spin" /> : <CloudDownload className="h-5 w-5 text-[#D96224]" />}
                       {startingGoogleImport ? "Conectando com segurança..." : "Conectar Google Fotos"}
                     </button>

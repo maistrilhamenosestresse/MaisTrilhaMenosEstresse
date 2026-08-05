@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import JSZip from "jszip";
@@ -212,11 +211,10 @@ async function ensureRole(name) {
 }
 
 function tokenEncryptionKey() {
-  const configured = process.env.GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY?.trim();
-  if (configured) return configured;
-  return createHash("sha256")
-    .update(`maistrilha/google-photos/v1/${required("NEXTAUTH_SECRET")}`)
-    .digest("base64url");
+  const configured = required("GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY");
+  const decoded = Buffer.from(configured, "base64url");
+  if (decoded.length !== 32) throw new Error("GOOGLE_PHOTOS_TOKEN_ENCRYPTION_KEY deve possuir 32 bytes em base64url");
+  return configured;
 }
 
 async function loadEnv(file) {

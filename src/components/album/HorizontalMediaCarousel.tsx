@@ -32,9 +32,9 @@ export function HorizontalMediaCarousel({ items, tone = "dark", onExpand, onDown
   };
 
   return (
-    <section className={`overflow-hidden rounded-[1.6rem] border shadow-xl ${dark ? "border-white/10 bg-[#07131f]" : "border-slate-200 bg-white"}`}>
+    <section className={`overflow-hidden rounded-[1.5rem] border ${dark ? "border-white/10 bg-[#07131f]" : "border-black/5 bg-white shadow-[0_16px_45px_rgba(16,36,58,0.08)]"}`}>
       <div
-        className="relative aspect-[4/3] max-h-[68vh] w-full touch-pan-y overflow-hidden bg-black outline-none focus-visible:ring-4 focus-visible:ring-[#F17B37]/60 sm:aspect-[16/10]"
+        className={`relative aspect-[4/3] max-h-[68vh] w-full touch-pan-y overflow-hidden outline-none focus-visible:ring-4 focus-visible:ring-[#F17B37]/40 sm:aspect-[16/10] ${dark ? "bg-black" : "bg-[#E9E6DF]"}`}
         role="region"
         aria-label="Visualizador do álbum"
         tabIndex={0}
@@ -58,33 +58,33 @@ export function HorizontalMediaCarousel({ items, tone = "dark", onExpand, onDown
               <video src={active.url} controls playsInline preload="metadata" className="h-full w-full object-contain" />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={active.url} alt={active.label || `Foto ${activeIndex + 1}`} className="h-full w-full object-contain" />
+              <img src={active.url} alt={active.label || `Foto ${activeIndex + 1}`} className="h-full w-full object-contain" loading="eager" />
             )}
           </motion.div>
         </AnimatePresence>
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent p-3 text-white">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-black backdrop-blur-md">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-3 text-white">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#10243A]/85 px-2.5 py-1 text-[10px] font-black backdrop-blur-md">
             {active.type === "video" ? <Film className="h-3.5 w-3.5" /> : <Images className="h-3.5 w-3.5" />}
             {safeActiveIndex + 1} de {items.length}
           </span>
-          <span className="truncate text-[10px] font-bold text-white/70">{active.label}</span>
+          <span className="rounded-full bg-black/35 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur-md">Deslize para navegar</span>
         </div>
 
         {items.length > 1 ? (
           <>
-            <button type="button" onClick={() => move(-1)} className="absolute left-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow-lg backdrop-blur-md" aria-label="Mídia anterior"><ChevronLeft className="h-6 w-6" /></button>
-            <button type="button" onClick={() => move(1)} className="absolute right-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white shadow-lg backdrop-blur-md" aria-label="Próxima mídia"><ChevronRight className="h-6 w-6" /></button>
+            <button type="button" onClick={() => move(-1)} className="absolute left-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#10243A] shadow-lg backdrop-blur-md" aria-label="Mídia anterior"><ChevronLeft className="h-6 w-6" /></button>
+            <button type="button" onClick={() => move(1)} className="absolute right-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#10243A] shadow-lg backdrop-blur-md" aria-label="Próxima mídia"><ChevronRight className="h-6 w-6" /></button>
           </>
         ) : null}
 
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-gradient-to-t from-black/75 to-transparent p-3 pt-10">
-          {onDownload ? <button type="button" onClick={() => onDownload(active, safeActiveIndex)} className="grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white backdrop-blur-md" aria-label="Baixar mídia">{downloadingId === active.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button> : null}
-          <button type="button" onClick={() => onExpand(active, safeActiveIndex)} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-4 text-[10px] font-black text-[#071829] shadow-lg"><Expand className="h-4 w-4" /> Expandir</button>
+          {onDownload ? <button type="button" onClick={() => onDownload(active, safeActiveIndex)} className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#10243A] shadow-lg" aria-label="Baixar mídia">{downloadingId === active.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button> : null}
+          <button type="button" onClick={() => onExpand(active, safeActiveIndex)} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[#10243A] px-4 text-[10px] font-black text-white shadow-lg"><Expand className="h-4 w-4" /> Tela cheia</button>
         </div>
       </div>
 
-      <div className={`flex snap-x gap-2 overflow-x-auto p-2.5 [scrollbar-width:thin] ${dark ? "bg-white/[0.03]" : "bg-slate-50"}`}>
+      <div className={`flex snap-x gap-2 overflow-x-auto p-2.5 [scrollbar-width:thin] ${dark ? "bg-white/[0.03]" : "border-t border-black/5 bg-white"}`}>
         {items.map((item, index) => (
           <button key={item.id} type="button" onClick={() => setActiveIndex(index)} className={`relative h-16 w-16 shrink-0 snap-start overflow-hidden rounded-xl border-2 transition ${index === safeActiveIndex ? "border-[#F17B37] ring-2 ring-orange-300/20" : dark ? "border-white/10 opacity-55" : "border-white opacity-60"}`} aria-label={`Abrir mídia ${index + 1}`}>
             {item.type === "video" ? <video src={item.url} muted playsInline preload="metadata" className="h-full w-full object-cover" /> : <img src={item.url} alt="" loading="lazy" className="h-full w-full object-cover" />}
