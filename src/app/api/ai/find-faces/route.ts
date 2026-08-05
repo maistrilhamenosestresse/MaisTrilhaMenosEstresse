@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { rekognitionClient } from "@/lib/aws";
-import { SearchFacesByImageCommand } from "@aws-sdk/client-rekognition";
+import { DetectFacesCommand, SearchFacesByImageCommand } from "@aws-sdk/client-rekognition";
 import { requireAgendaCustomer } from "@/lib/server/auth";
 import { createSupabaseAdmin } from "@/lib/server/supabase-admin";
 import { assertSameOrigin, readJsonBody } from "@/lib/server/request";
@@ -30,13 +30,38 @@ export async function POST(req: Request) {
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, "base64");
 
+    if (!imageBuffer.length || imageBuffer.length > 10_000_000) {
+      return NextResponse.json({ error: "Selfie inválida ou acima de 10 MB" }, { status: 400 });
+    }
+
+    const detection = await rekognitionClient.send(new DetectFacesCommand({
+      Image: { Bytes: imageBuffer },
+      Attributes: ["DEFAULT"],
+    }));
+    const validFaces = (detection.FaceDetails || []).filter((face) => {
+      const box = face.BoundingBox;
+      const area = Number(box?.Width || 0) * Number(box?.Height || 0);
+      return Number(face.Confidence || 0) >= 99 && area >= 0.035;
+    });
+    if (validFaces.length === 0) {
+      return NextResponse.json({ error: "Nenhum rosto nítido foi detectado. Centralize o rosto e tente novamente." }, { status: 422 });
+    }
+    if (validFaces.length > 1) {
+      return NextResponse.json({ error: "Use uma selfie individual, com apenas uma pessoa na imagem." }, { status: 422 });
+    }
+
+    const faceQuality = validFaces[0].Quality;
+    if (Number(faceQuality?.Brightness || 0) < 25 || Number(faceQuality?.Sharpness || 0) < 20) {
+      return NextResponse.json({ error: "A selfie está escura ou desfocada. Use uma iluminação melhor." }, { status: 422 });
+    }
+
     // Primeiro busca com alta precisão. Se não houver resultado, amplia de forma
     // controlada a sensibilidade para fotos com ângulo, luz ou distância diferentes.
     let sensitivity: "precise" | "flexible" = "precise";
-    let searchRes = await searchFaces(collectionId, imageBuffer, 92);
+    let searchRes = await searchFaces(collectionId, imageBuffer, 96);
     if (!searchRes.FaceMatches?.length) {
       sensitivity = "flexible";
-      searchRes = await searchFaces(collectionId, imageBuffer, 88);
+      searchRes = await searchFaces(collectionId, imageBuffer, 92);
     }
     
     if (!searchRes.FaceMatches || searchRes.FaceMatches.length === 0) {

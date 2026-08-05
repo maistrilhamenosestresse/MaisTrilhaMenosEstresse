@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2, CheckCircle2, Square, CheckSquare, Play } from "lucide-react";
+import { ChevronLeft, Camera, Sparkles, X, Image as ImageIcon, Loader2, Download, Images, Maximize2, CheckCircle2, Square, CheckSquare, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -28,6 +28,7 @@ const EMPTY_STATS: AlbumStats = {
   privatePortraits: 0,
   videos: 0,
 };
+const INITIAL_MEDIA_COUNT = 18;
 
 export default function AlbumPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -41,6 +42,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   const [aiFeedback, setAiFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<AlbumMedia | null>(null);
   const [albumStats, setAlbumStats] = useState<AlbumStats>(EMPTY_STATS);
+  const [visibleMediaCount, setVisibleMediaCount] = useState(INITIAL_MEDIA_COUNT);
   const [downloadingAlbum, setDownloadingAlbum] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
@@ -60,6 +62,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           type: photo.type === "video" ? "video" : "image",
         })));
         setAlbumStats({ ...EMPTY_STATS, ...(data.stats || {}) });
+        setVisibleMediaCount(INITIAL_MEDIA_COUNT);
       } catch (e) {
         console.error(e);
       } finally {
@@ -114,6 +117,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           setFilteredPhotos(data.matches.map((match: string | { url?: string }) =>
             typeof match === "string" ? match : String(match.url || ""),
           ).filter(Boolean));
+          setVisibleMediaCount(INITIAL_MEDIA_COUNT);
           setAiFeedback({ success: true, message: `${data.matches.length} foto(s) encontrada(s).` });
           window.setTimeout(() => setIsAiMode(false), 1100);
         } else {
@@ -133,6 +137,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
   const displayPhotos: AlbumMedia[] = filteredPhotos !== null
     ? Array.from(new Set(filteredPhotos)).map((url, index) => ({ id: `face-${index}`, url, type: "image" as const }))
     : photos;
+  const visiblePhotos = displayPhotos.slice(0, visibleMediaCount);
 
   const downloadPhoto = async (media: AlbumMedia, index: number) => {
     try {
@@ -265,7 +270,7 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-1">
-            {displayPhotos.map((photo, i) => (
+            {visiblePhotos.map((photo, i) => (
               <motion.button
                 type="button"
                 onClick={() => selectionMode ? toggleSelection(photo.id) : setSelectedPhoto(photo)}
@@ -292,6 +297,19 @@ export default function AlbumPage({ params }: { params: Promise<{ id: string }> 
             ))}
           </div>
         )}
+        {!loading && displayPhotos.length > INITIAL_MEDIA_COUNT ? (
+          <div className="flex justify-center py-5">
+            {visibleMediaCount < displayPhotos.length ? (
+              <button type="button" onClick={() => setVisibleMediaCount((current) => Math.min(current + INITIAL_MEDIA_COUNT, displayPhotos.length))} className="flex min-h-12 items-center gap-2 rounded-2xl bg-[#0B2540] px-5 text-xs font-black text-white shadow-lg">
+                <ChevronDown className="h-4 w-4" /> Carregar mais {Math.min(INITIAL_MEDIA_COUNT, displayPhotos.length - visibleMediaCount)}
+              </button>
+            ) : (
+              <button type="button" onClick={() => setVisibleMediaCount(INITIAL_MEDIA_COUNT)} className="flex min-h-12 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 text-xs font-black text-gray-700 shadow-sm">
+                <ChevronUp className="h-4 w-4" /> Recolher galeria
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* Modal da IA */}

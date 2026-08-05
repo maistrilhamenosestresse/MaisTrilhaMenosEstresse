@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, Camera, LogOut, Download, Sparkles, Filter, CheckCircle2, AlertCircle, Play, X, House, Images, Square, CheckSquare, CalendarDays } from "lucide-react";
+import { Loader2, Camera, LogOut, Download, Sparkles, Filter, CheckCircle2, AlertCircle, Play, X, House, Images, Square, CheckSquare, CalendarDays, Maximize2, ChevronDown, ChevronUp } from "lucide-react";
 import { SlideshowViewer } from "@/components/album/SlideshowViewer";
 import Webcam from "react-webcam";
 
@@ -19,6 +19,7 @@ type AlbumStats = {
 };
 
 const EMPTY_STATS: AlbumStats = { total: 0, publicMedia: 0, searchablePhotos: 0, landscapes: 0, groups: 0, privatePortraits: 0, videos: 0 };
+const INITIAL_MEDIA_COUNT = 16;
 
 export default function AlbumDashboard() {
   const router = useRouter();
@@ -34,18 +35,23 @@ export default function AlbumDashboard() {
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
   const [downloadingPhotoId, setDownloadingPhotoId] = useState<string | null>(null);
   const [albumStats, setAlbumStats] = useState<AlbumStats>(EMPTY_STATS);
+  const [visibleMediaCount, setVisibleMediaCount] = useState(INITIAL_MEDIA_COUNT);
   
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState(0);
   const [scanResult, setScanResult] = useState<{success: boolean; message: string} | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState("");
   const webcamRef = useRef<Webcam>(null);
+  const selfieInputRef = useRef<HTMLInputElement>(null);
 
   // Slideshow
   const [slideshowIndex, setSlideshowIndex] = useState<number | null>(null);
 
   const activeTour = tours.find((tour) => tour.id === selectedTour) || null;
+  const visiblePhotos = photos.slice(0, visibleMediaCount);
 
   useEffect(() => {
     fetchTours();
@@ -90,6 +96,7 @@ export default function AlbumDashboard() {
     setScanResult(null);
     setPageError("");
     setAlbumStats(EMPTY_STATS);
+    setVisibleMediaCount(INITIAL_MEDIA_COUNT);
     try {
       const res = await fetch(`/api/album/${agendaId}`);
       const data = await res.json();
@@ -112,9 +119,18 @@ export default function AlbumDashboard() {
   const captureAndSearch = async () => {
     if (!webcamRef.current || !selectedTour) return;
     const imageSrc = webcamRef.current.getScreenshot();
-    if (!imageSrc) return;
+    if (!imageSrc) {
+      setScanResult({ success: false, message: "A câmera ainda não está pronta. Use a opção de selfie abaixo." });
+      return;
+    }
 
+    await searchFaceImage(imageSrc);
+  };
+
+  const searchFaceImage = async (imageSrc: string) => {
+    if (!selectedTour) return;
     setScanning(true);
+    setScanResult(null);
     try {
       const res = await fetch('/api/ai/find-faces', {
         method: 'POST',
@@ -131,6 +147,7 @@ export default function AlbumDashboard() {
           type: typeof match !== "string" && match.type === "video" ? "video" : "image",
         })));
         setIsFaceSearchMode(true);
+        setVisibleMediaCount(INITIAL_MEDIA_COUNT);
         setSelectionMode(false);
         setSelectedPhotoIds(new Set());
         const bestSimilarity = typeof data.matches[0] === "object" ? Number(data.matches[0]?.similarity || 0) : 0;
@@ -139,11 +156,27 @@ export default function AlbumDashboard() {
       } else {
         setScanResult({ success: false, message: 'Nenhum rosto encontrado nesta trilha.' });
       }
-    } catch {
-      setScanResult({ success: false, message: 'Erro ao buscar rosto.' });
+    } catch (error) {
+      setScanResult({ success: false, message: error instanceof Error ? error.message : 'Erro ao buscar rosto.' });
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleSelfieFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 10_000_000) {
+      setScanResult({ success: false, message: "Escolha uma selfie válida de até 10 MB." });
+      event.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") void searchFaceImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
   };
 
   const logout = async () => {
@@ -214,6 +247,8 @@ export default function AlbumDashboard() {
 
   const openScanner = () => {
     setScanResult(null);
+    setCameraReady(false);
+    setCameraError("");
     setShowScanner(true);
   };
 
@@ -362,7 +397,7 @@ export default function AlbumDashboard() {
             animate={{ opacity: 1 }}
             className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4"
           >
-            {photos.map((photo, idx) => {
+            {visiblePhotos.map((photo, idx) => {
               const isVideo = photo.type === 'video';
               const selected = selectedPhotoIds.has(photo.id);
               return (
@@ -390,6 +425,7 @@ export default function AlbumDashboard() {
                     />
                   )}
                   {selectionMode ? <span className={`absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border-2 ${selected ? 'border-orange-300 bg-[#F17B37] text-white' : 'border-white bg-black/45 text-transparent'}`}><CheckCircle2 className="h-5 w-5" /></span> : null}
+                  {!selectionMode ? <span className="absolute left-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm"><Maximize2 className="h-4 w-4" /></span> : null}
                   <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent p-3 pt-12 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
                     <span className="text-[10px] font-black uppercase tracking-wider text-white/80">{isVideo ? 'Vídeo' : `Foto ${String(idx + 1).padStart(3, '0')}`}</span>
                     {!selectionMode ? <button type="button" onClick={(event) => { event.stopPropagation(); void downloadPhoto(photo, idx); }} className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#071829] shadow-lg" aria-label={`Baixar ${isVideo ? 'vídeo' : 'foto'}`}>{downloadingPhotoId === photo.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}</button> : null}
@@ -399,6 +435,19 @@ export default function AlbumDashboard() {
             })}
           </motion.div>
         )}
+        {!loadingPhotos && photos.length > INITIAL_MEDIA_COUNT ? (
+          <div className="mt-5 flex justify-center">
+            {visibleMediaCount < photos.length ? (
+              <button type="button" onClick={() => setVisibleMediaCount((current) => Math.min(current + INITIAL_MEDIA_COUNT, photos.length))} className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 text-xs font-black text-white shadow-lg hover:bg-white/10">
+                <ChevronDown className="h-4 w-4" /> Carregar mais {Math.min(INITIAL_MEDIA_COUNT, photos.length - visibleMediaCount)}
+              </button>
+            ) : (
+              <button type="button" onClick={() => { setVisibleMediaCount(INITIAL_MEDIA_COUNT); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="inline-flex min-h-12 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 text-xs font-black text-white">
+                <ChevronUp className="h-4 w-4" /> Recolher galeria
+              </button>
+            )}
+          </div>
+        ) : null}
       </main>
 
       {/* Face Scanner Modal */}
@@ -428,8 +477,18 @@ export default function AlbumDashboard() {
                   screenshotFormat="image/jpeg"
                   screenshotQuality={0.92}
                   videoConstraints={{ facingMode: "user", width: 960, height: 1200 }}
+                  onUserMedia={() => { setCameraReady(true); setCameraError(""); }}
+                  onUserMediaError={() => { setCameraReady(false); setCameraError("Não foi possível abrir a câmera neste navegador."); }}
                   className="h-full w-full object-cover"
                 />
+
+                {!cameraReady && !scanning ? (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#071829] px-8 text-center">
+                    {cameraError ? <AlertCircle className="mb-3 h-10 w-10 text-orange-300" /> : <Loader2 className="mb-3 h-9 w-9 animate-spin text-purple-300" />}
+                    <p className="text-sm font-black">{cameraError || "Solicitando acesso à câmera..."}</p>
+                    <p className="mt-1 text-[10px] leading-relaxed text-white/50">Permita o uso da câmera ou tire uma selfie usando o botão abaixo.</p>
+                  </div>
+                ) : null}
 
                 <div className="pointer-events-none absolute inset-[12%_19%] rounded-[45%] border-2 border-white/75 shadow-[0_0_0_999px_rgba(0,0,0,0.28)]" />
                 <span className="pointer-events-none absolute left-[16%] top-[9%] h-9 w-9 rounded-tl-2xl border-l-2 border-t-2 border-orange-300" />
@@ -468,14 +527,20 @@ export default function AlbumDashboard() {
                     <div className="mt-2 flex justify-center gap-1.5">{[0, 1, 2].map((step) => <span key={step} className={`h-1.5 rounded-full transition-all ${step <= scanStep ? "w-7 bg-purple-400" : "w-1.5 bg-white/15"}`} />)}</div>
                   </div>
                 ) : null}
-                <button 
+                <button
                   onClick={() => scanResult && !scanResult.success ? setScanResult(null) : void captureAndSearch()}
-                  disabled={scanning || Boolean(scanResult?.success)}
+                  disabled={scanning || Boolean(scanResult?.success) || !cameraReady}
                   className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-purple-600 px-4 text-sm font-black text-white shadow-[0_12px_30px_rgba(147,51,234,0.25)] hover:bg-purple-700 disabled:opacity-50"
                 >
                   {scanning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
                   {scanning ? "Busca inteligente em andamento" : scanResult ? "Tentar novamente" : "Tirar selfie e buscar"}
                 </button>
+                <input ref={selfieInputRef} type="file" accept="image/*" capture="user" onChange={handleSelfieFile} className="hidden" />
+                {!scanResult?.success ? (
+                  <button type="button" disabled={scanning} onClick={() => selfieInputRef.current?.click()} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-xs font-black text-white disabled:opacity-50">
+                    <Camera className="h-4 w-4" /> Abrir câmera do celular
+                  </button>
+                ) : null}
                 <p className="mt-2 text-center text-[9px] font-bold text-white/35">A selfie não é salva no álbum.</p>
               </div>
             </motion.div>
