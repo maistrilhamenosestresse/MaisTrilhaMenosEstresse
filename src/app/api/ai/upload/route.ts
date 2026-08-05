@@ -44,7 +44,6 @@ export async function POST(req: Request) {
         Bucket: BUCKET_NAME,
         Key: objectKey,
         ContentType: file.type,
-        ContentLength: file.size,
         ServerSideEncryption: 'AES256',
         CacheControl: 'private, max-age=31536000, immutable',
       });
@@ -59,6 +58,10 @@ export async function POST(req: Request) {
         publicUrl,
         objectKey,
         contentType: file.type,
+        requiredHeaders: {
+          'Content-Type': file.type,
+          'x-amz-server-side-encryption': 'AES256',
+        },
       });
     }
 

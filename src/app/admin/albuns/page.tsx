@@ -203,10 +203,15 @@ export default function AdminAlbumsPage() {
         setUploadStep(`Enviando ${index + 1} de ${files.length}: ${file.name}`);
         const uploadResponse = await fetch(destination.signedUrl, {
           method: "PUT",
-          headers: { "Content-Type": file.type },
+          headers: destination.requiredHeaders || {
+            "Content-Type": file.type,
+            "x-amz-server-side-encryption": "AES256",
+          },
           body: file,
         });
-        if (!uploadResponse.ok) throw new Error(`Falha ao enviar ${file.name}`);
+        if (!uploadResponse.ok) {
+          throw new Error(`A AWS recusou ${file.name} (código ${uploadResponse.status}). Tente novamente.`);
+        }
 
         setUploadStep(file.type.startsWith("image/")
           ? `Organizando e reconhecendo rostos em ${file.name}`

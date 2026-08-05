@@ -14,6 +14,10 @@ const credentials = {
 export const s3Client = new S3Client({
   region,
   credentials,
+  // URLs pré-assinadas são criadas antes de o navegador fornecer o corpo.
+  // Evita que o SDK assine automaticamente o CRC32 de um corpo vazio.
+  requestChecksumCalculation: "WHEN_REQUIRED",
+  responseChecksumValidation: "WHEN_REQUIRED",
 });
 
 // Rekognition Client
