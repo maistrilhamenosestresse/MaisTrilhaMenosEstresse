@@ -28,6 +28,17 @@ type CheckoutBody = {
   use_points?: boolean;
 };
 
+type ReservationCheckoutRow = {
+  id: string;
+  agenda_id: string;
+  status_pagamento: string;
+  checkout_owner_id: string | null;
+  checkout_batch_id: string | null;
+  checkout_claimed_at: string | null;
+  nsu_transacao: string | null;
+  purchase_channel: string | null;
+};
+
 export async function POST(request: Request) {
   const originError = assertSameOrigin(request);
   if (originError) return originError;
@@ -66,21 +77,15 @@ export async function POST(request: Request) {
 
   const { data: reservations, error: reservationError } = await supabase
     .from("reservas")
-    .select("id, agenda_id, status_pagamento, checkout_owner_id, checkout_batch_id, nsu_transacao, purchase_channel")
+    .select("id, agenda_id, status_pagamento, checkout_owner_id, checkout_batch_id, checkout_claimed_at, nsu_transacao, purchase_channel")
     .in("id", reservationIds);
   if (reservationError || !reservations || reservations.length !== reservationIds.length) {
     return NextResponse.json({ error: "Reservas não encontradas" }, { status: 404 });
   }
 
-  const batchIds = new Set(reservations.map((item) => item.checkout_batch_id).filter(Boolean));
-  if (
-    batchIds.size !== 1 ||
-    reservations.some((item) =>
-      item.checkout_owner_id !== principal.id ||
-      item.status_pagamento !== "pendente" ||
-      item.nsu_transacao
-    )
-  ) {
+  if (reservations.some((item) =>
+    item.checkout_owner_id !== principal.id || item.status_pagamento !== "pendente"
+  )) {
     return NextResponse.json(
       { error: "Lote de reservas já processado ou não autorizado" },
       { status: 409 },
@@ -89,6 +94,41 @@ export async function POST(request: Request) {
   if (isAppCheckout && reservations.some((item) => item.purchase_channel !== "app")) {
     return NextResponse.json(
       { error: "Os benefícios só podem ser usados em reservas iniciadas pelo aplicativo" },
+      { status: 409 },
+    );
+  }
+
+  const activePaymentIds = [...new Set(
+    reservations
+      .map((item) => activeReservationPaymentId(item))
+      .filter((value): value is string => Boolean(value)),
+  )];
+  if (activePaymentIds.length) {
+    const resumed = paymentMethod === "INFINITEPAY"
+      ? await resumeInfinitePayTrailCheckout({
+          supabase,
+          principalId: principal.id,
+          reservations: reservations as ReservationCheckoutRow[],
+          paymentIds: activePaymentIds,
+          isAppCheckout,
+        })
+      : null;
+    if (resumed) return NextResponse.json(resumed);
+
+    return NextResponse.json(
+      {
+        error: activePaymentIds.some((value) => value.startsWith("CREATING:"))
+          ? "O pagamento destas vagas já está sendo preparado. Aguarde alguns instantes e tente novamente."
+          : "Já existe um pagamento em andamento para estas vagas. Continue pela mesma forma de pagamento.",
+      },
+      { status: 409 },
+    );
+  }
+
+  const batchIds = new Set(reservations.map((item) => item.checkout_batch_id).filter(Boolean));
+  if (batchIds.size !== 1) {
+    return NextResponse.json(
+      { error: "As vagas selecionadas pertencem a carrinhos diferentes. Refaça o carrinho." },
       { status: 409 },
     );
   }
@@ -229,6 +269,7 @@ export async function POST(request: Request) {
         .update({
           nsu_transacao: pendingPaymentId,
           metodo_pagamento: "INFINITEPAY",
+          checkout_claimed_at: null,
         })
         .in("id", reservationIds)
         .eq("nsu_transacao", `CREATING:${attemptId}`);
@@ -285,6 +326,7 @@ export async function POST(request: Request) {
       .update({
         nsu_transacao: asaasPaymentId,
         metodo_pagamento: paymentMethod,
+        checkout_claimed_at: null,
       })
       .in("id", reservationIds)
       .eq("nsu_transacao", `CREATING:${attemptId}`);
@@ -331,4 +373,122 @@ export async function POST(request: Request) {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function activeReservationPaymentId(reservation: ReservationCheckoutRow) {
+  const paymentId = String(reservation.nsu_transacao || "");
+  if (!paymentId) return null;
+  if (!paymentId.startsWith("CREATING:")) return paymentId;
+
+  const claimedAt = reservation.checkout_claimed_at
+    ? new Date(reservation.checkout_claimed_at).getTime()
+    : 0;
+  const claimIsStale = !Number.isFinite(claimedAt) || claimedAt <= Date.now() - 15 * 60 * 1000;
+  return claimIsStale ? null : paymentId;
+}
+
+async function resumeInfinitePayTrailCheckout(input: {
+  supabase: ReturnType<typeof createSupabaseAdmin>;
+  principalId: string;
+  reservations: ReservationCheckoutRow[];
+  paymentIds: string[];
+  isAppCheckout: boolean;
+}) {
+  if (input.paymentIds.length !== 1 || !input.paymentIds[0].startsWith("IP:")) {
+    return null;
+  }
+
+  const paymentId = input.paymentIds[0];
+  if (input.reservations.some((item) => item.nsu_transacao !== paymentId)) {
+    return null;
+  }
+
+  const orderNsu = paymentId.slice(3);
+  const { data: checkout, error: checkoutError } = await input.supabase
+    .from("infinitepay_checkouts")
+    .select("order_nsu, reference, client_id, expected_amount_cents, status, checkout_url, transaction_nsu")
+    .eq("order_nsu", orderNsu)
+    .maybeSingle();
+  if (checkoutError) throw checkoutError;
+  if (
+    !checkout ||
+    checkout.client_id !== input.principalId ||
+    !["creating", "pending"].includes(checkout.status) ||
+    checkout.transaction_nsu ||
+    !isTrustedInfinitePayCheckoutUrl(checkout.checkout_url)
+  ) {
+    return null;
+  }
+
+  const isAppReference = String(checkout.reference || "").startsWith("TRILHA_APP:");
+  const isSiteReference = String(checkout.reference || "").startsWith("TRILHA:");
+  if (
+    (input.isAppCheckout && !isAppReference) ||
+    (!input.isAppCheckout && !isSiteReference)
+  ) {
+    return null;
+  }
+
+  const { data: linkedReservations, error: linkedError } = await input.supabase
+    .from("reservas")
+    .select("id")
+    .eq("nsu_transacao", paymentId)
+    .eq("status_pagamento", "pendente");
+  if (linkedError) throw linkedError;
+
+  const requestedIds = input.reservations.map((item) => item.id).sort();
+  const linkedIds = (linkedReservations || []).map((item) => item.id).sort();
+  if (
+    requestedIds.length !== linkedIds.length ||
+    requestedIds.some((id, index) => id !== linkedIds[index])
+  ) {
+    return null;
+  }
+
+  if (isSiteReference) {
+    const originalBatchId = String(checkout.reference).slice("TRILHA:".length);
+    if (!isUuid(originalBatchId)) return null;
+    const { error: repairError } = await input.supabase
+      .from("reservas")
+      .update({
+        checkout_batch_id: originalBatchId,
+        checkout_owner_id: input.principalId,
+      })
+      .in("id", requestedIds)
+      .eq("nsu_transacao", paymentId)
+      .eq("status_pagamento", "pendente");
+    if (repairError) throw repairError;
+  }
+
+  await input.supabase.from("audit_logs").insert({
+    action: "checkout.resume",
+    resource_type: "infinitepay_checkout",
+    resource_id: orderNsu,
+    metadata: {
+      reservationIds: requestedIds,
+      checkoutSource: input.isAppCheckout ? "app" : "site",
+    },
+  });
+
+  return {
+    success: true,
+    provider: "INFINITEPAY",
+    type: "INFINITEPAY",
+    redirectUrl: checkout.checkout_url,
+    orderNsu,
+    netAmount: Number(checkout.expected_amount_cents || 0) / 100,
+    resumed: true,
+  };
+}
+
+function isTrustedInfinitePayCheckoutUrl(value: unknown) {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" && [
+      "checkout.infinitepay.com.br",
+      "checkout.infinitepay.io",
+    ].includes(url.hostname);
+  } catch {
+    return false;
+  }
 }
